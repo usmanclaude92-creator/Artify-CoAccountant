@@ -1,6 +1,6 @@
 # Phase 2 — Artify Super Admin
 
-**Status: NOT STARTED.**
+**Status: DELIVERED FOR REVIEW (2026-11-04) — see [`PHASE_2_COMPLETION_REPORT.md`](PHASE_2_COMPLETION_REPORT.md) for what is implemented, tested and still open.** Phase 3 must not start until this phase is approved.
 
 ## Objectives
 
@@ -50,10 +50,10 @@ Executable: TS-ISO-06, TS-ISO-07, TS-ENT-03, TS-ENT-04, TS-ENT-07, TS-SEC-02 (pl
 
 ## Completion checklist
 
-- [ ] Platform realm separation verified
-- [ ] Support grant lifecycle complete with tenant visibility
-- [ ] Skill `frontend-design` drafted (with Phase 3 refinement)
-- [ ] `PHASE_2_COMPLETION_REPORT.md`
+- [x] Platform realm separation verified (customer tokens 401 on Super Admin; platform tokens 401 on customer routes)
+- [x] Support grant lifecycle complete with tenant visibility (request → customer approval → scoped, time-limited use → revoke; double audit)
+- [ ] Skill `frontend-design` drafted — **NOT DONE** (project skills are created in the phases listed in `PROJECT_SKILLS_PLAN.md`; deferred to Phase 3 with the UI refinement)
+- [x] `PHASE_2_COMPLETION_REPORT.md`
 
 ## Known risks
 

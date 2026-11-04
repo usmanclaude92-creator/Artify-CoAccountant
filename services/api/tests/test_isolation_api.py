@@ -6,7 +6,6 @@ import uuid
 
 from artify_api.context import PlatformRequires, Public, Requires
 from conftest import PASSWORD, Actor, invite_and_accept, login, make_company, new_owner
-from fastapi.routing import APIRoute
 from sqlalchemy import text
 
 
@@ -150,26 +149,21 @@ def test_realms_are_separate(client, mailer) -> None:  # type: ignore[no-untyped
 
 
 def test_every_route_declares_its_authorization() -> None:
-    """TS-ISO-10: fail if any route lacks Public(...)/Requires(...)/PlatformRequires(...)."""
-    from artify_api.main import create_app
+    """TS-ISO-10: fail if any route lacks Public(...)/Requires(...)/PlatformRequires(...), and if a declared
+    permission is not in the catalog. The lower bound makes sure the test can never again pass by inspecting nothing."""
+    from artify_api.permissions import PERMISSION_KEYS
+    from conftest import iter_api_routes, walk_dependencies
 
-    def walk(dependant):  # type: ignore[no-untyped-def]
-        for d in dependant.dependencies:
-            yield d.call
-            yield from walk(d)
-
-    undeclared = []
-    for route in create_app().routes:
-        if not isinstance(route, APIRoute):
-            continue  # docs/openapi endpoints are framework-provided and added only in non-production
-        calls = list(walk(route.dependant))
+    undeclared, inspected = [], 0
+    for path, route in iter_api_routes():
+        inspected += 1
+        calls = list(walk_dependencies(route.dependant))
         if not any(isinstance(c, (Public, Requires, PlatformRequires)) for c in calls):
-            undeclared.append(f"{sorted(route.methods)} {route.path}")
+            undeclared.append(f"{sorted(route.methods)} {path}")
         for c in calls:
-            if isinstance(c, Requires) and c.permission is not None:
-                from artify_api.permissions import PERMISSION_KEYS
-
-                assert c.permission in PERMISSION_KEYS, c.permission
+            if isinstance(c, (Requires, PlatformRequires)) and c.permission is not None:
+                assert c.permission in PERMISSION_KEYS, (path, c.permission)
+    assert inspected >= 100, f"only {inspected} routes inspected: the route walk is broken"
     assert not undeclared, undeclared
 
 

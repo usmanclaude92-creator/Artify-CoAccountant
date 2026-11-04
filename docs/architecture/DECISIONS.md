@@ -85,6 +85,21 @@ Login, MFA, session-revoke and password-reset events are written once to the pla
 ### ADR-027 — Module boundaries are enforced by import-linter contracts
 `services/api/pyproject.toml` defines a layered contract (routes → services → infrastructure → primitives) and a purity contract (`policy`/`permissions` must not import the web framework or the database). CI and pre-commit run `lint-imports`. New modules must be placed in a layer.
 
+### ADR-028 — The platform realm sees tenants through definer-owned aggregate views, not policies on tenant tables
+`platform_org_overview`, `platform_company_overview`, `platform_user_totals` and `platform_outbox_overview` are owned by `artify_definer` and expose only metadata and counts (no documents, tax data, ledgers or credentials); `artify_platform` receives `SELECT` on the views. This keeps invariant 10 (no default platform access to customer business data) and the Phase 1 isolation test unchanged. Any column added to these views is a disclosure and must be reviewed. Alternative rejected: direct platform policies on `companies`/memberships with column grants (wider surface, easier to widen by accident).
+
+### ADR-029 — Support access is customer-authorized, time-limited, grant-scoped in RLS and audited twice
+A support request is approved or denied by the organization's firm owner; while an active, unexpired grant held by the calling administrator exists, RLS lets the platform role read that organization's members, users (id/e-mail/name/status) and audit log — nothing else. Expiry is evaluated in the policy (`app.platform_granted_org_ids()`, once per query). Each use is written to the platform audit and to the customer's audit log. No impersonation. The sensitive `read` level exists in the model, needs separate explicit confirmation, and unlocks nothing until documents exist. Defaults (72 h cap, 14-day request validity, owner-only approval) are implementer choices awaiting owner approval.
+
+### ADR-030 — A plan version in use is immutable; editing publishes a new version
+A trigger rejects changes to a version, or its entitlements, that any subscription uses. Customers stay on their version (grandfathering) until an administrator moves them. A plan change below current usage needs explicit acknowledgement and never deletes data; the organization is "over limit" and further creation is blocked by `EntitlementService`. Missing keys in a plan mean "denied".
+
+### ADR-031 — Billing records are manual and provider-independent
+`billing_invoices`, `billing_payments` (payment/refund) and `billing_adjustments` store exact decimals (`NUMERIC(18,3)`), are append-only where they record money movement, never aggregate across currencies, and hold no card data or credentials. Nothing is created automatically. `provider` columns are reserved for the integration chosen under D-2; the integration requirements are in `SUBSCRIPTION_AND_ENTITLEMENT_IMPLEMENTATION.md` §7.
+
+### ADR-032 — Sensitive platform actions use reason + typed confirmation + audit; dual control is deferred; the Super Admin UI is English-only
+Destructive or privileged actions require a reason (≥ 10 characters) and the target's identifier typed exactly; all are audited with outcome and reason, and denials are audited in their own transaction. A second-person approval is **not** implemented and is recommended before production. The internal console is English only; the customer console keeps English + Arabic.
+
 ## Outcomes of decisions taken at the start of Phase 1
 
 The product owner replied "Accept the recommendations and start Phase 1" on 2026-11-04, which settles:
@@ -94,6 +109,7 @@ The product owner replied "Accept the recommendations and start Phase 1" on 2026
 | D-1 | **Decided:** in-house authentication behind the `AuthProvider` protocol (`auth_provider.py`); routes depend only on the protocol. |
 | D-3 (dev infra) | **Decided:** cloud-neutral development infrastructure (PostgreSQL, Redis, S3-compatible MinIO). Production hosting/region remains open for Phase 12. |
 | D-8 (schema) | **Decided:** retention policy *schema* only (`retention_policies`, values NULL). Values remain open for Phase 12. |
+| D-2 (Phase 2) | **Partly addressed:** manual, provider-independent billing records shipped (ADR-031). The billing **provider** is still undecided; a renewal/expiry scheduler and customer billing need it. |
 | D-9 | **Decided:** English + Arabic with RTL from the first screen. Arabic strings are a first-pass translation needing native review. |
 
 ## Decisions requiring product-owner approval

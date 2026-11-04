@@ -59,6 +59,13 @@ REQUIRED_FILES = [
     "docs/development/PHASE_1_IMPLEMENTATION.md",
     "docs/development/PHASE_1_TEST_REPORT.md",
     "docs/development/LOCAL_SETUP_GUIDE.md",
+    "docs/development/PHASE_2_IMPLEMENTATION.md",
+    "docs/development/PHASE_2_TEST_REPORT.md",
+    "docs/development/PHASE_2_COMPLETION_REPORT.md",
+    "docs/security/PLATFORM_ADMIN_SECURITY.md",
+    "docs/security/SUPPORT_ACCESS_POLICY.md",
+    "docs/development/SUBSCRIPTION_AND_ENTITLEMENT_IMPLEMENTATION.md",
+    "docs/development/PLATFORM_MONITORING.md",
     ".claude/skills/README.md",
     "tools/check_docs.py",
 ] + [f"docs/development/PHASE_{n}.md" for n in range(1, 13)]

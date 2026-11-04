@@ -2,7 +2,7 @@
 
 A multi-tenant accounting-operations and document-intelligence SaaS for accounting firms, independent accountants and their client companies.
 
-**Current status: Phase 1 (SaaS foundation) delivered for review.** Backend (identity, tenancy, row-level security, entitlements), generated API client, a Docker stack and a minimal web shell exist and are tested; Super Admin, Control Center modules, workspaces, documents, Desktop and Mobile do not. A few items remain open — see [`docs/development/PHASE_1_COMPLETION_REPORT.md`](docs/development/PHASE_1_COMPLETION_REPORT.md).
+**Current status: Phase 2 (Artify Super Admin) delivered for review, on top of Phase 1 (SaaS foundation).** Backend (identity, tenancy, row-level security, entitlements), generated API client, a Docker stack and a minimal web shell exist and are tested; The Super Admin (tenants, plans, subscriptions, manual billing records, usage, support access, audit, health) exists as well — see [`docs/development/PHASE_2_COMPLETION_REPORT.md`](docs/development/PHASE_2_COMPLETION_REPORT.md). Control Center modules, workspaces, documents, Desktop and Mobile do not. A few items remain open — see [`docs/development/PHASE_1_COMPLETION_REPORT.md`](docs/development/PHASE_1_COMPLETION_REPORT.md).
 
 ## Ecosystem (planned)
 

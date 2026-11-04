@@ -23,6 +23,7 @@
 19. Phases: [1](development/PHASE_1.md) · [2](development/PHASE_2.md) · [3](development/PHASE_3.md) · [4](development/PHASE_4.md) · [5](development/PHASE_5.md) · [6](development/PHASE_6.md) · [7](development/PHASE_7.md) · [8](development/PHASE_8.md) · [9](development/PHASE_9.md) · [10](development/PHASE_10.md) · [11](development/PHASE_11.md) · [12](development/PHASE_12.md)
 20. [Phase 0 completion report](development/PHASE_0_COMPLETION_REPORT.md) · [Phase 1 completion report](development/PHASE_1_COMPLETION_REPORT.md)
 21. [Authentication threat model](security/THREAT_MODEL_AUTH.md) · [Authentication and session design](security/AUTHENTICATION_AND_SESSION_DESIGN.md) · [Role and permission matrix](security/ROLE_AND_PERMISSION_MATRIX.md)
+23. Phase 2 (Super Admin): [implementation](development/PHASE_2_IMPLEMENTATION.md) · [test report](development/PHASE_2_TEST_REPORT.md) · [completion report](development/PHASE_2_COMPLETION_REPORT.md) · [platform admin security](security/PLATFORM_ADMIN_SECURITY.md) · [support access policy](security/SUPPORT_ACCESS_POLICY.md) · [subscription and entitlement implementation](development/SUBSCRIPTION_AND_ENTITLEMENT_IMPLEMENTATION.md) · [platform monitoring](development/PLATFORM_MONITORING.md)
 22. Phase 1 implementation: [overview](development/PHASE_1_IMPLEMENTATION.md) · [test report](development/PHASE_1_TEST_REPORT.md) · [database implementation](database/INITIAL_DATABASE_IMPLEMENTATION.md) · [local setup guide](development/LOCAL_SETUP_GUIDE.md)
 
 ## Phase 0 acceptance criteria → where answered

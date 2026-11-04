@@ -20,7 +20,7 @@ Other gates: roles `firm_owner` and `practice_admin` require an MFA-verified ses
 | Role key | Scope | Reaches | Notes |
 |---|---|---|---|
 | `firm_owner` | organization | all companies | every tenant permission; created only at sign-up; cannot be invited; the last one cannot be demoted |
-| `practice_admin` | organization | all companies | everything except `organization.update` |
+| `practice_admin` | organization | all companies | everything except `organization.update` and `support_grants.manage` |
 | `accountant` | organization | **assigned** companies only | read-only on organization/members; no company creation, no member management |
 | `staff` | organization | **assigned** companies only | read companies; no member visibility |
 | `company_owner` | company | its own company | manages that company's client-side members (any company role) |
@@ -51,6 +51,7 @@ Platform roles (separate realm, issuer, secrets and DB role): `platform_owner`, 
 | `assignments.read` | ✓ | ✓ | ✓ (assigned) | — | — | — | — |
 | `assignments.manage` | ✓ | ✓ | — | — | — | — | — |
 | `devices.manage_own` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `support_grants.manage` (approve/deny/revoke Artify support access) | ✓ | — | — | — | — | — | — |
 
 ## 4. Privilege-escalation rules (all tested)
 
@@ -86,3 +87,38 @@ A permission is added to the catalog only together with the resource it protects
 - **Custom (organization-defined) roles** are supported by the schema (`roles.organization_id`) but have no API or UI; entitlement `feature.custom_roles` gates them later.
 - A user holding *both* an organization role and a company role in the same organization receives the union of permissions; this is intended but only partly covered by tests.
 - The matrix above is hand-maintained; the executable source is `permissions.py` and `test_isolation_api.py` / `test_phase1_gap_pass.py`. A generated matrix check is not implemented.
+
+## 7. Platform realm (Super Admin, Phase 2)
+
+Separate realm: platform roles never appear in the tenant tables above, hold no tenant permission, and are not satisfiable from a tenant token. Source of truth: `permissions.py` (`PLATFORM_ROLES`); the matrix below is generated from it. "Finance" is the `platform_billing` role.
+
+| Permission | Owner | Administrator | Support | Finance | Read-only | Auditor |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|
+| `platform.self.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `platform.dashboard.read` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `platform.organizations.read` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `platform.organizations.manage` | ✓ | ✓ | — | — | — | — |
+| `platform.organizations.suspend` | ✓ | ✓ | — | — | — | — |
+| `platform.companies.read` | ✓ | ✓ | ✓ | — | ✓ | — |
+| `platform.plans.read` | ✓ | ✓ | — | ✓ | ✓ | — |
+| `platform.plans.manage` | ✓ | ✓ | — | — | — | — |
+| `platform.subscriptions.read` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `platform.subscriptions.manage` | ✓ | ✓ | — | — | — | — |
+| `platform.entitlements.override` | ✓ | ✓ | — | — | — | — |
+| `platform.billing.read` | ✓ | ✓ | — | ✓ | ✓ | — |
+| `platform.billing.manage` | ✓ | — | — | ✓ | — | — |
+| `platform.usage.read` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `platform.admins.read` | ✓ | ✓ | — | — | ✓ | — |
+| `platform.admins.manage` | ✓ | — | — | — | — | — |
+| `platform.support.read` | ✓ | ✓ | ✓ | — | ✓ | — |
+| `platform.support.request` | ✓ | ✓ | ✓ | — | — | — |
+| `platform.support.view_data` | ✓ | — | ✓ | — | — | — |
+| `platform.support.revoke` | ✓ | ✓ | — | — | — | — |
+| `platform.audit.read` | ✓ | ✓ | — | — | ✓ | ✓ |
+| `platform.health.read` | ✓ | ✓ | ✓ | — | ✓ | ✓ |
+| `platform.settings.read` | ✓ | ✓ | — | — | ✓ | — |
+| `platform.settings.manage` | ✓ | — | — | — | — | — |
+
+Rules (tested): only `platform.admins.manage` (owner) manages administrators; nobody changes their own role or status; nobody grants a role above their own (rank owner 100 > administrator 80 > support/finance 40 > read-only/auditor 20); every route declares exactly one permission and its type (read vs write) must match its HTTP verb. Support grants are the only route to tenant members and audit logs and need customer approval (`SUPPORT_ACCESS_POLICY.md`). Tenant side: `support_grants.manage` is held by `firm_owner` only (not `practice_admin`).
+
+Gaps: no per-administrator custom permission sets; no dual control; no IP allow-list. Details and threats: `PLATFORM_ADMIN_SECURITY.md`.

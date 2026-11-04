@@ -189,11 +189,28 @@ def test_payments_and_adjustments_are_append_only(client, mailer, owner_engine) 
 
 
 def test_billing_permissions(client, mailer, owner_engine) -> None:  # type: ignore[no-untyped-def]
+    """Every billing mutation needs platform.billing.manage; roles that can only READ billing (readonly, admin)
+    and roles with no billing access (support, auditor) are refused on every one of them."""
     admin = new_platform_admin(client, owner_engine, "platform_billing")
     new_owner(client, mailer, org_name="Perm Billing Firm")
     org = _org(admin, "Perm Billing Firm")
     inv = _invoice(admin, org["id"], "10")
-    body = {"amount": "1", "method": "cash"}
+    draft = _invoice(admin, org["id"], "10", issue=False)
+    paid = _invoice(admin, org["id"], "10")
+    admin.post(f"/billing/invoices/{paid['id']}/payments", {"amount": "4", "method": "cash"})
+    i = f"/billing/invoices/{inv['id']}"
+    mutations = [
+        ("post", "/billing/invoices", {"organization_id": org["id"], "amount_total": "1", "currency": "OMR"}),
+        ("post", f"/billing/invoices/{draft['id']}/issue", None),
+        ("post", f"{i}/void", {"reason": "Trying to void without permission"}),
+        ("post", f"{i}/payments", {"amount": "1", "method": "cash"}),
+        (
+            "post",
+            f"/billing/invoices/{paid['id']}/refunds",
+            {"amount": "1", "method": "cash", "note": "Trying a refund without permission"},
+        ),
+        ("post", f"{i}/adjustments", {"amount": "-1", "reason": "Trying an adjustment without permission"}),
+    ]
     for role, can_read in (
         ("platform_support", False),
         ("platform_auditor", False),
@@ -202,19 +219,14 @@ def test_billing_permissions(client, mailer, owner_engine) -> None:  # type: ign
     ):
         other = new_platform_admin(client, owner_engine, role)
         assert (other.get("/billing/invoices").status_code == 200) is can_read, role
-        assert other.post(f"/billing/invoices/{inv['id']}/payments", body).status_code == 403, role
-        assert (
-            other.post(
-                "/billing/invoices", {"organization_id": org["id"], "amount_total": "1", "currency": "OMR"}
-            ).status_code
-            == 403
-        ), role
-    assert (
-        new_platform_admin(client, owner_engine, "platform_owner")
-        .post(f"/billing/invoices/{inv['id']}/payments", body)
-        .status_code
-        == 201
-    )
+        for method, path, body in mutations:
+            r = getattr(other, method)(path, body) if body is not None else getattr(other, method)(path)
+            assert r.status_code == 403, (role, path, r.status_code)
+    # nothing above changed any state
+    assert admin.get(i).json()["invoice"]["outstanding"] == "10.000"
+    assert admin.get(f"/billing/invoices/{draft['id']}").json()["invoice"]["status"] == "draft"
+    owner = new_platform_admin(client, owner_engine, "platform_owner")
+    assert owner.post(f"{i}/payments", {"amount": "1", "method": "cash"}).status_code == 201
     with owner_engine.connect() as conn:
         actions = {
             r[0]

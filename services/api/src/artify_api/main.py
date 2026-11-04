@@ -34,6 +34,23 @@ from artify_api.settings import get_settings
 
 log = logging.getLogger("artify")
 API_PREFIX = "/api/v1"
+# Every router mounted under API_PREFIX. Tests iterate this tuple (a FastAPI app's `.routes` only exposes wrappers).
+ROUTERS = (
+    health.router,
+    auth.router,
+    orgs.router,
+    companies.router,
+    me.router,
+    platform.router,
+    platform_orgs.router,
+    platform_plans.router,
+    platform_subs.router,
+    platform_billing.router,
+    platform_admins.router,
+    platform_support.router,
+    platform_ops.router,
+    support_grants.router,
+)
 
 
 def _operation_id(route: APIRoute) -> str:
@@ -89,22 +106,7 @@ def create_app() -> FastAPI:
             response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
         return response
 
-    for r in (
-        health.router,
-        auth.router,
-        orgs.router,
-        companies.router,
-        me.router,
-        platform.router,
-        platform_orgs.router,
-        platform_plans.router,
-        platform_subs.router,
-        platform_billing.router,
-        platform_admins.router,
-        platform_support.router,
-        platform_ops.router,
-        support_grants.router,
-    ):
+    for r in ROUTERS:
         app.include_router(r, prefix=API_PREFIX)
     return app
 

@@ -65,3 +65,7 @@ Earlier results still valid and not re-run in this pass: Docker Compose smoke te
 ## 6. Not tested / known gaps
 
 Load or soak behaviour; manual screen-reader and expert accessibility audit; real mail provider; MinIO; non-superuser migration owner; access-token `exp` with a manipulated clock; browser matrix beyond Chromium; mobile viewport screenshots (responsive layout is verified only by axe at default size and by the owner's phone screenshot of one page).
+
+## 7. Correction (found in Phase 2)
+
+`test_every_route_declares_its_authorization` in `test_isolation_api.py` inspected zero routes with the pinned FastAPI (`app.routes` returns wrapper objects) and therefore passed without checking anything. Fixed in Phase 2 (see `PHASE_2_TEST_REPORT.md` §4, item 1). Any claim in §3 that depends on it was true by inspection of the code but untested until then.

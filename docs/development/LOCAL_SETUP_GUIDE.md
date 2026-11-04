@@ -95,3 +95,12 @@ If Playwright reports a missing browser, point it at an installed Chromium: `E2E
 - *Startup error about secrets/Fernet:* you are in a non-local environment with default secrets; set real values or `ARTIFY_ENVIRONMENT=local`.
 - *`permission denied` / empty results from the API role:* expected when no organization context is set — row-level security fails closed.
 - *Migrations are forward-only:* there is no downgrade; recreate the development database with `make db-reset`.
+
+## 7. Super Admin (Phase 2)
+
+1. Create the first platform administrator (operations CLI; development only password source):
+   `ARTIFY_BOOTSTRAP_ADMIN_PASSWORD='a-long-dev-password' uv run --project services/api artify-api create-platform-admin --email you@example.com --name "You" --role platform_owner`
+2. Open `http://localhost:3000/platform/login`, sign in, enrol an authenticator app (mandatory). Further administrators are invited from **Platform Administrators**; in local mode the invitation link is printed in the API console.
+3. A customer firm owner approves Artify support requests at `/support-access`.
+4. Settings that change behaviour without a deploy (default plan, trial days, support grant cap, invoice prefix) are under **Platform Settings**.
+5. In sandboxes where PostgreSQL stops with the session, restart it before `make db-reset` / tests (`pg_ctl -D <data dir> -o "-p 54329 -k /var/run/postgresql" start`). If Playwright reports a missing browser: `E2E_CHROMIUM_PATH=/path/to/chromium make e2e`.

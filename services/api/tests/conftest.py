@@ -335,3 +335,21 @@ def relogin_platform_admin(client: TestClient, admin: PAdmin) -> PAdmin:
     )
     assert v.status_code == 200, v.text
     return PAdmin(client, admin.email, v.json()["access_token"], admin.role, admin.id, admin.secret)
+
+
+def iter_api_routes():  # type: ignore[no-untyped-def]
+    """Every real APIRoute of the application with its full path. (`create_app().routes` only holds wrappers in
+    current FastAPI, so a test iterating it would silently inspect nothing.)"""
+    from artify_api.main import API_PREFIX, ROUTERS
+    from fastapi.routing import APIRoute
+
+    for router in ROUTERS:
+        for route in router.routes:
+            if isinstance(route, APIRoute):
+                yield f"{API_PREFIX}{route.path}", route
+
+
+def walk_dependencies(dependant):  # type: ignore[no-untyped-def]
+    for d in dependant.dependencies:
+        yield d.call
+        yield from walk_dependencies(d)

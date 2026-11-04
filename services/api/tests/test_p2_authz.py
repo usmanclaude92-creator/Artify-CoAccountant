@@ -157,3 +157,40 @@ def test_allowed_paths_work_for_the_right_roles(client, owner_engine, mailer) ->
     assert new_platform_admin(client, owner_engine, "platform_support").get("/support/grants").status_code == 200
     assert new_platform_admin(client, owner_engine, "platform_auditor").get("/audit-events").status_code == 200
     assert new_platform_admin(client, owner_engine, "platform_readonly").get("/organizations").status_code == 200
+
+
+def test_every_platform_route_declares_a_permission_that_matches_its_verb() -> None:
+    """Static guard against permission drift: reads need a read-type permission, mutations a write-type one.
+    (Authentication routes and the documented exceptions below are the only ones that differ.)"""
+    from artify_api.context import PlatformRequires, Public
+    from conftest import iter_api_routes, walk_dependencies
+
+    # POST routes that only READ (search is a GET-like query; none here) or whose finer check is inside the handler
+    inner_checked = {
+        ("POST", "/api/v1/platform/support/grants/{grant_id}/revoke")
+    }  # requester may withdraw; support.revoke for others
+    write_suffixes = (".manage", ".suspend", ".override", ".request", ".revoke")
+    read_suffixes = (".read", ".view_data")
+    checked = 0
+    for path, route in iter_api_routes():
+        if not path.startswith("/api/v1/platform"):
+            continue
+        calls = list(walk_dependencies(route.dependant))
+        declared = [c for c in calls if isinstance(c, PlatformRequires)]
+        public = [c for c in calls if isinstance(c, Public)]
+        assert declared or public, f"{path} declares no authorization"
+        if public or "/platform/auth/" in path:
+            continue  # sign-in, refresh, MFA enrolment, invitation acceptance: authentication endpoints
+        perm = declared[0].permission
+        assert perm or path.endswith("/auth/logout"), (
+            f"{path} is authenticated-only; Super Admin routes must name a permission"
+        )
+        for method in route.methods - {"HEAD", "OPTIONS"}:
+            if (method, path) in inner_checked:
+                continue
+            suffixes = read_suffixes if method == "GET" else write_suffixes
+            assert perm.endswith(suffixes), (
+                f"{method} {route.path} needs a {'read' if method == 'GET' else 'write'} permission, has {perm}"
+            )
+            checked += 1
+    assert checked >= 60  # the whole Super Admin surface was inspected, not an empty set

@@ -9,6 +9,7 @@ What exists in PostgreSQL 16 after `alembic upgrade head` + `artify-api seed`. D
 | 0001 | `sql/0001_foundation.sql` | extension `citext`, all tables, constraints, indexes, partitioned audit/usage tables |
 | 0002 | `sql/0002_rls_and_grants.sql` | DB roles, `app.*` context functions, role-scope and assignment triggers, immutability triggers, `SECURITY DEFINER` functions, RLS enable+force, policies, least-privilege grants |
 | 0003 | `sql/0003_auth_audit_fanout.sql` | tenant-visible fan-out of user-level security events (ADR-025) |
+| 0004 | `sql/0004_super_admin.sql` | **Phase 2:** Super Admin — see §8 |
 
 Alembic revisions are thin wrappers executing the hand-written SQL. **Migrations are forward-only (no downgrade)** — a deliberate deviation from the brief's "rollback where supported" (DECISIONS ADR-020): the schema is RLS/trigger-heavy and an unreviewed automatic downgrade would be more dangerous than useful. Recovery path in development: `make db-reset`; in production: restore from backup / forward fix. Tests build the database from migration 0001 upward on every run; `Base.metadata.create_all()` is never used.
 
@@ -67,3 +68,16 @@ roles *──* permissions via role_permissions        invitations ──► (or
 - Partitions exist only as `DEFAULT` partitions; time-based partition creation/retention jobs are Phase 12 work.
 - Tested on a single PostgreSQL 16 cluster with a superuser owner; a non-superuser owner role is documented (ADR-023) but not exercised.
 - No generated ER diagram; §3 is hand-drawn.
+
+## 8. Phase 2 additions (migration 0004)
+
+New tables: `platform_admin_invitations`, `organization_status_events`, `subscription_events`, `billing_invoices`, `billing_payments`, `billing_adjustments` (plus sequence `billing_invoice_seq`). Altered: `platform_admins`, `subscription_plans`, `subscription_plan_versions`, `subscriptions`, `support_access_grants`, `platform_audit_events`, `invitations` (see `PHASE_2_IMPLEMENTATION.md` §3 for column lists).
+
+- **Immutability:** `subscription_events`, `organization_status_events`, `billing_payments`, `billing_adjustments` reject UPDATE/DELETE (`forbid_mutation`); a **plan version used by any subscription**, and its entitlements, cannot be changed (`guard_pinned_plan_version`).
+- **Money:** `NUMERIC(18,3)` throughout (OMR/KWD/BHD need three decimals); no float columns (lint test unchanged).
+- **Platform-realm access without opening tenant tables:** definer-owned views `platform_org_overview`, `platform_company_overview`, `platform_user_totals`, `platform_outbox_overview` (aggregates and metadata only); column-limited grants (`platform_admins` never exposes `password_hash`; `users` exposes id, e-mail, name, status, dates); policies on `organization_memberships`, `users` and `audit_events` that return rows **only** for organizations in `app.platform_granted_org_ids()` (active, unexpired grants of the calling administrator), evaluated once per query (ADR-024); `platform_sessions_read/revoke` so suspending an administrator really revokes their sessions (an `UPDATE … WHERE` also needs SELECT visibility — found by a test).
+- **Tenant side:** `support_access_grants` is readable and decidable (column-limited UPDATE) by the organization's own context only.
+- **Functions:** `platform_provision_organization`, `platform_accept_invitation`, `platform_granted_org_ids`, `guard_pinned_plan_version`; `create_trial_subscription` writes the history event.
+- Every new table has RLS enabled and forced and at least one policy (`test_every_table_is_classified_and_protected`).
+
+Limitations: views run as `artify_definer`, so any new column added to them must be reviewed as a disclosure; the usage alert scan is capped at 500 organizations; `invitations` now allows an Artify inviter (`invited_by_platform_admin`) so the provisioned owner invitation has a non-user inviter.

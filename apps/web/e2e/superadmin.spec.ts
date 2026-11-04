@@ -193,6 +193,7 @@ test.describe("Super Admin accessibility (axe, light and dark)", () => {
         await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible();
         await expect(page.getByText(/^Loading/)).toHaveCount(0);
         await scan(page, `${path} (${scheme})`);
+        if (process.env.E2E_SHOTS) await page.screenshot({ path: `${process.env.E2E_SHOTS}/${path.replace(/\//g, "_")}-${scheme}.png`, fullPage: true });
       }
     });
   }

@@ -60,3 +60,6 @@ test-results/
 playwright-report/
 # Local benchmark / e2e output
 *.log
+
+# local Redis snapshots (test Redis started from the repo folder writes these)
+dump.rdb

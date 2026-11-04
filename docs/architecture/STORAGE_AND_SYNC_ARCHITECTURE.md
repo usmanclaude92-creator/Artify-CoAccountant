@@ -82,3 +82,8 @@ Documents and feed records are served only to principals authorized for that Com
 ## 7. Data lifecycle
 
 Retention policies (decision D-8) are per Organization/Company/kind configuration. Expiry never hard-deletes silently: it creates a purge candidate list for review, then a controlled, audited purge job with tombstones in the change feed so devices remove local copies. Legal hold prevents purge.
+
+
+## Phase 6 implementation status
+
+The object store, upload protocol, versioning and local mirror described here are implemented as of Phase 6 with these refinements: object keys are opaque (`t/{org}/c/{company}/o/{object_id}`, ADR-053), uploads are streamed through the API, there are no pre-signed URLs, multipart/resumable transfer and thumbnails are deferred, and the local folder is an additive derived mirror (ADR-057). See [documents/](../documents/DOCUMENT_MANAGEMENT_ARCHITECTURE.md).

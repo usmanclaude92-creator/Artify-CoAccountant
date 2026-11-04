@@ -4,12 +4,14 @@ import { Companies } from "./screens/companies";
 import { Dashboard, Notifications, Placeholder, Sync } from "./screens/misc";
 import { Settings } from "./screens/settings";
 import { Workspace } from "./screens/workspace";
+import { Documents, ImportDocuments, UploadQueue } from "./screens/documents";
 import { Brand } from "./screens/auth";
 import { useApp, type Page } from "./state/app";
 
 const NAV: { page: Page; label: string; future?: boolean }[] = [
   { page: "dashboard", label: "Dashboard" }, { page: "companies", label: "My Companies" }, { page: "workspace", label: "Workspace" },
-  { page: "documents", label: "Documents", future: true }, { page: "processing", label: "Processing Queue", future: true },
+  { page: "documents", label: "All Documents" }, { page: "import", label: "Import Documents" }, { page: "queue", label: "Upload Queue" }, { page: "archive", label: "Archived Documents" },
+  { page: "processing", label: "Processing Queue", future: true },
   { page: "accounting", label: "Accounting", future: true }, { page: "reports", label: "Reports", future: true },
   { page: "sync", label: "Synchronization" }, { page: "notifications", label: "Notifications" }, { page: "settings", label: "Settings" },
 ];
@@ -52,7 +54,7 @@ export function Shell() {
         </header>
         <main id="main" className="d-content" tabIndex={-1}>
           {notice ? <Alert tone="warning">{notice} <Button variant="secondary" className="a-btn--sm" onClick={dismissNotice}>Dismiss</Button></Alert> : null}
-          {page === "dashboard" ? <Dashboard /> : page === "companies" ? <Companies /> : page === "workspace" ? <Workspace key={company?.id ?? "none"} /> : page === "sync" ? <Sync /> : page === "notifications" ? <Notifications /> : page === "settings" ? <Settings /> : <Placeholder page={page} />}
+          {page === "dashboard" ? <Dashboard /> : page === "companies" ? <Companies /> : page === "workspace" ? <Workspace key={company?.id ?? "none"} /> : page === "documents" ? <Documents mode="active" key="docs" /> : page === "archive" ? <Documents mode="archived" key="arch" /> : page === "import" ? <ImportDocuments /> : page === "queue" ? <UploadQueue /> : page === "sync" ? <Sync /> : page === "notifications" ? <Notifications /> : page === "settings" ? <Settings /> : <Placeholder page={page} />}
         </main>
       </div>
     </div>

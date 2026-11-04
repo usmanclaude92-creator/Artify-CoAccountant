@@ -51,6 +51,7 @@ DEV_PLAN_LIMITS: dict[str, int | bool] = {
     "limit.excel_templates_per_company": 10,
     "quota.documents_per_month": 500,
     "quota.storage_bytes": 5 * 1024**3,
+    "limit.file_size_bytes": 50 * 1024**2,
     "quota.ai_units_per_month": 2000,
     "feature.custom_roles": False,
     "feature.api_access": False,

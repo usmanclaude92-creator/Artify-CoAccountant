@@ -1,9 +1,9 @@
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { App } from "./App";
-import { createMockBridge, DEMO_COMPANIES, node, type MockBridge, type MockOptions } from "./bridge/mock";
-import type { CompanyView, WorkspaceData } from "./bridge/types";
+import { createMockBridge, DEMO_COMPANIES, mockDoc, node, type MockBridge, type MockOptions } from "./bridge/mock";
+import type { CompanyView, StagedFile, WorkspaceData } from "./bridge/types";
 
 const co = (id: string, name: string, extra: Partial<CompanyView> = {}): CompanyView => ({ id, name, code: id.toUpperCase(), country: "OM", base_currency: "OMR", status: "active", favorite: false, last_opened_at: null, ...extra });
 
@@ -311,7 +311,7 @@ describe("dynamic workspace", () => {
 });
 
 describe("honest placeholders", () => {
-  it.each([["Documents"], ["Processing Queue"], ["Accounting"], ["Reports"]])("%s says it is not available and shows no sample data", async (label) => {
+  it.each([["Processing Queue"], ["Accounting"], ["Reports"]])("%s says it is not available and shows no sample data", async (label) => {
     const { user } = await boot();
     await user.click(await screen.findByRole("button", { name: new RegExp(label) }));
     expect(screen.getByRole("heading", { name: label, level: 1 })).toBeInTheDocument();
@@ -392,5 +392,156 @@ describe("synchronization and notifications", () => {
     await user.click(await screen.findByRole("button", { name: "Dashboard" }));
     expect(await screen.findByText("accountant@example.com · Accountant")).toBeInTheDocument();
     expect(screen.getByText(/Nothing on this screen is sample data/)).toBeInTheDocument();
+  });
+});
+
+
+// ------------------------------------------------------------------ Phase 6: documents
+const staged = (id: string, name: string, size = 2048, extra: Partial<StagedFile> = {}): StagedFile => ({ id, name, size, extension: name.split(".").pop() ?? "", sha256: "a".repeat(64), problem: null, ...extra });
+const nav = async (user: ReturnType<typeof userEvent.setup>, label: string) => user.click(await screen.findByRole("button", { name: new RegExp(`^${label}`) }));
+
+describe("importing documents", () => {
+  it("needs an open company", async () => {
+    const { user } = await boot();
+    await nav(user, "Import Documents");
+    expect(await screen.findByText("Open a company first to see its documents.")).toBeInTheDocument();
+  });
+
+  it("files are reviewed per file, queued, and shown as imported only after the server confirmed them", async () => {
+    const { bridge, user } = await boot({ pickFiles: [staged("s1", "invoice.pdf"), staged("s2", "bad-scan.pdf")] });
+    await openCompany(user, "Alpha Trading LLC");
+    await nav(user, "Import Documents");
+    await user.click(await screen.findByRole("button", { name: "Choose files…" }));
+    const dest = await screen.findByLabelText("Destination for invoice.pdf");
+    expect(screen.getByRole("button", { name: /Import 2 files/ })).toBeDisabled(); // no destination chosen yet
+    await user.selectOptions(dest, "Receivables");
+    await user.selectOptions(screen.getByLabelText("Destination for bad-scan.pdf"), "Payables");
+    await user.click(screen.getByRole("button", { name: "Import 2 files" }));
+    expect(await screen.findByRole("heading", { name: "Upload Queue", level: 1 })).toBeInTheDocument();
+    expect(await screen.findAllByText("Waiting")).toHaveLength(2);
+    expect(screen.queryByText("Completed")).not.toBeInTheDocument(); // queued is not imported
+    await act(async () => { await bridge.queueRun(); });
+    expect(await screen.findByText("Completed")).toBeInTheDocument();
+    expect(await screen.findByText("Failed")).toBeInTheDocument();
+    expect(screen.getByText("The file is not a PDF document.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+    // the interface only ever handled opaque ids: no path-taking call exists on the bridge
+    expect(Object.keys(bridge).some((k) => /path/i.test(k))).toBe(false);
+  });
+
+  it("refused files are explained and never queued; quarantined files cannot be retried", async () => {
+    const { bridge, user } = await boot({ pickFiles: [staged("", "run.exe", 0, { problem: "Files of type '.exe' are not supported." }), staged("s1", "evil.pdf")] });
+    await openCompany(user, "Alpha Trading LLC");
+    await nav(user, "Import Documents");
+    await user.click(await screen.findByRole("button", { name: "Choose files…" }));
+    expect(await screen.findByText(/run\.exe: Files of type '\.exe' are not supported\./)).toBeInTheDocument();
+    await user.selectOptions(await screen.findByLabelText("Destination for evil.pdf"), "Receivables");
+    await user.click(screen.getByRole("button", { name: "Import 1 file" }));
+    await screen.findByRole("heading", { name: "Upload Queue", level: 1 });
+    await act(async () => { await bridge.queueRun(); });
+    expect(await screen.findByText("Quarantined")).toBeInTheDocument();
+    expect(screen.getByText("Windows executables are not accepted.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
+  });
+
+  it("explains an empty destination list instead of offering made-up folders", async () => {
+    const { user } = await boot({ workspaces: { "c-alpha": { company_id: "c-alpha", version: 1, workspace_state: "not_configured", nodes: [], categories: [] } }, pickFiles: [staged("s1", "a.pdf")] });
+    await openCompany(user, "Alpha Trading LLC");
+    await nav(user, "Import Documents");
+    expect(await screen.findByText(/no folders you can file into/i)).toBeInTheDocument();
+  });
+});
+
+describe("browsing and managing documents", () => {
+  const docs = () => [mockDoc("d1", "a0", "Bank March.pdf", 4096), mockDoc("d2", "a1", "Invoice 1001.png", 2048), mockDoc("d3", "a1", "Invoice 1002.pdf", 8192)];
+
+  it("lists the company's documents by folder with counts, search and details", async () => {
+    const { user } = await boot({ documents: docs() });
+    await openCompany(user, "Alpha Trading LLC");
+    await nav(user, "All Documents");
+    expect(await screen.findByRole("button", { name: "Bank March.pdf" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /All documents\s*3/ })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /^Receivables\s*2/ }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Bank March.pdf" })).not.toBeInTheDocument());
+    await user.type(screen.getByLabelText("Search documents"), "1002");
+    expect(await screen.findByRole("button", { name: "Invoice 1002.pdf" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Invoice 1001.png" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Invoice 1002.pdf" }));
+    const panel = await screen.findByLabelText("Details of Invoice 1002.pdf");
+    expect(within(panel).getByText("Not scanned (no scanner configured)")).toBeInTheDocument();
+    expect(within(panel).getByText(/^v1 · /)).toBeInTheDocument();
+  });
+
+  it("renames, archives and restores; archived documents live in their own view", async () => {
+    const { bridge, user } = await boot({ documents: docs() });
+    await openCompany(user, "Alpha Trading LLC");
+    await nav(user, "All Documents");
+    await user.click(await screen.findByRole("button", { name: "Bank March.pdf" }));
+    const panel = await screen.findByLabelText("Details of Bank March.pdf");
+    const field = within(panel).getByLabelText("Rename");
+    await user.clear(field);
+    await user.type(field, "Bank statement March");
+    await user.click(within(panel).getByRole("button", { name: "Rename" }));
+    expect(await screen.findByRole("button", { name: "Bank statement March.pdf" })).toBeInTheDocument();
+    await user.click(within(await screen.findByLabelText("Details of Bank statement March.pdf")).getByRole("button", { name: "Archive" }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Bank statement March.pdf" })).not.toBeInTheDocument());
+    await nav(user, "Archived Documents");
+    await user.click(await screen.findByRole("button", { name: "Bank statement March.pdf" }));
+    await user.click(within(await screen.findByLabelText("Details of Bank statement March.pdf")).getByRole("button", { name: "Restore" }));
+    await waitFor(() => expect(bridge.calls).toContain("docsAction:restore"));
+    await nav(user, "All Documents");
+    expect(await screen.findByRole("button", { name: "Bank statement March.pdf" })).toBeInTheDocument();
+  });
+
+  it("deleting asks first; permanent deletion is only offered from the deleted items", async () => {
+    const { bridge, user } = await boot({ documents: docs() });
+    await openCompany(user, "Alpha Trading LLC");
+    await nav(user, "All Documents");
+    await user.click(await screen.findByRole("button", { name: "Invoice 1001.png" }));
+    const panel = await screen.findByLabelText("Details of Invoice 1001.png");
+    expect(within(panel).queryByRole("button", { name: "Delete permanently" })).not.toBeInTheDocument();
+    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
+    await user.click(within(panel).getByRole("button", { name: "Delete" }));
+    expect(bridge.calls).not.toContain("docsAction:delete"); // declined
+    await user.click(within(panel).getByRole("button", { name: "Delete" }));
+    await waitFor(() => expect(bridge.calls).toContain("docsAction:delete"));
+    confirm.mockRestore();
+    await nav(user, "Archived Documents");
+    await user.selectOptions(await screen.findByLabelText("Show"), "deleted");
+    await user.click(await screen.findByRole("button", { name: "Invoice 1001.png" }));
+    const del = await screen.findByLabelText("Details of Invoice 1001.png");
+    expect(within(del).getByRole("button", { name: "Delete permanently" })).toBeEnabled();
+    expect(within(del).getByRole("button", { name: "Recover" })).toBeInTheDocument();
+  });
+
+  it("previews images with zoom and rotation controls; other types offer Open instead", async () => {
+    URL.createObjectURL = vi.fn(() => "blob:preview");
+    URL.revokeObjectURL = vi.fn();
+    const { user } = await boot({ documents: [...docs(), mockDoc("d4", "a0", "Letter.docx", 900)] });
+    await openCompany(user, "Alpha Trading LLC");
+    await nav(user, "All Documents");
+    await user.click(await screen.findByRole("button", { name: "Letter.docx" }));
+    const word = await screen.findByLabelText("Details of Letter.docx");
+    expect(within(word).queryByRole("button", { name: "Preview" })).not.toBeInTheDocument();
+    expect(within(word).getByText(/No in-app preview/)).toBeInTheDocument();
+    expect(within(word).getByRole("button", { name: "Open" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Invoice 1001.png" }));
+    const panel = await screen.findByLabelText("Details of Invoice 1001.png");
+    await user.click(within(panel).getByRole("button", { name: "Preview" }));
+    const img = await screen.findByRole("img", { name: "Invoice 1001.png" });
+    expect(img).toHaveAttribute("src", "blob:preview");
+    await user.click(screen.getByRole("button", { name: "Rotate" }));
+    expect(img.style.transform).toContain("rotate(90deg)");
+    await user.click(screen.getByRole("button", { name: "Zoom in" }));
+    expect(img.style.transform).toContain("scale(1.25)");
+    await user.click(screen.getByRole("button", { name: "Close preview" }));
+    expect(screen.queryByRole("img", { name: "Invoice 1001.png" })).not.toBeInTheDocument();
+  });
+
+  it("shows a friendly message when there are no documents yet", async () => {
+    const { user } = await boot();
+    await openCompany(user, "Alpha Trading LLC");
+    await nav(user, "All Documents");
+    expect(await screen.findByText(/No documents here yet/)).toBeInTheDocument();
   });
 });

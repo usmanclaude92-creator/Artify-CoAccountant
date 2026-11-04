@@ -1234,6 +1234,45 @@
         "title": "AuditView",
         "type": "object"
       },
+      "BatchIn": {
+        "properties": {
+          "client_batch_key": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Batch Key"
+          },
+          "source": {
+            "default": "desktop",
+            "enum": [
+              "desktop",
+              "web",
+              "mobile",
+              "email",
+              "api"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "total_files": {
+            "maximum": 1000.0,
+            "minimum": 1.0,
+            "title": "Total Files",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total_files"
+        ],
+        "title": "BatchIn",
+        "type": "object"
+      },
       "BillingSummary": {
         "properties": {
           "collected_last_30_days": {
@@ -2459,6 +2498,45 @@
         "title": "CompanySettingsUpdate",
         "type": "object"
       },
+      "CompanyStorage": {
+        "properties": {
+          "active_documents": {
+            "title": "Active Documents",
+            "type": "integer"
+          },
+          "archived_documents": {
+            "title": "Archived Documents",
+            "type": "integer"
+          },
+          "company_id": {
+            "format": "uuid",
+            "title": "Company Id",
+            "type": "string"
+          },
+          "deleted_documents": {
+            "title": "Deleted Documents",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "stored_bytes": {
+            "title": "Stored Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "company_id",
+          "name",
+          "stored_bytes",
+          "active_documents",
+          "archived_documents",
+          "deleted_documents"
+        ],
+        "title": "CompanyStorage",
+        "type": "object"
+      },
       "CompanyUpdate": {
         "properties": {
           "address_line": {
@@ -3292,9 +3370,9 @@
         "title": "DeviceOut",
         "type": "object"
       },
-      "DuplicateIn": {
+      "DocPatch": {
         "properties": {
-          "base_version": {
+          "base_row_version": {
             "anyOf": [
               {
                 "type": "integer"
@@ -3303,12 +3381,25 @@
                 "type": "null"
               }
             ],
-            "title": "Base Version"
+            "description": "Optimistic concurrency token from the last read",
+            "title": "Base Row Version"
           },
-          "name": {
+          "category_id": {
             "anyOf": [
               {
-                "maxLength": 120,
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Id"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
                 "minLength": 1,
                 "type": "string"
               },
@@ -3316,10 +3407,37 @@
                 "type": "null"
               }
             ],
-            "title": "Name"
+            "title": "Display Name"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "maxProperties": 200,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
           }
         },
-        "title": "DuplicateIn",
+        "title": "DocPatch",
+        "type": "object"
+      },
+      "DupCheckIn": {
+        "properties": {
+          "sha256": {
+            "pattern": "^[0-9a-fA-F]{64}$",
+            "title": "Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sha256"
+        ],
+        "title": "DupCheckIn",
         "type": "object"
       },
       "EntitlementOut": {
@@ -4600,6 +4718,31 @@
         "title": "HistoryEvent",
         "type": "object"
       },
+      "HoldIn": {
+        "properties": {
+          "hold": {
+            "title": "Hold",
+            "type": "boolean"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "hold"
+        ],
+        "title": "HoldIn",
+        "type": "object"
+      },
       "InvitationOut": {
         "properties": {
           "accepted_at": {
@@ -5559,9 +5702,9 @@
         "title": "MonthPoint",
         "type": "object"
       },
-      "MoveIn": {
+      "MonthlyDocuments": {
         "properties": {
-          "base_version": {
+          "limit": {
             "anyOf": [
               {
                 "type": "integer"
@@ -5570,30 +5713,23 @@
                 "type": "null"
               }
             ],
-            "title": "Base Version"
+            "title": "Limit"
           },
-          "parent_id": {
-            "format": "uuid",
-            "title": "Parent Id",
-            "type": "string"
+          "unlimited": {
+            "title": "Unlimited",
+            "type": "boolean"
           },
-          "position": {
-            "anyOf": [
-              {
-                "minimum": 0.0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Position"
+          "used": {
+            "title": "Used",
+            "type": "integer"
           }
         },
         "required": [
-          "parent_id"
+          "used",
+          "limit",
+          "unlimited"
         ],
-        "title": "MoveIn",
+        "title": "MonthlyDocuments",
         "type": "object"
       },
       "NamingIn": {
@@ -8150,6 +8286,86 @@
         "title": "RecentSubEvent",
         "type": "object"
       },
+      "ReconcileIn": {
+        "properties": {
+          "min_age_seconds": {
+            "default": 3600,
+            "maximum": 604800.0,
+            "minimum": 60.0,
+            "title": "Min Age Seconds",
+            "type": "integer"
+          },
+          "repair": {
+            "default": false,
+            "title": "Repair",
+            "type": "boolean"
+          }
+        },
+        "title": "ReconcileIn",
+        "type": "object"
+      },
+      "ReconcileOut": {
+        "properties": {
+          "expired_uploads": {
+            "title": "Expired Uploads",
+            "type": "integer"
+          },
+          "missing_objects": {
+            "title": "Missing Objects",
+            "type": "integer"
+          },
+          "missing_sample": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Sample",
+            "type": "array"
+          },
+          "objects_in_database": {
+            "title": "Objects In Database",
+            "type": "integer"
+          },
+          "orphan_objects": {
+            "title": "Orphan Objects",
+            "type": "integer"
+          },
+          "orphan_sample": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Orphan Sample",
+            "type": "array"
+          },
+          "repair": {
+            "title": "Repair",
+            "type": "boolean"
+          },
+          "size_mismatch_sample": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Size Mismatch Sample",
+            "type": "array"
+          },
+          "size_mismatches": {
+            "title": "Size Mismatches",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "repair",
+          "objects_in_database",
+          "missing_objects",
+          "size_mismatches",
+          "orphan_objects",
+          "expired_uploads",
+          "missing_sample",
+          "size_mismatch_sample",
+          "orphan_sample"
+        ],
+        "title": "ReconcileOut",
+        "type": "object"
+      },
       "RefreshRequest": {
         "properties": {
           "refresh_token": {
@@ -8277,6 +8493,24 @@
         "title": "RestoreIn",
         "type": "object"
       },
+      "RestoreVersionIn": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "title": "RestoreVersionIn",
+        "type": "object"
+      },
       "RevenueStats": {
         "properties": {
           "available": {
@@ -8390,6 +8624,24 @@
           "permissions"
         ],
         "title": "RoleOut",
+        "type": "object"
+      },
+      "ScannerState": {
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "active"
+        ],
+        "title": "ScannerState",
         "type": "object"
       },
       "SearchHit": {
@@ -8832,6 +9084,100 @@
         "title": "StatusEventOut",
         "type": "object"
       },
+      "StorageOverviewOut": {
+        "properties": {
+          "accounting": {
+            "title": "Accounting",
+            "type": "string"
+          },
+          "backend": {
+            "title": "Backend",
+            "type": "string"
+          },
+          "companies": {
+            "items": {
+              "$ref": "#/components/schemas/CompanyStorage"
+            },
+            "title": "Companies",
+            "type": "array"
+          },
+          "documents_this_month": {
+            "$ref": "#/components/schemas/MonthlyDocuments"
+          },
+          "max_file_size_bytes": {
+            "title": "Max File Size Bytes",
+            "type": "integer"
+          },
+          "recent_failures": {
+            "items": {
+              "$ref": "#/components/schemas/UploadFailure"
+            },
+            "title": "Recent Failures",
+            "type": "array"
+          },
+          "scanner": {
+            "$ref": "#/components/schemas/ScannerState"
+          },
+          "storage": {
+            "$ref": "#/components/schemas/StorageUsage"
+          },
+          "uploads_last_7_days": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Uploads Last 7 Days",
+            "type": "object"
+          }
+        },
+        "required": [
+          "storage",
+          "documents_this_month",
+          "max_file_size_bytes",
+          "accounting",
+          "backend",
+          "scanner",
+          "companies",
+          "uploads_last_7_days",
+          "recent_failures"
+        ],
+        "title": "StorageOverviewOut",
+        "type": "object"
+      },
+      "StorageUsage": {
+        "properties": {
+          "limit_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit Bytes"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "unlimited": {
+            "title": "Unlimited",
+            "type": "boolean"
+          },
+          "used_bytes": {
+            "title": "Used Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "used_bytes",
+          "limit_bytes",
+          "unlimited",
+          "source"
+        ],
+        "title": "StorageUsage",
+        "type": "object"
+      },
       "SubDetail": {
         "properties": {
           "events": {
@@ -9216,6 +9562,69 @@
           "next_step"
         ],
         "title": "SubscriptionView",
+        "type": "object"
+      },
+      "SuggestIn": {
+        "properties": {
+          "attributes": {
+            "additionalProperties": true,
+            "maxProperties": 50,
+            "title": "Attributes",
+            "type": "object"
+          },
+          "category_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Id"
+          },
+          "filename": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Filename",
+            "type": "string"
+          },
+          "node_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Node Id"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "values": {
+            "additionalProperties": true,
+            "maxProperties": 100,
+            "title": "Values",
+            "type": "object"
+          }
+        },
+        "required": [
+          "filename"
+        ],
+        "title": "SuggestIn",
         "type": "object"
       },
       "SupportGrantOut": {
@@ -9758,6 +10167,227 @@
         "title": "Unavailable",
         "type": "object"
       },
+      "UploadFailure": {
+        "properties": {
+          "company_id": {
+            "format": "uuid",
+            "title": "Company Id",
+            "type": "string"
+          },
+          "company_name": {
+            "title": "Company Name",
+            "type": "string"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "original_filename": {
+            "title": "Original Filename",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "company_id",
+          "company_name",
+          "original_filename",
+          "status",
+          "error_code",
+          "error_message",
+          "updated_at"
+        ],
+        "title": "UploadFailure",
+        "type": "object"
+      },
+      "UploadIn": {
+        "properties": {
+          "batch_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Batch Id"
+          },
+          "category_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Id"
+          },
+          "change_reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Reason"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "duplicate_policy": {
+            "default": "block",
+            "enum": [
+              "block",
+              "allow_copy"
+            ],
+            "title": "Duplicate Policy",
+            "type": "string"
+          },
+          "filename": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Filename",
+            "type": "string"
+          },
+          "filing_rule_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Rule that suggested the destination (traceability)",
+            "title": "Filing Rule Id"
+          },
+          "idempotency_key": {
+            "description": "Client-generated; repeats return the same session",
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "Idempotency Key",
+            "type": "string"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "maxProperties": 200,
+            "title": "Metadata",
+            "type": "object"
+          },
+          "mime": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mime"
+          },
+          "node_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Destination workspace node (required for a new document)",
+            "title": "Node Id"
+          },
+          "sha256": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-fA-F]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sha256"
+          },
+          "size": {
+            "description": "Exact size in bytes",
+            "exclusiveMinimum": 0.0,
+            "title": "Size",
+            "type": "integer"
+          },
+          "target_document_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set to upload a NEW VERSION of this document",
+            "title": "Target Document Id"
+          }
+        },
+        "required": [
+          "idempotency_key",
+          "filename",
+          "size"
+        ],
+        "title": "UploadIn",
+        "type": "object"
+      },
       "UsageBrief": {
         "properties": {
           "current": {
@@ -10263,6 +10893,23 @@
         "title": "VersionSpec",
         "type": "object"
       },
+      "VersionToken": {
+        "properties": {
+          "base_row_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Row Version"
+          }
+        },
+        "title": "VersionToken",
+        "type": "object"
+      },
       "Viewer": {
         "properties": {
           "permissions": {
@@ -10353,6 +11000,140 @@
           }
         },
         "title": "WorkspaceSetup",
+        "type": "object"
+      },
+      "artify_api__routers__documents__DuplicateIn": {
+        "properties": {
+          "display_name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "node_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Node Id"
+          }
+        },
+        "title": "DuplicateIn",
+        "type": "object"
+      },
+      "artify_api__routers__documents__MoveIn": {
+        "properties": {
+          "base_row_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Row Version"
+          },
+          "category_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Id"
+          },
+          "node_id": {
+            "format": "uuid",
+            "title": "Node Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "node_id"
+        ],
+        "title": "MoveIn",
+        "type": "object"
+      },
+      "artify_api__routers__workspace__DuplicateIn": {
+        "properties": {
+          "base_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Version"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "title": "DuplicateIn",
+        "type": "object"
+      },
+      "artify_api__routers__workspace__MoveIn": {
+        "properties": {
+          "base_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Version"
+          },
+          "parent_id": {
+            "format": "uuid",
+            "title": "Parent Id",
+            "type": "string"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position"
+          }
+        },
+        "required": [
+          "parent_id"
+        ],
+        "title": "MoveIn",
         "type": "object"
       }
     }
@@ -11266,6 +12047,2042 @@
         "summary": "Company Configuration",
         "tags": [
           "companies"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/documents": {
+      "get": {
+        "description": "Search/filter/sort/paginate the documents the caller may see. Archived and deleted documents are listed only\nwhen asked for. Results never include documents in locations the caller cannot view.",
+        "operationId": "documents_list",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "node_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Node Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_subfolders",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Subfolders",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "active",
+              "enum": [
+                "active",
+                "archived",
+                "deleted"
+              ],
+              "title": "Status",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "extension",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 10,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Extension"
+            }
+          },
+          {
+            "in": "query",
+            "name": "source",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source"
+            }
+          },
+          {
+            "in": "query",
+            "name": "created_by",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Created By"
+            }
+          },
+          {
+            "in": "query",
+            "name": "min_size",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Min Size"
+            }
+          },
+          {
+            "in": "query",
+            "name": "max_size",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Max Size"
+            }
+          },
+          {
+            "in": "query",
+            "name": "created_from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Created From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "created_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Created To"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sha256",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9a-fA-F]{64}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sha256"
+            }
+          },
+          {
+            "in": "query",
+            "name": "import_batch_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Import Batch Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "field_key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 48,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Field Key"
+            }
+          },
+          {
+            "in": "query",
+            "name": "field_value",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Field Value"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "created",
+              "enum": [
+                "name",
+                "created",
+                "updated",
+                "size",
+                "type"
+              ],
+              "title": "Sort",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "default": "desc",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "title": "Order",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Documents List"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Documents",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/documents/counts": {
+      "get": {
+        "description": "Document counts per workspace node (own and including subfolders) for tree badges.",
+        "operationId": "documents_counts",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Documents Counts"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Counts",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/documents/duplicates/check": {
+      "post": {
+        "description": "Pre-check before uploading: identical content already in THIS company (never other companies).",
+        "operationId": "documents_duplicate_check",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DupCheckIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Documents Duplicate Check"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Duplicate Check",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/documents/events": {
+      "get": {
+        "operationId": "documents_activity_company",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Documents Activity Company"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Company Events",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/documents/import-batches": {
+      "post": {
+        "operationId": "documents_batch_create",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Documents Batch Create"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Batch",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/documents/import-batches/{batch_id}": {
+      "get": {
+        "operationId": "documents_batch_status",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Documents Batch Status"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Batch Status",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/documents/suggest": {
+      "post": {
+        "description": "Advisory filing and naming suggestion from the company's own rules. Nothing is filed or renamed.",
+        "operationId": "documents_suggest",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SuggestIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Documents Suggest"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Suggest",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/documents/uploads": {
+      "get": {
+        "operationId": "documents_upload_list",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "batch_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Batch Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Documents Upload List"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Uploads",
+        "tags": [
+          "documents"
+        ]
+      },
+      "post": {
+        "description": "Register an upload. Nothing is stored yet; the response says where to send the bytes. Replaying the same\n`idempotency_key` returns the existing session (HTTP 200); a new session answers 201.",
+        "operationId": "documents_upload_init",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Documents Upload Init"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Init Upload",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/documents/uploads/{op_id}": {
+      "get": {
+        "operationId": "documents_upload_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "op_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Op Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Documents Upload Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Upload",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/documents/uploads/{op_id}/cancel": {
+      "post": {
+        "operationId": "documents_upload_cancel",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "op_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Op Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Documents Upload Cancel"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Upload",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/documents/uploads/{op_id}/complete": {
+      "post": {
+        "description": "Verify the stored object and create the document (or the new version). Idempotent: completing twice returns the\nsame result. The upload is a success only when this call returns 200.",
+        "operationId": "documents_upload_complete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "op_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Op Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Documents Upload Complete"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Complete Upload",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/documents/uploads/{op_id}/content": {
+      "put": {
+        "description": "Stream the file bytes (raw body, `application/octet-stream`). The server hashes and size-checks as it reads,\nvalidates the real content, scans (when a scanner is configured) and stores the object. The answer carries the\nsession; a rejected file answers 4xx with `operation.status` = failed | quarantined and the reason in `code`.",
+        "operationId": "documents_upload_content",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "op_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Op Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Documents Upload Content"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upload Content",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/documents/uploads/{op_id}/retry": {
+      "post": {
+        "description": "Re-open a transiently failed upload (storage or scanner unavailable). The file is sent again from the start.",
+        "operationId": "documents_upload_retry",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "op_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Op Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Documents Upload Retry"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Retry Upload",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/documents/{doc_id}": {
+      "delete": {
+        "description": "Permanent deletion (irreversible). Only from the deleted items, never under hold; `confirm=true` is required.",
+        "operationId": "documents_purge",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "doc_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Doc Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "confirm",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Confirm",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Documents Purge"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Purge Document",
+        "tags": [
+          "documents"
+        ]
+      },
+      "get": {
+        "operationId": "documents_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "doc_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Doc Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Documents Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Document",
+        "tags": [
+          "documents"
+        ]
+      },
+      "patch": {
+        "operationId": "documents_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "doc_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Doc Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Documents Update"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Document",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/documents/{doc_id}/archive": {
+      "post": {
+        "operationId": "documents_archive",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "doc_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Doc Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/VersionToken"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Documents Archive"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Archive Document",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/documents/{doc_id}/content": {
+      "get": {
+        "description": "Stream the original bytes. Authorization is checked on every request and the access is recorded. Only formats\nthat render without executing anything (PDF, PNG, JPEG, BMP) may be shown inline; everything else downloads.",
+        "operationId": "documents_content",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "doc_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Doc Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "version",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Version"
+            }
+          },
+          {
+            "in": "query",
+            "name": "disposition",
+            "required": false,
+            "schema": {
+              "default": "attachment",
+              "enum": [
+                "inline",
+                "attachment"
+              ],
+              "title": "Disposition",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Range",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Range"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Documents Content"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Content",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/documents/{doc_id}/delete": {
+      "post": {
+        "description": "Soft delete: the document moves to the deleted items and can be restored. Bytes stay in storage.",
+        "operationId": "documents_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "doc_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Doc Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/VersionToken"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Documents Delete"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Document",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/documents/{doc_id}/duplicate": {
+      "post": {
+        "operationId": "documents_duplicate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "doc_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Doc Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/artify_api__routers__documents__DuplicateIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Documents Duplicate"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Duplicate Document",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/documents/{doc_id}/events": {
+      "get": {
+        "operationId": "documents_activity",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "doc_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Doc Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Documents Activity"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Document Events",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/documents/{doc_id}/hold": {
+      "post": {
+        "description": "Retention / legal hold: a held document cannot be permanently deleted.",
+        "operationId": "documents_hold",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "doc_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Doc Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HoldIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Documents Hold"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Hold Document",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/documents/{doc_id}/move": {
+      "post": {
+        "description": "Re-file a document. Only the database changes; the stored bytes are never moved.",
+        "operationId": "documents_move",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "doc_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Doc Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/artify_api__routers__documents__MoveIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Documents Move"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Move Document",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/documents/{doc_id}/restore": {
+      "post": {
+        "operationId": "documents_restore",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "doc_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Doc Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/VersionToken"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Documents Restore"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Restore Document",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/documents/{doc_id}/undelete": {
+      "post": {
+        "operationId": "documents_undelete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "doc_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Doc Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Documents Undelete"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Undelete Document",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/documents/{doc_id}/versions": {
+      "get": {
+        "operationId": "documents_versions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "doc_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Doc Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Documents Versions"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Versions",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/documents/{doc_id}/versions/{version_no}/restore": {
+      "post": {
+        "operationId": "documents_version_restore",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "doc_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Doc Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version_no",
+            "required": true,
+            "schema": {
+              "title": "Version No",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestoreVersionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Documents Version Restore"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Restore Version",
+        "tags": [
+          "documents"
         ]
       }
     },
@@ -13575,7 +16392,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/DuplicateIn"
+                "$ref": "#/components/schemas/artify_api__routers__workspace__DuplicateIn"
               }
             }
           },
@@ -13693,7 +16510,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/MoveIn"
+                "$ref": "#/components/schemas/artify_api__routers__workspace__MoveIn"
               }
             }
           },
@@ -21005,6 +23822,70 @@
         "summary": "List Roles",
         "tags": [
           "me"
+        ]
+      }
+    },
+    "/api/v1/storage/overview": {
+      "get": {
+        "description": "Storage used against the plan, per-company breakdown, scanner/backend status and recent failures.",
+        "operationId": "storage_overview",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageOverviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Storage Overview",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/storage/reconcile": {
+      "post": {
+        "description": "Compare database and object store. Read-only unless `repair` is true (marks lost objects `missing`, removes\norphan objects older than `min_age_seconds`, expires abandoned upload sessions).",
+        "operationId": "storage_reconcile",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReconcileIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReconcileOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Storage Reconcile",
+        "tags": [
+          "documents"
         ]
       }
     }

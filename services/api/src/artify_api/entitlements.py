@@ -59,6 +59,7 @@ DEFINITIONS: tuple[Definition, ...] = (
         "Documents entering processing per period",
     ),
     _D("quota.storage_bytes", "organization", "bigint", "metered", "bytes", "Stored bytes"),
+    _D("limit.file_size_bytes", "organization", "bigint", "hard", "bytes", "Largest single file accepted for upload"),
     _D("quota.ai_units_per_month", "organization", "bigint", "metered", "units", "Metered AI/OCR units per period"),
     _D("feature.custom_roles", "organization", "bool", "flag", None, "Organization-defined custom roles"),
     _D("feature.api_access", "organization", "bool", "flag", None, "Programmatic API access"),
@@ -68,9 +69,12 @@ DEFINITIONS: tuple[Definition, ...] = (
 )
 BY_KEY = {d.key: d for d in DEFINITIONS}
 # Keys the database can measure today (app.measure_entitlement). Others arrive with their feature.
-MEASURABLE = frozenset(
+COUNT_LIMITS = frozenset(
     {"limit.companies", "limit.users", "limit.accountants", "limit.devices", "limit.workspace_templates"}
 )
+# Metered quotas (Phase 6): measured by the same database function and enforced by `guard_quota`.
+QUOTAS = frozenset({"quota.storage_bytes", "quota.documents_per_month"})
+MEASURABLE = COUNT_LIMITS | QUOTAS
 # Company-scope workspace limits are measured per company through RLS-protected counts (see workspace_usage below).
 COMPANY_MEASURES: dict[str, str] = {
     "limit.workspace_sections_per_company": "SELECT count(*) FROM workspace_nodes WHERE company_id = :c AND node_type = 'section' AND archived_at IS NULL",
@@ -97,7 +101,7 @@ class Limit:
 
 # Everything the backend enforces today: organization counts measured by the database function, plus the per-company
 # workspace limits above. (`MEASURABLE` is only the organization-level subset.)
-ENFORCED = MEASURABLE | frozenset(COMPANY_MEASURES)
+ENFORCED = MEASURABLE | frozenset(COMPANY_MEASURES) | {"limit.file_size_bytes"}
 
 
 def effective_limit(conn: Connection, org_id: uuid.UUID, key: str) -> Limit:
@@ -157,7 +161,7 @@ def _lock_counter(conn: Connection, org_id: uuid.UUID, key: str) -> None:
 def guard(conn: Connection, org_id: uuid.UUID, key: str, delta: int = 1) -> None:
     """Raise unless `delta` more units of `key` fit. Call BEFORE the mutation, in its transaction;
     call `refresh_counter` after it."""
-    if BY_KEY[key].enforcement != "hard" or key not in MEASURABLE:
+    if BY_KEY[key].enforcement != "hard" or key not in COUNT_LIMITS:
         raise ValueError(f"{key} is not an enforceable count limit yet")
     _lock_counter(conn, org_id, key)
     status = subscription_status(conn, org_id)
@@ -170,6 +174,34 @@ def guard(conn: Connection, org_id: uuid.UUID, key: str, delta: int = 1) -> None
     current = measure(conn, org_id, key)
     if not limit.unlimited and current + delta > (limit.value or 0):
         raise EntitlementExceeded(key=key, limit=limit.value or 0, current=current, requested=delta)
+
+
+def guard_quota(conn: Connection, org_id: uuid.UUID, key: str, delta: int) -> None:
+    """Refuse a NEW upload that would push a metered quota past its limit (storage bytes, documents per month).
+
+    Only additions are refused: existing documents are never deleted or hidden when a quota is exceeded, and
+    reading, downloading, archiving and purging stay available. Serialised per (organization, key) like `guard`."""
+    if key not in QUOTAS:
+        raise ValueError(f"{key} is not an enforceable quota")
+    _lock_counter(conn, org_id, key)
+    status = subscription_status(conn, org_id)
+    if status in (None, "suspended"):
+        raise SubscriptionRestricted(
+            "The subscription is suspended or missing; this action is not available.",
+            extra={"subscription_status": status},
+        )
+    limit = effective_limit(conn, org_id, key)
+    current = measure(conn, org_id, key)
+    if not limit.unlimited and current + delta > (limit.value or 0):
+        raise EntitlementExceeded(key=key, limit=limit.value or 0, current=current, requested=delta)
+
+
+def max_file_size(conn: Connection, org_id: uuid.UUID, system_ceiling: int) -> int:
+    """The per-file size cap for an organization: its plan/override value, never above the system ceiling."""
+    lim = effective_limit(conn, org_id, "limit.file_size_bytes")
+    if lim.unlimited:
+        return system_ceiling
+    return min(lim.value or 0, system_ceiling)
 
 
 def refresh_counter(conn: Connection, org_id: uuid.UUID, key: str) -> int:

@@ -12,9 +12,10 @@ use crate::error::{AppError, Result};
 use crate::seal::Sealer;
 
 /// Forward-only migrations. Never edit a shipped entry; append a new one.
-pub const MIGRATIONS: &[(i64, &str)] = &[(
-    1,
-    "CREATE TABLE settings (
+pub const MIGRATIONS: &[(i64, &str)] = &[
+    (
+        1,
+        "CREATE TABLE settings (
             user_id TEXT NOT NULL DEFAULT '', key TEXT NOT NULL, value TEXT NOT NULL, updated_at TEXT NOT NULL,
             PRIMARY KEY (user_id, key));
          CREATE TABLE accounts (user_id TEXT PRIMARY KEY, payload BLOB NOT NULL, updated_at TEXT NOT NULL);
@@ -49,7 +50,27 @@ pub const MIGRATIONS: &[(i64, &str)] = &[(
             id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL DEFAULT '', ts TEXT NOT NULL, level TEXT NOT NULL,
             kind TEXT NOT NULL, message TEXT NOT NULL, read INTEGER NOT NULL DEFAULT 0);
          CREATE INDEX events_recent ON events (user_id, id);",
-)];
+    ),
+    (
+        2,
+        "CREATE TABLE upload_queue (
+            id TEXT PRIMARY KEY, user_id TEXT NOT NULL, org_id TEXT NOT NULL, company_id TEXT NOT NULL,
+            status TEXT NOT NULL, idempotency_key TEXT NOT NULL, size INTEGER NOT NULL, mtime INTEGER, sha256 TEXT,
+            node_id TEXT, category_id TEXT, filing_rule_id TEXT, target_document_id TEXT,
+            duplicate_policy TEXT NOT NULL DEFAULT 'block', server_batch_id TEXT, server_op_id TEXT,
+            bytes_sent INTEGER NOT NULL DEFAULT 0, attempts INTEGER NOT NULL DEFAULT 0,
+            error_code TEXT, error_message TEXT, result_document_id TEXT, private BLOB NOT NULL,
+            created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+         CREATE INDEX upload_queue_state ON upload_queue (user_id, company_id, status, created_at);
+         CREATE TABLE mirror_nodes (
+            user_id TEXT NOT NULL, company_id TEXT NOT NULL, node_id TEXT NOT NULL, rel_path TEXT NOT NULL, updated_at TEXT NOT NULL,
+            PRIMARY KEY (user_id, company_id, node_id));
+         CREATE TABLE mirror_files (
+            user_id TEXT NOT NULL, company_id TEXT NOT NULL, document_id TEXT NOT NULL, version_no INTEGER NOT NULL,
+            rel_path TEXT NOT NULL, sha256 TEXT NOT NULL, saved_at TEXT NOT NULL,
+            PRIMARY KEY (user_id, company_id, document_id, version_no));",
+    ),
+];
 
 pub fn latest_version() -> i64 {
     MIGRATIONS.last().map(|m| m.0).unwrap_or(0)
@@ -405,11 +426,24 @@ impl Db {
         )?;
         Ok(self.conn.last_insert_rowid())
     }
+    /// Unfinished work, for the dashboard. The upload queue is what the user cares about; the generic skeleton table is
+    /// counted too so nothing queued is ever hidden.
     pub fn pending_summary(&self, user: &str) -> Result<PendingSummary> {
         let count = |state: &str| -> rusqlite::Result<i64> {
             self.conn.query_row("SELECT COUNT(*) FROM pending_ops WHERE user_id = ?1 AND state = ?2", params![user, state], |r| r.get(0))
         };
-        Ok(PendingSummary { pending: count("pending")?, in_progress: count("in_progress")?, failed: count("failed")? })
+        let q = |states: &str| -> rusqlite::Result<i64> {
+            self.conn.query_row(
+                &format!("SELECT COUNT(*) FROM upload_queue WHERE user_id = ?1 AND status IN ({states})"),
+                params![user],
+                |r| r.get(0),
+            )
+        };
+        Ok(PendingSummary {
+            pending: count("pending")? + q("'preparing','waiting'")?,
+            in_progress: count("in_progress")? + q("'uploading','verification_pending'")?,
+            failed: count("failed")? + q("'failed','quarantined'")?,
+        })
     }
 
     // ------------------------------------------------------------ events (notifications)
@@ -446,17 +480,238 @@ impl Db {
         Ok(())
     }
 
+    // ------------------------------------------------------------ upload queue (survives restarts; only the owner sees it)
+    pub fn queue_insert(&self, r: &NewQueueRow) -> Result<()> {
+        let blob = self.sealer.seal(&Self::aad(&r.user_id, "upload_queue", &r.id), r.private.to_string().as_bytes())?;
+        self.conn.execute(
+            "INSERT INTO upload_queue (id, user_id, org_id, company_id, status, idempotency_key, size, mtime, sha256, node_id, category_id,
+               filing_rule_id, target_document_id, duplicate_policy, private, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, 'waiting', ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?15)",
+            params![
+                r.id,
+                r.user_id,
+                r.org_id,
+                r.company_id,
+                r.idempotency_key,
+                r.size,
+                r.mtime,
+                r.sha256,
+                r.node_id,
+                r.category_id,
+                r.filing_rule_id,
+                r.target_document_id,
+                r.duplicate_policy,
+                blob,
+                now()
+            ],
+        )?;
+        Ok(())
+    }
+    fn queue_row(&self, user: &str, r: &rusqlite::Row<'_>) -> rusqlite::Result<(QueueRow, Vec<u8>)> {
+        let _ = user;
+        Ok((
+            QueueRow {
+                id: r.get("id")?,
+                org_id: r.get("org_id")?,
+                company_id: r.get("company_id")?,
+                status: r.get("status")?,
+                idempotency_key: r.get("idempotency_key")?,
+                size: r.get("size")?,
+                mtime: r.get("mtime")?,
+                sha256: r.get("sha256")?,
+                node_id: r.get("node_id")?,
+                category_id: r.get("category_id")?,
+                filing_rule_id: r.get("filing_rule_id")?,
+                target_document_id: r.get("target_document_id")?,
+                duplicate_policy: r.get("duplicate_policy")?,
+                server_batch_id: r.get("server_batch_id")?,
+                server_op_id: r.get("server_op_id")?,
+                bytes_sent: r.get("bytes_sent")?,
+                attempts: r.get("attempts")?,
+                error_code: r.get("error_code")?,
+                error_message: r.get("error_message")?,
+                result_document_id: r.get("result_document_id")?,
+                created_at: r.get("created_at")?,
+                updated_at: r.get("updated_at")?,
+                private: serde_json::Value::Null,
+            },
+            r.get("private")?,
+        ))
+    }
+    fn queue_open(&self, user: &str, rows: Vec<(QueueRow, Vec<u8>)>) -> Result<Vec<QueueRow>> {
+        rows.into_iter()
+            .map(|(mut q, blob)| {
+                q.private = self.open_json(&Self::aad(user, "upload_queue", &q.id), &blob)?;
+                Ok(q)
+            })
+            .collect()
+    }
+    pub fn queue_get(&self, user: &str, id: &str) -> Result<Option<QueueRow>> {
+        let row = self
+            .conn
+            .query_row("SELECT * FROM upload_queue WHERE user_id = ?1 AND id = ?2", params![user, id], |r| self.queue_row(user, r))
+            .optional()?;
+        Ok(self.queue_open(user, row.into_iter().collect())?.into_iter().next())
+    }
+    pub fn queue_list(&self, user: &str, company: Option<&str>) -> Result<Vec<QueueRow>> {
+        let mut st = self
+            .conn
+            .prepare("SELECT * FROM upload_queue WHERE user_id = ?1 AND (?2 IS NULL OR company_id = ?2) ORDER BY created_at, id")?;
+        let rows = st.query_map(params![user, company], |r| self.queue_row(user, r))?.collect::<rusqlite::Result<Vec<_>>>()?;
+        self.queue_open(user, rows)
+    }
+    pub fn queue_set_status(&self, user: &str, id: &str, status: &str, code: Option<&str>, message: Option<&str>) -> Result<()> {
+        self.conn.execute(
+            "UPDATE upload_queue SET status = ?3, error_code = ?4, error_message = ?5, updated_at = ?6 WHERE user_id = ?1 AND id = ?2",
+            params![user, id, status, code, message, now()],
+        )?;
+        Ok(())
+    }
+    pub fn queue_set_server(&self, user: &str, id: &str, batch: Option<&str>, op: &str) -> Result<()> {
+        self.conn.execute(
+            "UPDATE upload_queue SET server_batch_id = COALESCE(?3, server_batch_id), server_op_id = ?4, updated_at = ?5 WHERE user_id = ?1 AND id = ?2",
+            params![user, id, batch, op, now()],
+        )?;
+        Ok(())
+    }
+    pub fn queue_set_sha(&self, user: &str, id: &str, sha: &str, size: i64, mtime: Option<i64>) -> Result<()> {
+        self.conn.execute(
+            "UPDATE upload_queue SET sha256 = ?3, size = ?4, mtime = ?5, updated_at = ?6 WHERE user_id = ?1 AND id = ?2",
+            params![user, id, sha, size, mtime, now()],
+        )?;
+        Ok(())
+    }
+    pub fn queue_set_progress(&self, user: &str, id: &str, bytes: i64) -> Result<()> {
+        self.conn.execute("UPDATE upload_queue SET bytes_sent = ?3 WHERE user_id = ?1 AND id = ?2", params![user, id, bytes])?;
+        Ok(())
+    }
+    pub fn queue_bump_attempts(&self, user: &str, id: &str) -> Result<()> {
+        self.conn.execute("UPDATE upload_queue SET attempts = attempts + 1 WHERE user_id = ?1 AND id = ?2", params![user, id])?;
+        Ok(())
+    }
+    pub fn queue_set_result(&self, user: &str, id: &str, document_id: &str) -> Result<()> {
+        self.conn.execute(
+            "UPDATE upload_queue SET status = 'completed', result_document_id = ?3, error_code = NULL, error_message = NULL, updated_at = ?4
+             WHERE user_id = ?1 AND id = ?2",
+            params![user, id, document_id, now()],
+        )?;
+        Ok(())
+    }
+    /// A retry starts the file again: the server-side session may be reused (idempotent) but byte progress restarts.
+    pub fn queue_requeue(&self, user: &str, id: &str, forget_session: bool) -> Result<()> {
+        self.conn.execute(
+            "UPDATE upload_queue SET status = 'waiting', error_code = NULL, error_message = NULL, bytes_sent = 0,
+               server_op_id = CASE WHEN ?3 THEN NULL ELSE server_op_id END, updated_at = ?4 WHERE user_id = ?1 AND id = ?2",
+            params![user, id, forget_session, now()],
+        )?;
+        Ok(())
+    }
+    pub fn queue_remove(&self, user: &str, id: &str) -> Result<bool> {
+        Ok(self.conn.execute("DELETE FROM upload_queue WHERE user_id = ?1 AND id = ?2", params![user, id])? > 0)
+    }
+    pub fn queue_clear_finished(&self, user: &str, company: Option<&str>) -> Result<usize> {
+        Ok(self.conn.execute(
+            "DELETE FROM upload_queue WHERE user_id = ?1 AND (?2 IS NULL OR company_id = ?2) AND status IN ('completed', 'cancelled')",
+            params![user, company],
+        )?)
+    }
+    /// After a restart nothing is really in flight: preparing/uploading items go back to waiting. A session that is
+    /// already registered on the server is reused (same idempotency key), so the file is never registered twice.
+    pub fn queue_recover(&self, user: &str) -> Result<usize> {
+        Ok(self.conn.execute(
+            "UPDATE upload_queue SET status = 'waiting', bytes_sent = 0, updated_at = ?2 WHERE user_id = ?1 AND status IN ('preparing', 'uploading')",
+            params![user, now()],
+        )?)
+    }
+
+    // ------------------------------------------------------------ local mirror bookkeeping
+    pub fn mirror_nodes(&self, user: &str, company: &str) -> Result<std::collections::HashMap<String, String>> {
+        let mut st = self.conn.prepare("SELECT node_id, rel_path FROM mirror_nodes WHERE user_id = ?1 AND company_id = ?2")?;
+        let rows = st
+            .query_map(params![user, company], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+        Ok(rows.into_iter().collect())
+    }
+    pub fn mirror_put_node(&self, user: &str, company: &str, node: &str, rel: &str) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO mirror_nodes (user_id, company_id, node_id, rel_path, updated_at) VALUES (?1, ?2, ?3, ?4, ?5)
+             ON CONFLICT(user_id, company_id, node_id) DO UPDATE SET rel_path = excluded.rel_path, updated_at = excluded.updated_at",
+            params![user, company, node, rel, now()],
+        )?;
+        Ok(())
+    }
+    pub fn mirror_put_file(&self, user: &str, company: &str, doc: &str, version: i64, rel: &str, sha: &str) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO mirror_files (user_id, company_id, document_id, version_no, rel_path, sha256, saved_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+             ON CONFLICT(user_id, company_id, document_id, version_no) DO UPDATE SET rel_path = excluded.rel_path, sha256 = excluded.sha256,
+               saved_at = excluded.saved_at",
+            params![user, company, doc, version, rel, sha, now()],
+        )?;
+        Ok(())
+    }
+    pub fn mirror_get_file(&self, user: &str, company: &str, doc: &str, version: i64) -> Result<Option<(String, String)>> {
+        Ok(self
+            .conn
+            .query_row(
+                "SELECT rel_path, sha256 FROM mirror_files WHERE user_id = ?1 AND company_id = ?2 AND document_id = ?3 AND version_no = ?4",
+                params![user, company, doc, version],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .optional()?)
+    }
+    pub fn mirror_files_under(&self, user: &str, company: &str) -> Result<Vec<(String, i64, String)>> {
+        let mut st =
+            self.conn.prepare("SELECT document_id, version_no, rel_path FROM mirror_files WHERE user_id = ?1 AND company_id = ?2")?;
+        let rows =
+            st.query_map(params![user, company], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?.collect::<rusqlite::Result<Vec<_>>>()?;
+        Ok(rows)
+    }
+    pub fn mirror_rewrite_prefix(&self, user: &str, company: &str, old_prefix: &str, new_prefix: &str) -> Result<()> {
+        // files saved inside a renamed/moved folder keep pointing at their real location
+        for (doc, version, rel) in self.mirror_files_under(user, company)? {
+            if rel == old_prefix || rel.starts_with(&format!("{old_prefix}/")) {
+                let updated = format!("{new_prefix}{}", &rel[old_prefix.len()..]);
+                self.conn.execute(
+                    "UPDATE mirror_files SET rel_path = ?5 WHERE user_id = ?1 AND company_id = ?2 AND document_id = ?3 AND version_no = ?4",
+                    params![user, company, doc, version, updated],
+                )?;
+            }
+        }
+        Ok(())
+    }
+    /// A server session that can no longer be reused (expired/cancelled on the server): start a fresh one for the same file.
+    pub fn queue_reset_session(&self, user: &str, id: &str, new_key: &str) -> Result<()> {
+        self.conn.execute(
+            "UPDATE upload_queue SET idempotency_key = ?3, server_op_id = NULL, status = 'waiting', bytes_sent = 0, updated_at = ?4
+             WHERE user_id = ?1 AND id = ?2",
+            params![user, id, new_key, now()],
+        )?;
+        Ok(())
+    }
+    pub fn queue_update_private(&self, user: &str, id: &str, private: &serde_json::Value) -> Result<()> {
+        let blob = self.sealer.seal(&Self::aad(user, "upload_queue", id), private.to_string().as_bytes())?;
+        self.conn.execute("UPDATE upload_queue SET private = ?3 WHERE user_id = ?1 AND id = ?2", params![user, id, blob])?;
+        Ok(())
+    }
+    pub fn queue_set_batch(&self, user: &str, ids: &[String], batch: &str) -> Result<()> {
+        for id in ids {
+            self.conn.execute("UPDATE upload_queue SET server_batch_id = ?3 WHERE user_id = ?1 AND id = ?2", params![user, id, batch])?;
+        }
+        Ok(())
+    }
+
     // ------------------------------------------------------------ wipe
     /// Remove every cached item that belongs to `user` (logout, revoked device, expired session). Pending operations are
     /// KEPT unless `include_pending` is set: unsent work is never discarded silently. Settings stay (they are preferences).
     pub fn wipe_user_cache(&mut self, user: &str, include_pending: bool) -> Result<()> {
         let tx = self.conn.transaction()?;
-        for t in ["accounts", "organizations", "companies", "workspace_cache", "sync_state", "device"] {
+        for t in ["accounts", "organizations", "companies", "workspace_cache", "sync_state", "device", "mirror_nodes", "mirror_files"] {
             tx.execute(&format!("DELETE FROM {t} WHERE user_id = ?1"), params![user])?;
         }
         tx.execute("DELETE FROM events WHERE user_id = ?1", params![user])?;
         if include_pending {
             tx.execute("DELETE FROM pending_ops WHERE user_id = ?1", params![user])?;
+            tx.execute("DELETE FROM upload_queue WHERE user_id = ?1", params![user])?;
         }
         tx.commit()?;
         Ok(())
@@ -508,4 +763,50 @@ pub struct EventRow {
     pub kind: String,
     pub message: String,
     pub read: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct NewQueueRow {
+    pub id: String,
+    pub user_id: String,
+    pub org_id: String,
+    pub company_id: String,
+    pub idempotency_key: String,
+    pub size: i64,
+    pub mtime: Option<i64>,
+    pub sha256: Option<String>,
+    pub node_id: Option<String>,
+    pub category_id: Option<String>,
+    pub filing_rule_id: Option<String>,
+    pub target_document_id: Option<String>,
+    pub duplicate_policy: String,
+    /// sealed at rest: source path, file name, requested display name, metadata values, change reason
+    pub private: serde_json::Value,
+}
+
+#[derive(Debug, Clone)]
+pub struct QueueRow {
+    pub id: String,
+    pub org_id: String,
+    pub company_id: String,
+    pub status: String,
+    pub idempotency_key: String,
+    pub size: i64,
+    pub mtime: Option<i64>,
+    pub sha256: Option<String>,
+    pub node_id: Option<String>,
+    pub category_id: Option<String>,
+    pub filing_rule_id: Option<String>,
+    pub target_document_id: Option<String>,
+    pub duplicate_policy: String,
+    pub server_batch_id: Option<String>,
+    pub server_op_id: Option<String>,
+    pub bytes_sent: i64,
+    pub attempts: i64,
+    pub error_code: Option<String>,
+    pub error_message: Option<String>,
+    pub result_document_id: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+    pub private: serde_json::Value,
 }

@@ -70,7 +70,7 @@ def test_detail_contains_aggregates_and_no_business_data(client, mailer, owner_e
     assert d["subscription"]["status"] == "trialing" and d["subscription"]["plan_key"]
     keys = {u["key"]: u for u in d["usage"]}
     assert keys["limit.companies"]["current"] == 1 and keys["limit.companies"]["enforced_now"] is True
-    assert keys["quota.storage_bytes"]["current"] is None and keys["quota.storage_bytes"]["status"] == "not_metered"
+    assert keys["quota.storage_bytes"]["current"] == 0 and keys["quota.storage_bytes"]["status"] == "ok"
     flat = str(d)
     assert "TAX-SECRET-123" not in flat and c["id"] not in flat  # no company row data in the organization view
     assert admin.get("/organizations/00000000-0000-0000-0000-000000000000").status_code == 404

@@ -49,6 +49,8 @@ pub fn spawn_sync_loop(app: AppHandle, desk: Arc<Desktop>) {
             if desk.user_id().is_err() {
                 continue;
             }
+            // unfinished imports are retried in the background (does nothing when the queue is empty or offline)
+            let _ = desk.queue_run().await;
             let Some((org, company)) = target else { continue };
             match desk.refresh_workspace(&org, &company).await {
                 Ok(out) => {

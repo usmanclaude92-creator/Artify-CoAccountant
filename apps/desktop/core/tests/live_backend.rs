@@ -214,3 +214,80 @@ async fn revoking_the_device_ends_that_installations_session_and_wipes_its_cache
     let pc1_restart = rig(&fx, pc1.store.clone());
     assert!(pc1_restart.desk.restore().await.unwrap().is_none());
 }
+
+#[tokio::test]
+#[ignore = "needs a running API"]
+async fn documents_are_imported_stored_verified_listed_and_saved_locally_against_the_real_server() {
+    use artify_core::queue::QueueAdd;
+    let fx = Fx::load();
+    let org = fx.s(&["org"]);
+    let (a, b) = (fx.s(&["companies", "alpha"]), fx.s(&["companies", "beta"]));
+    let l = rig(&fx, Arc::new(MemoryStore::new()));
+    sign_in(&l, &fx, "accountant").await; // (an assigned accountant: documents.upload/read/manage, not delete)
+    l.desk.companies(&org).await.unwrap();
+    let ws = l.desk.workspace(&org, &a).await.unwrap();
+    let node =
+        ws.data["nodes"].as_array().unwrap().iter().find(|n| n["name"] == "Receivables").unwrap()["id"].as_str().unwrap().to_string();
+    let root = l._dir.path().join("Artify Data");
+    std::fs::create_dir_all(&root).unwrap();
+    l.desk.set_storage_root(&root).unwrap();
+
+    let content = b"%PDF-1.4\n% synthetic live-test document\ntrailer\n%%EOF\n".to_vec();
+    let file = l._dir.path().join("Invoice 1.pdf");
+    std::fs::write(&file, &content).unwrap();
+    let staged = l.desk.stage_paths(vec![file.clone()]).await.unwrap();
+    let add = |staged_id: &str, policy: &str| QueueAdd {
+        staged_id: staged_id.into(),
+        node_id: Some(node.clone()),
+        category_id: None,
+        display_name: None,
+        metadata: json!({}),
+        filing_rule_id: None,
+        duplicate_policy: policy.into(),
+        target_document_id: None,
+        change_reason: None,
+        batch_local: Some("live-1".into()),
+    };
+    let q = l.desk.queue_add(&org, &a, vec![add(&staged[0].id, "block")]).unwrap();
+    let run = l.desk.queue_run().await.unwrap();
+    assert_eq!((run.completed, run.failed), (1, 0), "{run:?}");
+    let item = l.desk.queue_list(Some(&a)).unwrap().into_iter().find(|i| i.id == q[0].id).unwrap();
+    assert_eq!(item.status, "completed");
+    let doc = item.result_document_id.clone().expect("document id");
+
+    // the server really holds it: listed, versioned, byte-identical when downloaded
+    let list = l.desk.docs_list(&org, &a, &json!({"node_id": node, "limit": 10})).await.unwrap();
+    assert_eq!(list["total"], 1);
+    let detail = l.desk.docs_get(&org, &a, &doc).await.unwrap();
+    assert_eq!((detail["display_name"].as_str(), detail["current_version_no"].as_i64()), (Some("Invoice 1.pdf"), Some(1)));
+    let saved = l.desk.docs_save_copy(&org, &a, &doc, None).await.unwrap();
+    assert!(saved.created && saved.path.contains("Receivables"), "{}", saved.path);
+    assert_eq!(std::fs::read(&saved.path).unwrap(), content);
+
+    // an identical file is refused (duplicate policy "block") and reported with the existing document
+    let again = l.desk.stage_paths(vec![file.clone()]).await.unwrap();
+    let q2 = l.desk.queue_add(&org, &a, vec![add(&again[0].id, "block")]).unwrap();
+    l.desk.queue_run().await.unwrap();
+    let dup = l.desk.queue_list(Some(&a)).unwrap().into_iter().find(|i| i.id == q2[0].id).unwrap();
+    assert_eq!((dup.status.as_str(), dup.error_code.as_deref()), ("failed", Some("duplicate_document")));
+    assert_eq!(dup.duplicates[0]["display_name"], "Invoice 1.pdf");
+
+    // a file that lies about its type is rejected by the SERVER (the client only checked the extension)
+    let fake = l._dir.path().join("fake.pdf");
+    std::fs::write(&fake, b"\x89PNG\r\n\x1a\n not a pdf at all").unwrap();
+    let st = l.desk.stage_paths(vec![fake]).await.unwrap();
+    let q3 = l.desk.queue_add(&org, &a, vec![add(&st[0].id, "block")]).unwrap();
+    l.desk.queue_run().await.unwrap();
+    let bad = l.desk.queue_list(Some(&a)).unwrap().into_iter().find(|i| i.id == q3[0].id).unwrap();
+    assert_eq!(bad.status, "failed");
+    assert!(bad.error_code.as_deref().is_some_and(|c| c == "content_mismatch" || c == "corrupt_file"), "{:?}", bad.error_code);
+
+    assert!(l.desk.docs_list(&org, &b, &json!({})).await.is_err(), "Beta is not reachable for this accountant");
+    assert!(l.desk.docs_get(&org, &b, &doc).await.is_err());
+    assert!(l.desk.docs_get(&org, &a, "00000000-0000-4000-8000-000000000000").await.is_err());
+
+    // an assigned accountant can read and import but not delete, and cannot touch Beta
+    assert_eq!(l.desk.docs_list(&org, &a, &json!({})).await.unwrap()["total"], 1);
+    assert!(l.desk.docs_list(&org, &b, &json!({})).await.is_err());
+    assert_eq!(l.desk.docs_action(&org, &a, &doc, "delete", None).await.unwrap_err().status, Some(403));
+}

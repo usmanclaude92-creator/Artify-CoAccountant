@@ -58,6 +58,26 @@ class Settings(BaseSettings):
     smtp_starttls: bool = True
     mail_from: str = "Artify Co-Accountant <no-reply@localhost>"
 
+    # Document storage (docs/documents/CLOUD_STORAGE_ARCHITECTURE.md). Objects are private; there are no public URLs.
+    storage_backend: Literal["local", "s3"] = "local"
+    storage_local_root: str = ".data/storage"  # local backend only (development and tests)
+    storage_s3_bucket: str | None = None
+    storage_s3_region: str | None = None
+    storage_s3_endpoint_url: str | None = None  # S3-compatible endpoints (MinIO, R2, ...)
+    storage_s3_access_key_id: SecretStr | None = None  # falls back to the SDK credential chain when unset
+    storage_s3_secret_access_key: SecretStr | None = None
+    storage_s3_sse: str | None = None  # e.g. "AES256" or "aws:kms"
+    storage_tmp_dir: str | None = None  # upload staging (defaults to the system temp dir)
+    # System ceilings: a plan's `limit.file_size_bytes` can lower but never exceed these.
+    max_file_size_ceiling_bytes: int = 200 * 1024**2
+    max_import_batch_files: int = 200
+    upload_session_ttl_seconds: int = 24 * 3600
+    # Antivirus: "none" means files are validated but NOT scanned, and the product says so.
+    scanner_backend: Literal["none", "clamav"] = "none"
+    clamd_host: str = "localhost"
+    clamd_port: int = 3310
+    clamd_timeout_seconds: float = 30.0
+
     @property
     def effective_log_format(self) -> str:
         return ("text" if self.environment == "local" else "json") if self.log_format == "auto" else self.log_format
@@ -73,6 +93,8 @@ class Settings(BaseSettings):
                 raise ValueError("mailer_backend must be 'smtp' with smtp_host set in staging/production")
             if not self.web_base_url.startswith("https://"):
                 raise ValueError("web_base_url must be https in staging/production")
+            if self.storage_backend != "s3" or not self.storage_s3_bucket:
+                raise ValueError("storage_backend must be 's3' with storage_s3_bucket set in staging/production")
             if self.rate_limit_backend != "redis":
                 raise ValueError("rate_limit_backend must be 'redis' in staging/production")
             for name in ("database_url_app", "database_url_platform", "database_url_dispatcher"):

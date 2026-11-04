@@ -2,7 +2,9 @@
 //! database and the logger, and implements the Phase 5 flows: sign-in, organization/company selection (verified by the
 //! backend), workspace synchronization, storage setup and device registration.
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use serde::Serialize;
@@ -15,6 +17,19 @@ use crate::logs::Logger;
 use crate::storage::{self, RootReport};
 use crate::workspace;
 
+/// A file the user picked, verified and hashed, waiting to be queued. The UI refers to it by id only.
+#[derive(Debug, Clone)]
+pub struct Staged {
+    pub path: PathBuf,
+    pub name: String,
+    pub size: u64,
+    pub sha256: String,
+    pub mtime: Option<i64>,
+}
+
+/// Receives (event name, payload) for the UI. The Tauri shell forwards them as window events.
+pub type Emitter = Arc<dyn Fn(&str, Value) + Send + Sync>;
+
 pub struct Desktop {
     pub api: Arc<ApiClient>,
     db: Mutex<Db>,
@@ -23,6 +38,10 @@ pub struct Desktop {
     pub open_report: OpenReport,
     user: Mutex<Option<String>>,
     pub data_dir: PathBuf,
+    pub(crate) staged: Mutex<HashMap<String, Staged>>,
+    pub(crate) transfers: Mutex<HashMap<String, Arc<AtomicBool>>>,
+    pub(crate) run_lock: tokio::sync::Mutex<()>,
+    emitter: Mutex<Option<Emitter>>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -81,10 +100,25 @@ impl Desktop {
             open_report,
             user: Mutex::new(None),
             data_dir: data_dir.to_path_buf(),
+            staged: Mutex::new(HashMap::new()),
+            transfers: Mutex::new(HashMap::new()),
+            run_lock: tokio::sync::Mutex::new(()),
+            emitter: Mutex::new(None),
         }
     }
 
-    fn db(&self) -> Result<MutexGuard<'_, Db>> {
+    pub fn set_emitter(&self, e: Emitter) {
+        if let Ok(mut g) = self.emitter.lock() {
+            *g = Some(e);
+        }
+    }
+    pub(crate) fn emit(&self, name: &str, payload: Value) {
+        if let Some(e) = self.emitter.lock().ok().and_then(|g| g.clone()) {
+            e(name, payload);
+        }
+    }
+
+    pub(crate) fn db(&self) -> Result<MutexGuard<'_, Db>> {
         self.db.lock().map_err(|_| AppError::database("The local database is busy."))
     }
     pub fn user_id(&self) -> Result<String> {
@@ -124,6 +158,8 @@ impl Desktop {
             &id.user_id,
             &json!({ "user_id": id.user_id, "email": id.email, "display_name": id.display_name, "memberships": id.memberships }),
         )?;
+        // work interrupted by a crash or shutdown is put back in line (sessions already registered are reused)
+        let _ = self.queue_recover();
         self.log.info("signed_in", "session established");
         Ok(id)
     }

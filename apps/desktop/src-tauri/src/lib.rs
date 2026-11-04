@@ -2,6 +2,7 @@
 //! shell, HTTP or credential capability exposed to it. Tokens stay in Rust (memory + Windows Credential Manager).
 
 mod commands;
+mod doc_commands;
 mod state;
 
 use std::sync::Arc;
@@ -12,7 +13,7 @@ use artify_core::desktop::Desktop;
 use artify_core::logs::Logger;
 use artify_core::seal::Sealer;
 use artify_core::vault::{OsVault, SecretStore};
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 
 pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -53,6 +54,20 @@ pub fn run() {
             log.info("startup", &format!("version {APP_VERSION}, api configured: {configured}"));
             let desk = Arc::new(Desktop::new(api, db, report, log, &data_dir, APP_VERSION));
             app.manage(state::AppState::new(desk.clone(), configured, base));
+            let handle = app.handle().clone();
+            desk.set_emitter(Arc::new(move |name, payload| {
+                let _ = handle.emit(name, payload);
+            }));
+            // files dropped on the window are staged here, in Rust: the webview never sees a path
+            if let Some(win) = app.get_webview_window("main") {
+                let (h, d) = (app.handle().clone(), desk.clone());
+                win.on_window_event(move |ev| {
+                    if let tauri::WindowEvent::DragDrop(tauri::DragDropEvent::Drop { paths, .. }) = ev {
+                        let (h, d, paths) = (h.clone(), d.clone(), paths.clone());
+                        tauri::async_runtime::spawn(doc_commands::stage_dropped(h, d, paths));
+                    }
+                });
+            }
             state::spawn_sync_loop(app.handle().clone(), desk);
             Ok(())
         })
@@ -83,6 +98,31 @@ pub fn run() {
             commands::notifications_read,
             commands::diagnostics_export,
             commands::update_check,
+            doc_commands::import_pick,
+            doc_commands::import_unstage,
+            doc_commands::queue_add,
+            doc_commands::queue_list,
+            doc_commands::queue_run,
+            doc_commands::queue_retry,
+            doc_commands::queue_cancel,
+            doc_commands::queue_remove,
+            doc_commands::queue_clear_finished,
+            doc_commands::upload_config,
+            doc_commands::docs_list,
+            doc_commands::docs_counts,
+            doc_commands::docs_get,
+            doc_commands::docs_events,
+            doc_commands::docs_patch,
+            doc_commands::docs_move,
+            doc_commands::docs_action,
+            doc_commands::docs_restore_version,
+            doc_commands::docs_suggest,
+            doc_commands::docs_duplicates,
+            doc_commands::docs_preview,
+            doc_commands::docs_save_copy,
+            doc_commands::docs_open,
+            doc_commands::mirror_sync,
+            doc_commands::mirror_open,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Artify Co-Accountant");

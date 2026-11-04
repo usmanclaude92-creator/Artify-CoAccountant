@@ -2,8 +2,11 @@
 pub mod api;
 pub mod db;
 pub mod desktop;
+pub mod docs;
 pub mod error;
 pub mod logs;
+pub mod mirror;
+pub mod queue;
 pub mod seal;
 pub mod settings;
 pub mod storage;

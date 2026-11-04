@@ -14,7 +14,7 @@ from typing import Any
 from pydantic import BaseModel
 from sqlalchemy import Connection, text
 
-from artify_api.entitlements import MEASURABLE
+from artify_api.entitlements import MEASURABLE, QUOTAS
 
 APPROACHING_PERCENT = 80.0
 
@@ -97,6 +97,8 @@ def _row(r: Any, measured: dict[str, int] | None = None) -> UsageRow:
         current: int | None = measured[r.key]  # live measurement beats a possibly missing counter
     else:
         current = int(r.current) if r.current is not None else None
+    if current is None and r.key in QUOTAS:
+        current = 0  # quota counters are created by the first upload; no counter yet means nothing has been stored
     remaining = percent = None
     if r.enforcement == "flag":
         status = "flag"

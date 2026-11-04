@@ -56,6 +56,12 @@ PERMISSIONS: tuple[Permission, ...] = (
     _P(
         "workspace_templates.manage", "organization", "Save, version and archive the organization's workspace templates"
     ),
+    _P("documents.read", "company", "View, search, preview and download a company's documents"),
+    _P("documents.upload", "company", "Import documents and add new versions"),
+    _P("documents.manage", "company", "Rename, re-file, edit metadata, duplicate, archive and restore documents"),
+    _P("documents.delete", "company", "Move documents to the deleted items and restore them"),
+    _P("documents.purge", "company", "Permanently delete documents (never while on retention hold)"),
+    _P("storage.manage", "organization", "Review storage usage and run storage reconciliation"),
     # ---- platform realm (Artify Super Admin) ----
     _P("platform.self.read", "platform", "Read own platform-admin profile"),
     _P("platform.dashboard.read", "platform", "View the platform overview"),
@@ -127,6 +133,11 @@ SYSTEM_ROLES: dict[str, tuple[str, str, frozenset[str]]] = {
                 "workspace.read",
                 "workspace.manage",
                 "workspace_templates.manage",
+                "documents.read",
+                "documents.upload",
+                "documents.manage",
+                "documents.delete",
+                "storage.manage",
             }
         ),
     ),
@@ -143,6 +154,9 @@ SYSTEM_ROLES: dict[str, tuple[str, str, frozenset[str]]] = {
                 "assignments.read",
                 "devices.manage_own",
                 "workspace.read",
+                "documents.read",
+                "documents.upload",
+                "documents.manage",
             }
         ),
     ),
@@ -158,23 +172,45 @@ SYSTEM_ROLES: dict[str, tuple[str, str, frozenset[str]]] = {
                 "assignments.read",
                 "devices.manage_own",
                 "workspace.read",
+                "documents.read",
+                "documents.upload",
             }
         ),
     ),
     "staff": (
         "organization",
         "Staff",
-        frozenset({"organization.read", "companies.list", "companies.read", "devices.manage_own", "workspace.read"}),
+        frozenset(
+            {
+                "organization.read",
+                "companies.list",
+                "companies.read",
+                "devices.manage_own",
+                "workspace.read",
+                "documents.read",
+                "documents.upload",
+            }
+        ),
     ),
     "document_operator": (
         "organization",
         "Document operator",
-        frozenset({"organization.read", "companies.list", "companies.read", "devices.manage_own", "workspace.read"}),
+        frozenset(
+            {
+                "organization.read",
+                "companies.list",
+                "companies.read",
+                "devices.manage_own",
+                "workspace.read",
+                "documents.read",
+                "documents.upload",
+            }
+        ),
     ),
     "read_only": (
         "organization",
         "Read-only user",
-        frozenset({"organization.read", "companies.list", "companies.read", "workspace.read"}),
+        frozenset({"organization.read", "companies.list", "companies.read", "workspace.read", "documents.read"}),
     ),
     "company_owner": (
         "company",

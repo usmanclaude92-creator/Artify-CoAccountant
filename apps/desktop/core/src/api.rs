@@ -2,13 +2,19 @@
 //! the rotating refresh token lives in the OS vault, and the webview receives data, never credentials. The backend stays
 //! the authority for authentication, permissions and tenant isolation; this client only transports and classifies.
 
+use std::path::Path;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use futures_util::StreamExt;
 use reqwest::{header, Method, StatusCode};
 use serde::Deserialize;
 use serde_json::{json, Value};
+use sha2::{Digest, Sha256};
+use tokio::io::AsyncWriteExt;
 use tokio::sync::Mutex as AsyncMutex;
+use tokio_util::io::ReaderStream;
 
 use crate::error::{AppError, Result};
 use crate::vault::SecretStore;
@@ -73,8 +79,19 @@ struct Tokens {
     generation: u64,
 }
 
+/// What a finished download proved about the bytes that arrived.
+#[derive(Debug, Clone)]
+pub struct Downloaded {
+    pub size: u64,
+    pub sha256: String,
+    /// The checksum the server announced (`X-Document-Sha256`), when present.
+    pub announced_sha256: Option<String>,
+}
+
 pub struct ApiClient {
     http: reqwest::Client,
+    /// Same identity, but no overall timeout: documents can take minutes. A stalled connection still fails (read timeout).
+    transfer_http: reqwest::Client,
     cfg: ApiConfig,
     store: Arc<dyn SecretStore>,
     tokens: Mutex<Tokens>,
@@ -89,7 +106,20 @@ impl ApiClient {
             .user_agent(format!("ArtifyCoAccountantDesktop/{}", cfg.app_version))
             .build()
             .map_err(|_| AppError::new("config_error", "The network client could not be created."))?;
-        Ok(Self { http, cfg, store, tokens: Mutex::new(Tokens { access: None, generation: 0 }), refresh_gate: AsyncMutex::new(()) })
+        let transfer_http = reqwest::Client::builder()
+            .connect_timeout(cfg.connect_timeout)
+            .read_timeout(Duration::from_secs(60))
+            .user_agent(format!("ArtifyCoAccountantDesktop/{}", cfg.app_version))
+            .build()
+            .map_err(|_| AppError::new("config_error", "The network client could not be created."))?;
+        Ok(Self {
+            http,
+            transfer_http,
+            cfg,
+            store,
+            tokens: Mutex::new(Tokens { access: None, generation: 0 }),
+            refresh_gate: AsyncMutex::new(()),
+        })
     }
 
     pub fn base_url(&self) -> &str {
@@ -265,26 +295,151 @@ impl ApiClient {
         if let Some(b) = body {
             req = req.json(b);
         }
-        let res = req.send().await.map_err(|e| {
-            if e.is_timeout() {
-                AppError::timeout()
-            } else {
-                AppError::network("The server cannot be reached. Check your internet connection.")
-            }
-        })?;
-        let status = res.status();
-        let etag_out = res.headers().get(header::ETAG).and_then(|v| v.to_str().ok()).map(str::to_string);
-        if status == StatusCode::NOT_MODIFIED {
-            return Ok(Response { status: 304, etag: etag_out, not_modified: true, body: Value::Null });
-        }
-        let bytes = res.bytes().await.map_err(|_| AppError::network("The connection was interrupted.").retryable())?;
-        if status.is_success() {
-            let body =
-                if bytes.is_empty() { Value::Null } else { serde_json::from_slice(&bytes).map_err(|_| AppError::malformed("not JSON"))? };
-            return Ok(Response { status: status.as_u16(), etag: etag_out, not_modified: false, body });
-        }
-        Err(problem(status, &bytes))
+        let res = req.send().await.map_err(net_error)?;
+        read_response(res).await
     }
+
+    // ------------------------------------------------------------------ streamed transfers (documents)
+    /// Stream a local file as the body of a PUT. Progress is reported in bytes sent; setting `cancel` aborts the transfer.
+    /// The file is opened per attempt, so a retry after a token refresh starts from the beginning (no partial state).
+    pub async fn put_file(
+        &self,
+        path: &str,
+        org: Option<&str>,
+        file: &Path,
+        size: u64,
+        cancel: Arc<AtomicBool>,
+        progress: Arc<dyn Fn(u64) + Send + Sync>,
+    ) -> Result<Response> {
+        let mut refreshed = false;
+        loop {
+            let (token, generation) = self.access();
+            let token = token.ok_or_else(AppError::session_expired)?;
+            let f = tokio::fs::File::open(file).await.map_err(AppError::from)?;
+            let sent = Arc::new(AtomicU64::new(0));
+            let (c2, p2, s2) = (cancel.clone(), progress.clone(), sent.clone());
+            let stream = ReaderStream::with_capacity(f, 256 * 1024).map(move |chunk| {
+                if c2.load(Ordering::Relaxed) {
+                    return Err(std::io::Error::new(std::io::ErrorKind::Interrupted, "cancelled"));
+                }
+                let chunk = chunk?;
+                p2(s2.fetch_add(chunk.len() as u64, Ordering::Relaxed) + chunk.len() as u64);
+                Ok(chunk)
+            });
+            let mut req = self
+                .transfer_http
+                .put(format!("{}{}", self.cfg.base_url, path))
+                .bearer_auth(&token)
+                .header(header::ACCEPT, "application/json, application/problem+json")
+                .header(header::CONTENT_TYPE, "application/octet-stream")
+                .header(header::CONTENT_LENGTH, size)
+                .body(reqwest::Body::wrap_stream(stream));
+            if let Some(o) = org {
+                req = req.header("X-Organization-Id", o);
+            }
+            let outcome = match req.send().await {
+                Ok(res) => read_response(res).await,
+                Err(_) if cancel.load(Ordering::Relaxed) => Err(AppError::new("cancelled", "The upload was cancelled.")),
+                Err(e) => Err(net_error(e)),
+            };
+            match outcome {
+                Err(e) if e.status == Some(401) && !refreshed => {
+                    refreshed = true;
+                    self.refresh_now(generation).await?;
+                }
+                other => return other,
+            }
+        }
+    }
+
+    /// Stream a GET response into `dest` (the caller supplies a temporary name and renames after verifying). Returns the
+    /// SHA-256 of what arrived and the checksum the server announced, so the caller can refuse a damaged download.
+    pub async fn download_to(
+        &self,
+        path: &str,
+        org: Option<&str>,
+        dest: &Path,
+        cancel: Arc<AtomicBool>,
+        progress: Arc<dyn Fn(u64) + Send + Sync>,
+    ) -> Result<Downloaded> {
+        let mut refreshed = false;
+        loop {
+            let (token, generation) = self.access();
+            let token = token.ok_or_else(AppError::session_expired)?;
+            let mut req = self
+                .transfer_http
+                .get(format!("{}{}", self.cfg.base_url, path))
+                .bearer_auth(&token)
+                .header(header::ACCEPT, "application/octet-stream, application/problem+json");
+            if let Some(o) = org {
+                req = req.header("X-Organization-Id", o);
+            }
+            let res = req.send().await.map_err(net_error)?;
+            let status = res.status();
+            if status == StatusCode::UNAUTHORIZED && !refreshed {
+                refreshed = true;
+                self.refresh_now(generation).await?;
+                continue;
+            }
+            if !status.is_success() {
+                let bytes = res.bytes().await.unwrap_or_default();
+                return Err(problem(status, &bytes));
+            }
+            let announced = res.headers().get("x-document-sha256").and_then(|v| v.to_str().ok()).map(str::to_string);
+            let mut file = tokio::fs::File::create(dest).await.map_err(AppError::from)?;
+            let mut hasher = Sha256::new();
+            let mut total = 0u64;
+            let mut stream = res.bytes_stream();
+            while let Some(chunk) = stream.next().await {
+                if cancel.load(Ordering::Relaxed) {
+                    drop(file);
+                    let _ = tokio::fs::remove_file(dest).await;
+                    return Err(AppError::new("cancelled", "The download was cancelled."));
+                }
+                let chunk = match chunk {
+                    Ok(c) => c,
+                    Err(_) => {
+                        drop(file);
+                        let _ = tokio::fs::remove_file(dest).await;
+                        return Err(AppError::network("The connection was interrupted.").retryable());
+                    }
+                };
+                hasher.update(&chunk);
+                total += chunk.len() as u64;
+                file.write_all(&chunk).await.map_err(AppError::from)?;
+                progress(total);
+            }
+            file.flush().await.map_err(AppError::from)?;
+            return Ok(Downloaded { size: total, sha256: hex(&hasher.finalize()), announced_sha256: announced });
+        }
+    }
+}
+
+fn net_error(e: reqwest::Error) -> AppError {
+    if e.is_timeout() {
+        AppError::timeout()
+    } else {
+        AppError::network("The server cannot be reached. Check your internet connection.")
+    }
+}
+
+async fn read_response(res: reqwest::Response) -> Result<Response> {
+    let status = res.status();
+    let etag_out = res.headers().get(header::ETAG).and_then(|v| v.to_str().ok()).map(str::to_string);
+    if status == StatusCode::NOT_MODIFIED {
+        return Ok(Response { status: 304, etag: etag_out, not_modified: true, body: Value::Null });
+    }
+    let bytes = res.bytes().await.map_err(|_| AppError::network("The connection was interrupted.").retryable())?;
+    if status.is_success() {
+        let body =
+            if bytes.is_empty() { Value::Null } else { serde_json::from_slice(&bytes).map_err(|_| AppError::malformed("not JSON"))? };
+        return Ok(Response { status: status.as_u16(), etag: etag_out, not_modified: false, body });
+    }
+    Err(problem(status, &bytes))
+}
+
+pub fn hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|b| format!("{b:02x}")).collect()
 }
 
 fn rand_jitter(max: u64) -> u64 {

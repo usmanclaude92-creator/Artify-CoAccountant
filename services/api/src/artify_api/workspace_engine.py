@@ -720,6 +720,12 @@ _BASE_ACTIONS: dict[str, tuple[str, ...]] = {
     "workspace.read": ("view",),
     "workspace.manage": ("upload", "edit", "rename", "move", "archive", "delete", "configure"),
     "workspace.permissions.manage": ("manage_permissions",),
+    # Phase 6: document permissions map onto the same node actions, so workspace grants (allow/deny, restricted mode)
+    # govern documents exactly like they govern folders.
+    "documents.read": ("view",),
+    "documents.upload": ("upload",),
+    "documents.manage": ("edit", "rename", "move", "archive"),
+    "documents.delete": ("delete",),
 }
 READ_ONLY_CEILING = frozenset({"view"})
 

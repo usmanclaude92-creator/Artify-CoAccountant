@@ -70,3 +70,4 @@ apps/desktop/dist/
 apps/desktop/src-tauri/gen/
 *.pfx
 *.snk
+.data/

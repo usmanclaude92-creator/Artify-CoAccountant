@@ -348,6 +348,479 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/companies/{company_id}/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Documents
+         * @description Search/filter/sort/paginate the documents the caller may see. Archived and deleted documents are listed only
+         *     when asked for. Results never include documents in locations the caller cannot view.
+         */
+        get: operations["documents_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/documents/counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Counts
+         * @description Document counts per workspace node (own and including subfolders) for tree badges.
+         */
+        get: operations["documents_counts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/documents/duplicates/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Duplicate Check
+         * @description Pre-check before uploading: identical content already in THIS company (never other companies).
+         */
+        post: operations["documents_duplicate_check"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/documents/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Company Events */
+        get: operations["documents_activity_company"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/documents/import-batches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Batch */
+        post: operations["documents_batch_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/documents/import-batches/{batch_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Batch Status */
+        get: operations["documents_batch_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/documents/suggest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Suggest
+         * @description Advisory filing and naming suggestion from the company's own rules. Nothing is filed or renamed.
+         */
+        post: operations["documents_suggest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/documents/uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Uploads */
+        get: operations["documents_upload_list"];
+        put?: never;
+        /**
+         * Init Upload
+         * @description Register an upload. Nothing is stored yet; the response says where to send the bytes. Replaying the same
+         *     `idempotency_key` returns the existing session (HTTP 200); a new session answers 201.
+         */
+        post: operations["documents_upload_init"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/documents/uploads/{op_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Upload */
+        get: operations["documents_upload_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/documents/uploads/{op_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Upload */
+        post: operations["documents_upload_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/documents/uploads/{op_id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Complete Upload
+         * @description Verify the stored object and create the document (or the new version). Idempotent: completing twice returns the
+         *     same result. The upload is a success only when this call returns 200.
+         */
+        post: operations["documents_upload_complete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/documents/uploads/{op_id}/content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Upload Content
+         * @description Stream the file bytes (raw body, `application/octet-stream`). The server hashes and size-checks as it reads,
+         *     validates the real content, scans (when a scanner is configured) and stores the object. The answer carries the
+         *     session; a rejected file answers 4xx with `operation.status` = failed | quarantined and the reason in `code`.
+         */
+        put: operations["documents_upload_content"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/documents/uploads/{op_id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Retry Upload
+         * @description Re-open a transiently failed upload (storage or scanner unavailable). The file is sent again from the start.
+         */
+        post: operations["documents_upload_retry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/documents/{doc_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Document */
+        get: operations["documents_get"];
+        put?: never;
+        post?: never;
+        /**
+         * Purge Document
+         * @description Permanent deletion (irreversible). Only from the deleted items, never under hold; `confirm=true` is required.
+         */
+        delete: operations["documents_purge"];
+        options?: never;
+        head?: never;
+        /** Update Document */
+        patch: operations["documents_update"];
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/documents/{doc_id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Archive Document */
+        post: operations["documents_archive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/documents/{doc_id}/content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Content
+         * @description Stream the original bytes. Authorization is checked on every request and the access is recorded. Only formats
+         *     that render without executing anything (PDF, PNG, JPEG, BMP) may be shown inline; everything else downloads.
+         */
+        get: operations["documents_content"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/documents/{doc_id}/delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Delete Document
+         * @description Soft delete: the document moves to the deleted items and can be restored. Bytes stay in storage.
+         */
+        post: operations["documents_delete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/documents/{doc_id}/duplicate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Duplicate Document */
+        post: operations["documents_duplicate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/documents/{doc_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Document Events */
+        get: operations["documents_activity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/documents/{doc_id}/hold": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Hold Document
+         * @description Retention / legal hold: a held document cannot be permanently deleted.
+         */
+        post: operations["documents_hold"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/documents/{doc_id}/move": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Move Document
+         * @description Re-file a document. Only the database changes; the stored bytes are never moved.
+         */
+        post: operations["documents_move"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/documents/{doc_id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restore Document */
+        post: operations["documents_restore"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/documents/{doc_id}/undelete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Undelete Document */
+        post: operations["documents_undelete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/documents/{doc_id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Versions */
+        get: operations["documents_versions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/documents/{doc_id}/versions/{version_no}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restore Version */
+        post: operations["documents_version_restore"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/companies/{company_id}/history": {
         parameters: {
             query?: never;
@@ -3071,6 +3544,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/storage/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Storage Overview
+         * @description Storage used against the plan, per-company breakdown, scanner/backend status and recent failures.
+         */
+        get: operations["storage_overview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/storage/reconcile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Storage Reconcile
+         * @description Compare database and object store. Read-only unless `repair` is true (marks lost objects `missing`, removes
+         *     orphan objects older than `min_age_seconds`, expires abandoned upload sessions).
+         */
+        post: operations["storage_reconcile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3513,6 +4027,19 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** BatchIn */
+        BatchIn: {
+            /** Client Batch Key */
+            client_batch_key?: string | null;
+            /**
+             * Source
+             * @default desktop
+             * @enum {string}
+             */
+            source: "desktop" | "web" | "mobile" | "email" | "api";
+            /** Total Files */
+            total_files: number;
+        };
         /** BillingSummary */
         BillingSummary: {
             /** Collected Last 30 Days */
@@ -3897,6 +4424,24 @@ export interface components {
             /** Vat Registered */
             vat_registered?: boolean | null;
         };
+        /** CompanyStorage */
+        CompanyStorage: {
+            /** Active Documents */
+            active_documents: number;
+            /** Archived Documents */
+            archived_documents: number;
+            /**
+             * Company Id
+             * Format: uuid
+             */
+            company_id: string;
+            /** Deleted Documents */
+            deleted_documents: number;
+            /** Name */
+            name: string;
+            /** Stored Bytes */
+            stored_bytes: number;
+        };
         /** CompanyUpdate */
         CompanyUpdate: {
             /** Address Line */
@@ -4149,12 +4694,26 @@ export interface components {
             /** Status */
             status: string;
         };
-        /** DuplicateIn */
-        DuplicateIn: {
-            /** Base Version */
-            base_version?: number | null;
-            /** Name */
-            name?: string | null;
+        /** DocPatch */
+        DocPatch: {
+            /**
+             * Base Row Version
+             * @description Optimistic concurrency token from the last read
+             */
+            base_row_version?: number | null;
+            /** Category Id */
+            category_id?: string | null;
+            /** Display Name */
+            display_name?: string | null;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+        };
+        /** DupCheckIn */
+        DupCheckIn: {
+            /** Sha256 */
+            sha256: string;
         };
         /** EntitlementOut */
         EntitlementOut: {
@@ -4560,6 +5119,13 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** HoldIn */
+        HoldIn: {
+            /** Hold */
+            hold: boolean;
+            /** Reason */
+            reason?: string | null;
+        };
         /** InvitationOut */
         InvitationOut: {
             /** Accepted At */
@@ -4905,17 +5471,14 @@ export interface components {
             /** Month */
             month: string;
         };
-        /** MoveIn */
-        MoveIn: {
-            /** Base Version */
-            base_version?: number | null;
-            /**
-             * Parent Id
-             * Format: uuid
-             */
-            parent_id: string;
-            /** Position */
-            position?: number | null;
+        /** MonthlyDocuments */
+        MonthlyDocuments: {
+            /** Limit */
+            limit: number | null;
+            /** Unlimited */
+            unlimited: boolean;
+            /** Used */
+            used: number;
         };
         /** NamingIn */
         NamingIn: {
@@ -5775,6 +6338,40 @@ export interface components {
             /** To Status */
             to_status: string | null;
         };
+        /** ReconcileIn */
+        ReconcileIn: {
+            /**
+             * Min Age Seconds
+             * @default 3600
+             */
+            min_age_seconds: number;
+            /**
+             * Repair
+             * @default false
+             */
+            repair: boolean;
+        };
+        /** ReconcileOut */
+        ReconcileOut: {
+            /** Expired Uploads */
+            expired_uploads: number;
+            /** Missing Objects */
+            missing_objects: number;
+            /** Missing Sample */
+            missing_sample: string[];
+            /** Objects In Database */
+            objects_in_database: number;
+            /** Orphan Objects */
+            orphan_objects: number;
+            /** Orphan Sample */
+            orphan_sample: string[];
+            /** Repair */
+            repair: boolean;
+            /** Size Mismatch Sample */
+            size_mismatch_sample: string[];
+            /** Size Mismatches */
+            size_mismatches: number;
+        };
         /** RefreshRequest */
         RefreshRequest: {
             /** Refresh Token */
@@ -5812,6 +6409,11 @@ export interface components {
              * @default false
              */
             dry_run: boolean;
+        };
+        /** RestoreVersionIn */
+        RestoreVersionIn: {
+            /** Reason */
+            reason?: string | null;
         };
         /** RevenueStats */
         RevenueStats: {
@@ -5869,6 +6471,13 @@ export interface components {
              * @enum {string}
              */
             scope: "organization" | "company";
+        };
+        /** ScannerState */
+        ScannerState: {
+            /** Active */
+            active: boolean;
+            /** Name */
+            name: string;
         };
         /** SearchHit */
         SearchHit: {
@@ -6039,6 +6648,37 @@ export interface components {
             /** To Status */
             to_status: string;
         };
+        /** StorageOverviewOut */
+        StorageOverviewOut: {
+            /** Accounting */
+            accounting: string;
+            /** Backend */
+            backend: string;
+            /** Companies */
+            companies: components["schemas"]["CompanyStorage"][];
+            documents_this_month: components["schemas"]["MonthlyDocuments"];
+            /** Max File Size Bytes */
+            max_file_size_bytes: number;
+            /** Recent Failures */
+            recent_failures: components["schemas"]["UploadFailure"][];
+            scanner: components["schemas"]["ScannerState"];
+            storage: components["schemas"]["StorageUsage"];
+            /** Uploads Last 7 Days */
+            uploads_last_7_days: {
+                [key: string]: number;
+            };
+        };
+        /** StorageUsage */
+        StorageUsage: {
+            /** Limit Bytes */
+            limit_bytes: number | null;
+            /** Source */
+            source: string;
+            /** Unlimited */
+            unlimited: boolean;
+            /** Used Bytes */
+            used_bytes: number;
+        };
         /** SubDetail */
         SubDetail: {
             /** Events */
@@ -6188,6 +6828,25 @@ export interface components {
             status: string;
             /** Trial Ends At */
             trial_ends_at: string | null;
+        };
+        /** SuggestIn */
+        SuggestIn: {
+            /** Attributes */
+            attributes?: {
+                [key: string]: unknown;
+            };
+            /** Category Id */
+            category_id?: string | null;
+            /** Filename */
+            filename: string;
+            /** Node Id */
+            node_id?: string | null;
+            /** Source */
+            source?: string | null;
+            /** Values */
+            values?: {
+                [key: string]: unknown;
+            };
         };
         /** SupportGrantOut */
         SupportGrantOut: {
@@ -6383,6 +7042,86 @@ export interface components {
             /** Note */
             note: string;
         };
+        /** UploadFailure */
+        UploadFailure: {
+            /**
+             * Company Id
+             * Format: uuid
+             */
+            company_id: string;
+            /** Company Name */
+            company_name: string;
+            /** Error Code */
+            error_code: string | null;
+            /** Error Message */
+            error_message: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Original Filename */
+            original_filename: string;
+            /** Status */
+            status: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** UploadIn */
+        UploadIn: {
+            /** Batch Id */
+            batch_id?: string | null;
+            /** Category Id */
+            category_id?: string | null;
+            /** Change Reason */
+            change_reason?: string | null;
+            /** Display Name */
+            display_name?: string | null;
+            /**
+             * Duplicate Policy
+             * @default block
+             * @enum {string}
+             */
+            duplicate_policy: "block" | "allow_copy";
+            /** Filename */
+            filename: string;
+            /**
+             * Filing Rule Id
+             * @description Rule that suggested the destination (traceability)
+             */
+            filing_rule_id?: string | null;
+            /**
+             * Idempotency Key
+             * @description Client-generated; repeats return the same session
+             */
+            idempotency_key: string;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            };
+            /** Mime */
+            mime?: string | null;
+            /**
+             * Node Id
+             * @description Destination workspace node (required for a new document)
+             */
+            node_id?: string | null;
+            /** Sha256 */
+            sha256?: string | null;
+            /**
+             * Size
+             * @description Exact size in bytes
+             */
+            size: number;
+            /**
+             * Target Document Id
+             * @description Set to upload a NEW VERSION of this document
+             */
+            target_document_id?: string | null;
+        };
         /** UsageBrief */
         UsageBrief: {
             /** Current */
@@ -6537,6 +7276,11 @@ export interface components {
             /** Trial Days */
             trial_days?: number | null;
         };
+        /** VersionToken */
+        VersionToken: {
+            /** Base Row Version */
+            base_row_version?: number | null;
+        };
         /** Viewer */
         Viewer: {
             /** Permissions */
@@ -6569,6 +7313,44 @@ export interface components {
             template_id?: string | null;
             /** Template Version */
             template_version?: number | null;
+        };
+        /** DuplicateIn */
+        artify_api__routers__documents__DuplicateIn: {
+            /** Display Name */
+            display_name?: string | null;
+            /** Node Id */
+            node_id?: string | null;
+        };
+        /** MoveIn */
+        artify_api__routers__documents__MoveIn: {
+            /** Base Row Version */
+            base_row_version?: number | null;
+            /** Category Id */
+            category_id?: string | null;
+            /**
+             * Node Id
+             * Format: uuid
+             */
+            node_id: string;
+        };
+        /** DuplicateIn */
+        artify_api__routers__workspace__DuplicateIn: {
+            /** Base Version */
+            base_version?: number | null;
+            /** Name */
+            name?: string | null;
+        };
+        /** MoveIn */
+        artify_api__routers__workspace__MoveIn: {
+            /** Base Version */
+            base_version?: number | null;
+            /**
+             * Parent Id
+             * Format: uuid
+             */
+            parent_id: string;
+            /** Position */
+            position?: number | null;
         };
     };
     responses: never;
@@ -7242,6 +8024,982 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConfigurationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    documents_list: {
+        parameters: {
+            query?: {
+                node_id?: string | null;
+                include_subfolders?: boolean;
+                category_id?: string | null;
+                status?: "active" | "archived" | "deleted";
+                q?: string | null;
+                extension?: string | null;
+                source?: string | null;
+                created_by?: string | null;
+                min_size?: number | null;
+                max_size?: number | null;
+                created_from?: string | null;
+                created_to?: string | null;
+                sha256?: string | null;
+                import_batch_id?: string | null;
+                field_key?: string | null;
+                field_value?: string | null;
+                sort?: "name" | "created" | "updated" | "size" | "type";
+                order?: "asc" | "desc";
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    documents_counts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    documents_duplicate_check: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DupCheckIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    documents_activity_company: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    documents_batch_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BatchIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    documents_batch_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    documents_suggest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SuggestIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    documents_upload_list: {
+        parameters: {
+            query?: {
+                status?: string | null;
+                batch_id?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    documents_upload_init: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UploadIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    documents_upload_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                op_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    documents_upload_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                op_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    documents_upload_complete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                op_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    documents_upload_content: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                op_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    documents_upload_retry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                op_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    documents_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                doc_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    documents_purge: {
+        parameters: {
+            query?: {
+                confirm?: boolean;
+            };
+            header?: never;
+            path: {
+                company_id: string;
+                doc_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    documents_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                doc_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    documents_archive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                doc_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["VersionToken"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    documents_content: {
+        parameters: {
+            query?: {
+                version?: number | null;
+                disposition?: "inline" | "attachment";
+            };
+            header?: {
+                Range?: string | null;
+            };
+            path: {
+                company_id: string;
+                doc_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    documents_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                doc_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["VersionToken"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    documents_duplicate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                doc_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["artify_api__routers__documents__DuplicateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    documents_activity: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                company_id: string;
+                doc_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    documents_hold: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                doc_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HoldIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    documents_move: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                doc_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["artify_api__routers__documents__MoveIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    documents_restore: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                doc_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["VersionToken"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    documents_undelete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                doc_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    documents_versions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                doc_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    documents_version_restore: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                doc_id: string;
+                version_no: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RestoreVersionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
@@ -8627,7 +10385,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["DuplicateIn"];
+                "application/json": components["schemas"]["artify_api__routers__workspace__DuplicateIn"];
             };
         };
         responses: {
@@ -8697,7 +10455,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["MoveIn"];
+                "application/json": components["schemas"]["artify_api__routers__workspace__MoveIn"];
             };
         };
         responses: {
@@ -12861,6 +14619,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RoleOut"][];
+                };
+            };
+        };
+    };
+    storage_overview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StorageOverviewOut"];
+                };
+            };
+        };
+    };
+    storage_reconcile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReconcileIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReconcileOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

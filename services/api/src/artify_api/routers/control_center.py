@@ -56,7 +56,7 @@ def _can(ctx: RequestCtx, permission: str) -> bool:
 
 def _live_usage(ctx: RequestCtx, org_id: uuid.UUID) -> list[UsageRow]:
     """Entitlement rows for this organization; enforceable count limits use a LIVE measurement."""
-    measured = {k: entitlements.measure(ctx.conn, org_id, k) for k in ENFORCED_KEYS}
+    measured = {k: entitlements.measure(ctx.conn, org_id, k) for k in (*ENFORCED_KEYS, *sorted(entitlements.QUOTAS))}
     return usage_for_orgs(ctx.conn, [org_id], measured={org_id: measured})[org_id]
 
 

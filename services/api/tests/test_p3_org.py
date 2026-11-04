@@ -145,11 +145,16 @@ def test_subscription_view_matches_the_platform_configuration_and_cannot_be_chan
         and rows["limit.companies"]["remaining"] == 4
     )
     assert rows["limit.companies"]["enforced_now"] is True
-    # configured-but-not-yet-enforced and unmetered items are labelled honestly, not shown as zero
+    # storage is metered and enforced since Phase 6; items without a meter yet are labelled honestly, not shown as zero
     assert (
-        rows["quota.storage_bytes"]["current"] is None
-        and rows["quota.storage_bytes"]["status"] == "not_metered"
-        and rows["quota.storage_bytes"]["enforced_now"] is False
+        rows["quota.storage_bytes"]["current"] == 0
+        and rows["quota.storage_bytes"]["status"] == "ok"
+        and rows["quota.storage_bytes"]["enforced_now"] is True
+    )
+    assert (
+        rows["quota.ai_units_per_month"]["current"] is None
+        and rows["quota.ai_units_per_month"]["status"] == "not_metered"
+        and rows["quota.ai_units_per_month"]["enforced_now"] is False
     )
     assert rows["limit.workspace_sections_per_company"]["limit"] == 12  # a plan value, read from the platform's data
     assert rows["feature.api_access"]["enabled"] is False and rows["feature.report_builder"]["enabled"] is True

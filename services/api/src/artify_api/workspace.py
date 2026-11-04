@@ -613,8 +613,8 @@ def descendants(conn: Connection, company_id: uuid.UUID, node_id: uuid.UUID) -> 
 
 
 def impact(conn: Connection, company_id: uuid.UUID, node_id: uuid.UUID) -> dict[str, Any]:
-    """Everything that references this node or its subtree. `documents` is 0 until document storage exists (Phase 6),
-    where the foreign key from documents to workspace_nodes is RESTRICT and this count reads documents."""
+    """Everything that references this node or its subtree. `documents` counts documents filed there (any status except
+    purged); the foreign key from documents to workspace_nodes is RESTRICT, so the database refuses a delete as well."""
     ids = [node_id, *[uuid.UUID(d["id"]) for d in descendants(conn, company_id, node_id)]]
 
     def one(q: str) -> int:
@@ -623,7 +623,9 @@ def impact(conn: Connection, company_id: uuid.UUID, node_id: uuid.UUID) -> dict[
     return {
         "node_id": str(node_id),
         "subfolders": len(ids) - 1,
-        "documents": 0,
+        "documents": one(
+            "SELECT count(*) FROM documents WHERE company_id = :c AND node_id = ANY(:ids) AND status <> 'purged'"
+        ),
         "categories": one(
             "SELECT count(*) FROM document_categories WHERE company_id = :c AND node_id = ANY(:ids) AND archived_at IS NULL"
         ),

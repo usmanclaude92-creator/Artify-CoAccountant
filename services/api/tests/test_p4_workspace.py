@@ -1014,8 +1014,9 @@ def test_upload_config_returns_only_permitted_active_targets_and_supports_etag(c
         ).status_code
         == 200
     )
-    # members without the `upload` action (role default: managers only) get no targets
-    acc = make_member(owner, mailer, "accountant")
+    # members without the `upload` action get no targets (role default: managers and, since Phase 6, contributors such as
+    # accountants; the legacy `staff` role cannot contribute)
+    acc = make_member(owner, mailer, "staff")
     assign(owner, a, acc)
     assert acc.get(W(a, "/upload-config")).json()["targets"] == []
     owner.post(

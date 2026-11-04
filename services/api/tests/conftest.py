@@ -32,8 +32,12 @@ def _url(user: str, password: str | None) -> str:
 
 
 OWNER_URL = _url(PGUSER, os.environ.get("PGPASSWORD"))
+import tempfile  # noqa: E402
+
+_STORAGE_ROOT = tempfile.mkdtemp(prefix="artify-test-storage-")
 os.environ.update(
     {
+        "ARTIFY_STORAGE_ROOT": _STORAGE_ROOT,
         "ARTIFY_DATABASE_URL_APP": _url("artify_app_login", "dev-only-app"),
         "ARTIFY_DATABASE_URL_PLATFORM": _url("artify_platform_login", "dev-only-platform"),
         "ARTIFY_DATABASE_URL_DISPATCHER": _url("artify_dispatcher_login", "dev-only-dispatcher"),
@@ -139,6 +143,14 @@ class Actor:
 
     def post(self, path: str, json: dict | None = None, org: str | None = None, **extra):  # type: ignore[no-untyped-def]
         return self.client.post(f"/api/v1{path}", json=json, headers=self.headers(org, **extra))
+
+    def put_bytes(self, path: str, data: bytes, org: str | None = None, **kw):  # type: ignore[no-untyped-def]
+        return self.client.put(
+            f"/api/v1{path}",
+            content=data,
+            headers=self.headers(org, **{"Content-Type": "application/octet-stream"}),
+            **kw,
+        )
 
     def patch(self, path: str, json: dict, org: str | None = None):  # type: ignore[no-untyped-def]
         return self.client.patch(f"/api/v1{path}", json=json, headers=self.headers(org))

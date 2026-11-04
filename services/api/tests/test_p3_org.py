@@ -32,7 +32,15 @@ def test_dashboard_numbers_come_from_the_database(client, mailer) -> None:  # ty
     assert d["pending_invitations"] == 1 and d["assigned_to_me"] == 0
     assert d["subscription"]["status"] == "trialing" and d["subscription"]["plan_name"]
     usage = {u["key"]: u for u in d["usage"]}
-    assert set(usage) == {"limit.companies", "limit.users", "limit.accountants", "limit.devices"}
+    assert set(usage) == {
+        "limit.companies",
+        "limit.users",
+        "limit.accountants",
+        "limit.devices",
+        "quota.storage_bytes",
+        "quota.documents_per_month",
+    }
+    assert usage["quota.storage_bytes"]["current"] == 0 and usage["quota.documents_per_month"]["current"] == 0
     assert (
         usage["limit.companies"]["current"],
         usage["limit.users"]["current"],
@@ -147,10 +155,12 @@ def test_subscription_view_matches_the_platform_configuration_and_cannot_be_chan
     assert rows["limit.companies"]["enforced_now"] is True
     # configured-but-not-yet-enforced and unmetered items are labelled honestly, not shown as zero
     assert (
-        rows["quota.storage_bytes"]["current"] is None
-        and rows["quota.storage_bytes"]["status"] == "not_metered"
-        and rows["quota.storage_bytes"]["enforced_now"] is False
+        rows["quota.ai_units_per_month"]["current"] is None
+        and rows["quota.ai_units_per_month"]["status"] == "not_metered"
+        and rows["quota.ai_units_per_month"]["enforced_now"] is False
     )
+    # Phase 6 meters and enforces stored bytes: a real 0 for an organization that has stored nothing
+    assert rows["quota.storage_bytes"]["current"] == 0 and rows["quota.storage_bytes"]["enforced_now"] is True
     assert rows["limit.workspace_sections_per_company"]["limit"] == 12  # a plan value, read from the platform's data
     assert rows["feature.api_access"]["enabled"] is False and rows["feature.report_builder"]["enabled"] is True
     assert "within your plan" in sub["next_step"] and sub["attention"] == []

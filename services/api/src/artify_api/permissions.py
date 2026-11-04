@@ -52,6 +52,12 @@ PERMISSIONS: tuple[Permission, ...] = (
         "company",
         "Change a company's workspace structure, categories, fields, rules and apply templates",
     ),
+    _P(
+        "documents.contribute",
+        "company",
+        "Upload, rename, move, archive documents and add versions where the folder allows",
+    ),
+    _P("documents.purge", "organization", "Permanently delete removed documents and set legal holds"),
     _P("workspace.permissions.manage", "company", "Manage who can see and change which parts of a company's workspace"),
     _P(
         "workspace_templates.manage", "organization", "Save, version and archive the organization's workspace templates"
@@ -127,6 +133,7 @@ SYSTEM_ROLES: dict[str, tuple[str, str, frozenset[str]]] = {
                 "workspace.read",
                 "workspace.manage",
                 "workspace_templates.manage",
+                "documents.contribute",
             }
         ),
     ),
@@ -143,6 +150,7 @@ SYSTEM_ROLES: dict[str, tuple[str, str, frozenset[str]]] = {
                 "assignments.read",
                 "devices.manage_own",
                 "workspace.read",
+                "documents.contribute",
             }
         ),
     ),
@@ -158,6 +166,7 @@ SYSTEM_ROLES: dict[str, tuple[str, str, frozenset[str]]] = {
                 "assignments.read",
                 "devices.manage_own",
                 "workspace.read",
+                "documents.contribute",
             }
         ),
     ),
@@ -169,7 +178,16 @@ SYSTEM_ROLES: dict[str, tuple[str, str, frozenset[str]]] = {
     "document_operator": (
         "organization",
         "Document operator",
-        frozenset({"organization.read", "companies.list", "companies.read", "devices.manage_own", "workspace.read"}),
+        frozenset(
+            {
+                "organization.read",
+                "companies.list",
+                "companies.read",
+                "devices.manage_own",
+                "workspace.read",
+                "documents.contribute",
+            }
+        ),
     ),
     "read_only": (
         "organization",

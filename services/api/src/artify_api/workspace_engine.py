@@ -720,6 +720,7 @@ _BASE_ACTIONS: dict[str, tuple[str, ...]] = {
     "workspace.read": ("view",),
     "workspace.manage": ("upload", "edit", "rename", "move", "archive", "delete", "configure"),
     "workspace.permissions.manage": ("manage_permissions",),
+    "documents.contribute": ("upload",),  # Phase 6: add and manage documents in folders that allow it
 }
 READ_ONLY_CEILING = frozenset({"view"})
 

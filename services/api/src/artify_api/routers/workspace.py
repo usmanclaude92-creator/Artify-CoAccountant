@@ -46,7 +46,7 @@ Read = Annotated[RequestCtx, Depends(Requires("workspace.read", company=True))]
 OrgMember = Annotated[RequestCtx, Depends(Requires("companies.list"))]
 TemplateAdmin = Annotated[RequestCtx, Depends(Requires("workspace_templates.manage"))]
 Page = dict[str, Any]
-_WS_KEYS = ("workspace.read", "workspace.manage", "workspace.permissions.manage")
+_WS_KEYS = ("workspace.read", "workspace.manage", "workspace.permissions.manage", "documents.contribute")
 
 
 # ---------------------------------------------------------------- helpers

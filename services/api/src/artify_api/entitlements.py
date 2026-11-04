@@ -49,6 +49,8 @@ DEFINITIONS: tuple[Definition, ...] = (
         "templates",
         "Non-archived organization workspace templates",
     ),
+    _D("limit.max_file_size_bytes", "organization", "bigint", "hard", "bytes", "Largest single uploaded file"),
+    _D("limit.import_batch_files", "organization", "int", "hard", "files", "Files in one import batch"),
     _D("limit.excel_templates_per_company", "company", "int", "hard", "templates", "Non-archived Excel templates"),
     _D(
         "quota.documents_per_month",
@@ -69,7 +71,15 @@ DEFINITIONS: tuple[Definition, ...] = (
 BY_KEY = {d.key: d for d in DEFINITIONS}
 # Keys the database can measure today (app.measure_entitlement). Others arrive with their feature.
 MEASURABLE = frozenset(
-    {"limit.companies", "limit.users", "limit.accountants", "limit.devices", "limit.workspace_templates"}
+    {
+        "limit.companies",
+        "limit.users",
+        "limit.accountants",
+        "limit.devices",
+        "limit.workspace_templates",
+        "quota.storage_bytes",  # Phase 6: bytes of every non-purged stored version
+        "quota.documents_per_month",  # Phase 6: documents created in the current UTC month
+    }
 )
 # Company-scope workspace limits are measured per company through RLS-protected counts (see workspace_usage below).
 COMPANY_MEASURES: dict[str, str] = {
@@ -159,6 +169,24 @@ def guard(conn: Connection, org_id: uuid.UUID, key: str, delta: int = 1) -> None
     call `refresh_counter` after it."""
     if BY_KEY[key].enforcement != "hard" or key not in MEASURABLE:
         raise ValueError(f"{key} is not an enforceable count limit yet")
+    _lock_counter(conn, org_id, key)
+    status = subscription_status(conn, org_id)
+    if status in (None, "suspended"):
+        raise SubscriptionRestricted(
+            "The subscription is suspended or missing; this action is not available.",
+            extra={"subscription_status": status},
+        )
+    limit = effective_limit(conn, org_id, key)
+    current = measure(conn, org_id, key)
+    if not limit.unlimited and current + delta > (limit.value or 0):
+        raise EntitlementExceeded(key=key, limit=limit.value or 0, current=current, requested=delta)
+
+
+def guard_amount(conn: Connection, org_id: uuid.UUID, key: str, delta: int) -> None:
+    """Like `guard`, for quota keys measured in bytes/documents. Refuses only an INCREASE that would exceed the limit:
+    nothing already stored is touched when a plan shrinks. Call before the write, in its transaction."""
+    if key not in MEASURABLE:
+        raise ValueError(f"{key} is not measurable")
     _lock_counter(conn, org_id, key)
     status = subscription_status(conn, org_id)
     if status in (None, "suspended"):

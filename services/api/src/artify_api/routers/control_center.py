@@ -30,7 +30,14 @@ from artify_api.settings import get_settings
 router = APIRouter(tags=["control-center"])
 
 NOTIFICATION_KEYS = ("invitations", "subscription_alerts", "support_requests", "security_events")
-ENFORCED_KEYS = ("limit.companies", "limit.users", "limit.accountants", "limit.devices")
+ENFORCED_KEYS = (
+    "limit.companies",
+    "limit.users",
+    "limit.accountants",
+    "limit.devices",
+    "quota.storage_bytes",
+    "quota.documents_per_month",
+)
 
 
 # ------------------------------------------------------------------ shared helpers

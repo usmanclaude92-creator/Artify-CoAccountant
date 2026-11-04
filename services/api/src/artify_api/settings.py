@@ -46,6 +46,39 @@ class Settings(BaseSettings):
     cors_origins: list[str] = Field(default_factory=list)
     rate_limit_backend: Literal["memory", "redis"] = "memory"
     mailer_backend: Literal["console", "memory", "smtp"] = "console"
+    # Document storage (Phase 6). The filesystem driver writes to a PRIVATE directory that must live on an encrypted
+    # volume that is never served by a web server; an S3/MinIO driver is not implemented yet (docs/documents/).
+    storage_backend: Literal["filesystem"] = "filesystem"
+    storage_root: str = "./var/storage"
+    max_upload_bytes: int = 200 * 1024 * 1024  # central ceiling; a plan can only LOWER it (limit.max_file_size_bytes)
+    upload_chunk_max_bytes: int = 8 * 1024 * 1024
+    upload_session_ttl_seconds: int = 24 * 3600
+    import_batch_max_files: int = 100  # a plan can only lower it (limit.import_batch_files)
+    max_concurrent_uploads: int = 3  # advisory to clients; the server also caps open sessions per user
+    open_upload_sessions_per_user: int = 50
+    allowed_upload_extensions: list[str] = Field(
+        default_factory=lambda: [
+            "pdf",
+            "jpg",
+            "jpeg",
+            "png",
+            "tif",
+            "tiff",
+            "bmp",
+            "heic",
+            "doc",
+            "docx",
+            "xls",
+            "xlsx",
+            "csv",
+            "txt",
+        ]
+    )
+    malware_scan: Literal["off", "clamd"] = "off"  # off: versions are labelled 'not_scanned'; clamd: scan, fail closed
+    clamd_host: str = "localhost"
+    clamd_port: int = 3310
+    download_grant_ttl_seconds: int = 120
+    document_purge_min_days: int = 30  # a soft-deleted document must wait this long before its binaries can be purged
     log_format: Literal["auto", "text", "json"] = "auto"  # auto: text in local, json elsewhere
     log_level: str = "INFO"
 

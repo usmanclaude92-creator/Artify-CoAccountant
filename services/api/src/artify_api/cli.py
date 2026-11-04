@@ -1,4 +1,4 @@
-"""Operations CLI:  artify-api migrate | seed | bootstrap-dev | create-platform-admin | dispatch-outbox | reconcile"""
+"""Operations CLI:  artify-api migrate | seed | bootstrap-dev | create-platform-admin | dispatch-outbox | reconcile | reconcile-storage"""
 
 from __future__ import annotations
 
@@ -99,6 +99,29 @@ def cmd_reconcile(_: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_reconcile_storage(args: argparse.Namespace) -> int:
+    """Compare stored objects with document records for every organization (dry run unless --apply)."""
+    import uuid
+
+    from artify_api import documents_ops
+
+    orphans = missing = 0
+    with _owner_engine().begin() as conn:
+        org_ids = [r[0] for r in conn.execute(text("SELECT id FROM organizations"))]
+        for org_id in org_ids:
+            conn.execute(text("SELECT set_config('app.org_id', :o, true)"), {"o": str(org_id)})
+            out = documents_ops.reconcile(conn, uuid.UUID(str(org_id)), dry_run=not args.apply)
+            for k in out["orphan_objects"]:
+                orphans += 1
+                print(f"org={org_id} orphan object {k}")
+            for k in out["missing_objects"]:
+                missing += 1
+                print(f"org={org_id} MISSING object for a stored version: {k}")
+    mode = "applied" if args.apply else "dry run"
+    print(f"storage reconciliation ({mode}): {orphans} orphan object(s), {missing} missing object(s)")
+    return 1 if missing else 0
+
+
 def cmd_dispatch_outbox(_: argparse.Namespace) -> int:
     from artify_api.outbox import dispatch_pending
     from artify_api.worker import process_event
@@ -124,6 +147,9 @@ def main(argv: list[str] | None = None) -> int:
     p.set_defaults(fn=cmd_create_platform_admin)
     sub.add_parser("dispatch-outbox").set_defaults(fn=cmd_dispatch_outbox)
     sub.add_parser("reconcile").set_defaults(fn=cmd_reconcile)
+    p = sub.add_parser("reconcile-storage")
+    p.add_argument("--apply", action="store_true", help="remove orphan objects older than the grace period")
+    p.set_defaults(fn=cmd_reconcile_storage)
     sub.add_parser("migrate").set_defaults(fn=cmd_migrate)
     sub.add_parser("bootstrap-dev").set_defaults(fn=cmd_bootstrap_dev)
     args = parser.parse_args(argv)

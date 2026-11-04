@@ -12,7 +12,7 @@ compose-smoke:      ## build + start the Docker stack, smoke-test it, tear it do
 	sleep 15
 	$(API) python infrastructure/dev/compose_smoke.py; status=$$?; docker compose down -v; exit $$status
 
-.PHONY: compose-smoke install db-reset test-api lint typecheck boundaries openapi openapi-check openapi-breaking client web-build web-test e2e check-docs audit hooks check
+.PHONY: compose-smoke install db-reset test-api lint typecheck boundaries openapi openapi-check openapi-breaking client web-build web-test e2e check-docs audit hooks lockfiles check
 
 install:            ## install Python and JS dependencies from lockfiles
 	uv sync --project services/api
@@ -68,4 +68,8 @@ audit:              ## dependency vulnerability scan (Python: pip-audit, JS: pnp
 hooks:              ## install git pre-commit hooks
 	uvx pre-commit install
 
-check: lint typecheck openapi-check test-api check-docs web-test web-build   ## everything except e2e
+lockfiles:          ## fail if a manifest and its lockfile disagree (this broke CI once)
+	uv lock --check
+	pnpm install --frozen-lockfile
+
+check: lockfiles lint typecheck openapi-check test-api check-docs web-test web-build   ## everything except e2e

@@ -12,7 +12,7 @@ Every item that was open at the end of the first pass, with what was done and th
 
 | # | Open item | Outcome | Evidence |
 |---|---|---|---|
-| 1 | Run CI on GitHub | **Done.** Run 1 (first push): all 5 jobs green on a clean runner. Run 2 (follow-up push): 6 of 7 jobs green (API, web, Docker smoke, Playwright e2e, docs, dependency audit); **gitleaks failed** on a fake test key literal (false positive) — fixed by generating the key at test time + a documented `.gitleaksignore`. Result of the run after that fix: see "CI after the final push" below | GitHub Actions runs 41816747468 and 41819604051 |
+| 1 | Run CI on GitHub | **Done**, and it earned its keep: run 1 all green; run 2 caught a gitleaks false positive (fixed); run 14 caught a lockfile mismatch that broke `web` and `e2e` (fixed, `make lockfiles` added). Final result: last line of this report | GitHub Actions runs 41816747468, 41819604051, 41821033425 |
 | 1b | Dependency-scan step in CI | **Done** (`audit` job: `pip-audit`, `pnpm audit --prod`, `pnpm audit --audit-level high`) | job green in run 2 |
 | 2 | Verify `docker-compose.yml`, write Dockerfiles | **Done.** `services/api/Dockerfile` (non-root, no dev dependencies, 234 MB); compose now has migrate → api, worker, dispatcher. Running the worker for real exposed a **missing `celery[redis]`/`packaging` dependency** (would have crashed in production) — fixed. `compose_smoke.py` proves sign-up → MFA → company → outbox → dispatcher → Redis → Celery worker, the Redis-backed rate limiter, JSON logs, and that no password reaches any log. **MinIO service remains unverified** (no reachable registry image here); it sits behind the `storage` profile | local run, and CI `docker` job green in run 2 |
 | 3a | Pre-commit hooks | **Done** (6 local hooks; a planted private key is rejected) | `uvx pre-commit run --all-files` |
@@ -50,24 +50,30 @@ Every item that was open at the end of the first pass, with what was done and th
 
 ## 2. Commands actually executed, and their results
 
+Local runs are from the sandbox (PostgreSQL 16, Redis 7, Docker 29 with registry mirrors). "CI" means GitHub Actions on a clean runner.
+
 | Check | Command | Result |
 |---|---|---|
-| API tests (real PostgreSQL 16, database rebuilt from migrations) | `make test-api` (with `ARTIFY_TEST_REDIS_URL` set) | **59 passed**. Without the Redis variable: 58 passed, 1 skipped (the Redis limiter test) |
-| Lint / format | `make lint` (ruff check, ruff format --check, eslint) | clean |
-| Types | `make typecheck` (mypy `--strict` on 31 files; `tsc --noEmit` on 3 packages) | clean |
-| OpenAPI contract drift | `make openapi-check`; regenerate client → no diff | up to date |
-| Web unit tests | `make web-test` (vitest) | 3 passed |
-| Web production build | `make web-build` (Next.js 16.4.5) | succeeded |
-| Browser end-to-end | `make e2e` (API + production web build + headless Chromium) | 3 tests × 15 runs after the script fix: 14 consecutive passes preceded by **1 failure whose details I did not capture** (first run right after I fixed the process cleanup); not reproduced in 14 runs |
+| API tests (real PostgreSQL 16, database rebuilt from migrations) | `make test-api` with `ARTIFY_TEST_REDIS_URL` set | **83 passed** (run twice at the end). Without the Redis variable: 82 passed + 1 skipped |
+| Lint / format / boundaries | `make lint` (ruff, ruff format, import-linter, eslint) | clean; 2 boundary contracts kept; a deliberate violation breaks both |
+| Types | `make typecheck` (mypy `--strict`, 34 files; `tsc --noEmit`, 3 packages) | clean |
+| OpenAPI | `make openapi-check`; generated client diff; breaking-change check vs the first pushed contract | up to date; 0 breaking |
+| Lockfiles | `make lockfiles` (`uv lock --check`, `pnpm install --frozen-lockfile`) | consistent (added after CI caught a mismatch, see §4) |
+| Web unit tests / build | `make web-test`, `make web-build` | 3 passed; build succeeded |
+| Browser tests | `make e2e` (API + production web build + headless Chromium): 3 journeys, 18 axe scans (7 public pages × light/dark, Arabic RTL, signed-in dashboard in 3 modes), keyboard, error-association, org-switcher | **23 tests; 12 consecutive full runs all passed (12/12)**, plus several earlier green runs |
+| Docker stack | `docker compose up` + `infrastructure/dev/compose_smoke.py` | passed locally and in CI: sign-up → MFA → company → outbox → dispatcher → Redis → Celery worker; Redis rate limiter; JSON logs; no password in any log |
+| Pre-commit | `uvx pre-commit run --all-files` | 6 hooks pass; planted private key is rejected |
+| Dependency audit | `pip-audit` (Python), `pnpm audit` | Python: none. JavaScript production: none. Dev: **3 moderate `minimatch` advisories remain** (lint tooling; patched major is incompatible with ESLint 9). CI fails on high/critical |
+| RLS performance baseline | `infrastructure/dev/bench_rls.py` | §5 |
 | Docs check | `python3 tools/check_docs.py` | OK (44 required files, 48 markdown files) |
-| RLS performance baseline | `infrastructure/dev/bench_rls.py` (50,000 companies / 100 orgs, one local machine) | §5 |
-| Dependency audit, Python | `pip-audit` on the 162 pinned packages | no known vulnerabilities |
-| Dependency audit, JavaScript | `pnpm audit` | production: none. Dev toolchain: a critical + 2 moderate Vitest advisories were found and **fixed by upgrading** (vitest 4.1.12, eslint 9.39.5); **3 moderate `minimatch` advisories remain** (lint toolchain only; the patched major is incompatible with ESLint 9) |
-| Secret scan | local `grep` for key/token patterns | no matches. The `gitleaks` CI job has **not run** |
+| CI, run 1 (first push) | GitHub Actions | 5/5 jobs green |
+| CI, run 2 (follow-up A) | GitHub Actions | 6/7 green; **gitleaks failed** (false positive in a test, fixed) |
+| CI, run 14 (follow-up B) | GitHub Actions | 5/7 green; **`web` and `e2e` failed at `pnpm install --frozen-lockfile`** (manifest/lockfile mismatch I introduced; fixed). gitleaks, API, Docker, audit, docs green |
+| CI after the lockfile fix | GitHub Actions | see the last line of this report |
 
-**Mutation checks (to prove the tests can fail):** (1) widened the `companies` RLS policy → 2 API isolation tests failed (list endpoints leaked; direct reads were still blocked by the API-layer check, which shows the two layers are independent); (2) opened the `organizations` policy to everyone → 4 database tests failed. Both were reverted.
+**Mutation checks (to prove tests can fail):** (1) widened the `companies` RLS policy → 2 API isolation tests failed; (2) opened the `organizations` policy to everyone → 4 database tests failed; (3) planted import violations → both import-linter contracts broke; (4) planted a private key → the pre-commit hook rejected it. All reverted.
 
-**Not executed:** `docker compose up` (the environment had no Docker daemon), the GitHub Actions workflow, any run against a real Celery broker, any load/soak test, any test of dark-mode appearance, any screen-reader or keyboard accessibility audit.
+**Not executed:** the MinIO service (no reachable registry image), any load/soak test, any manual screen-reader or expert accessibility audit, a local gitleaks run (binary download blocked by the permission policy; CI runs it), a run against a real mail provider.
 
 ## 3. Requirement-by-requirement status (against `PHASE_1.md`)
 
@@ -76,13 +82,13 @@ Every item that was open at the end of the first pass, with what was done and th
 |---|---|---|
 | Sign-up of an Organization (firm / independent), e-mail verification, login, logout, password reset, TOTP MFA, session list | IMPLEMENTED | E-mail is console/memory only — no real delivery |
 | Device list | IMPLEMENTED (minimal) | `POST/GET/DELETE /devices`, counted by `limit.devices`; full device management is Phase 5 |
-| Organization members and roles; invitations | IMPLEMENTED | Status changes only; **changing a member's role is not implemented** |
+| Organization members and roles; invitations | IMPLEMENTED | Status and role changes with safety rules |
 | Platform-admin bootstrap with mandatory MFA | IMPLEMENTED | `artify-api create-platform-admin` |
 | Companies: minimal create/read | IMPLEMENTED | Plus update, archive, assignments, company-side invitations |
 | Entitlement catalog + service + seeded plan + counters | IMPLEMENTED | 17 keys defined; only 4 are enforceable now (`limit.companies/users/accountants/devices`) |
-| Audit events for auth, membership, company events | IMPLEMENTED, with a gap | User-level auth events (login, MFA) are stored without an organization and are **not visible to tenant admins** (Phase 3) |
-| Web shell: login, MFA, i18n en + ar, light/dark tokens | IMPLEMENTED | Dark mode is defined in tokens but was never rendered or checked |
-| Web shell: **org/company switcher skeleton** | NOT IMPLEMENTED | The dashboard shows the first organization only |
+| Audit events for auth, membership, company events | IMPLEMENTED | User-level security events are visible to each tenant the user belongs to (ADR-025, rule awaiting your confirmation) |
+| Web shell: login, MFA, reset/accept-invitation pages, i18n en + ar, light/dark tokens | IMPLEMENTED | Dark mode rendered, viewed, and axe-checked |
+| Web shell: org/company switcher | IMPLEMENTED | Selection lives in the URL; verified by `switcher.spec.ts` |
 | Arabic scaffolding | IMPLEMENTED, **needs native review** | First-pass translation; RTL layout and number order verified by an automated geometry assertion |
 
 ### Technical implementation
@@ -90,23 +96,23 @@ Every item that was open at the end of the first pass, with what was done and th
 |---|---|---|
 | Pin versions (ADR-019) | IMPLEMENTED | `uv.lock`, `pnpm-lock.yaml`, versions in `TECHNOLOGY_STACK.md` |
 | pnpm + uv workspaces, task runner | IMPLEMENTED | `Makefile` |
-| Pre-commit hooks | NOT IMPLEMENTED | |
-| Docker Compose (api, worker, postgres, redis, minio) | IMPLEMENTED, **NOT VERIFIED** | Infra services only; no API/worker Dockerfile; never started |
+| Pre-commit hooks | IMPLEMENTED | 6 local hooks |
+| Docker Compose (api, worker, postgres, redis, minio) | IMPLEMENTED; **MinIO NOT VERIFIED** | Everything except MinIO is verified locally and in CI; MinIO sits behind the `storage` profile |
 | FastAPI factory, settings, error handling, request context | IMPLEMENTED | |
-| Structured (JSON) logging | NOT IMPLEMENTED | Standard logging only; correlation id is in responses and error logs |
+| Structured (JSON) logging | IMPLEMENTED | Correlation ids; text format in local, JSON elsewhere |
 | Alembic, UUIDv7 | IMPLEMENTED | Forward-only migrations |
-| Idempotency | IMPLEMENTED (partial) | Helper applied to company creation only; not yet a global middleware |
+| Idempotency | IMPLEMENTED (key creating routes) | Company, invitation and device creation; not a global middleware |
 | Outbox + dispatcher skeleton | IMPLEMENTED | Dispatch/backoff tested with a fake sender |
-| Celery wiring with tenant-context propagation | IMPLEMENTED, **partly verified** | Context helper tested; no real broker/worker run |
-| Auth module behind an `AuthProvider` interface | PARTIAL | `auth_service.py` implements D-1, but a formal interface was **not** extracted |
+| Celery wiring with tenant-context propagation | IMPLEMENTED | Context helper tested; real worker verified in the container smoke test |
+| Auth module behind an `AuthProvider` interface | IMPLEMENTED | Protocol + `LocalAuthProvider`; routes depend only on it |
 | Argon2id, rotating refresh + reuse detection, TOTP, rate limiting, realm separation | IMPLEMENTED | Rate limiting also verified against a real Redis |
 | Context resolution, policy engine, permission catalog, role seeding | IMPLEMENTED | |
 | RLS framework: roles, helpers, immutability triggers, catalog check | IMPLEMENTED | Catalog check is a pytest, not yet a CI gate that has run |
 | `EntitlementService` with locked counters + reconciliation | IMPLEMENTED | Reconciliation exists as a function; no scheduled job |
-| OpenAPI → TS client generation | IMPLEMENTED | Drift check only; **no semantic breaking-change check** |
+| OpenAPI → TS client generation | IMPLEMENTED | Drift check plus a semantic breaking-change check with an allow-list |
 | `apps/web` route groups, `packages/ui` | IMPLEMENTED | |
-| CI (lint, types, tests, migrations, isolation, scans, docs) | WRITTEN, **NOT RUN** | `.github/workflows/ci.yml`; has no dependency-scan step |
-| Module-boundary enforcement (import-linter) | NOT IMPLEMENTED | Flagged as an open risk in Phase 0 |
+| CI (lint, types, boundaries, tests, migrations, isolation, scans, docs, Docker, e2e) | IMPLEMENTED and run on GitHub | 7 jobs; see §2 for the run history |
+| Module-boundary enforcement (import-linter) | IMPLEMENTED | 2 contracts, in CI and pre-commit |
 
 ### API requirements
 Routes follow the architecture documents rather than the loose list in `PHASE_1.md`: there is **no `POST /orgs`** (organizations are created by sign-up); companies are `POST/GET /orgs/{org_id}/companies` and `GET/PATCH /companies/{company_id}` (with `X-Organization-Id`). Every route declares its authorization (enforced by a test); mutating company creation accepts `Idempotency-Key`.
@@ -117,12 +123,12 @@ Implemented and tested: realm-separated tokens, MFA enforcement for privileged r
 ### Acceptance criteria
 | # | Criterion | Status |
 |---|---|---|
-| 1 | `docker compose up` yields a working stack from a clean clone | **NOT VERIFIED.** The equivalent flow with locally installed PostgreSQL/Redis was run (`make db-reset`, `make check`, `make e2e`) |
+| 1 | `docker compose up` yields a working stack from a clean clone | **Met** (local and CI): `compose_smoke.py` exercises the whole chain. MinIO excluded (see above) |
 | 2 | New org can sign up, verify, enable MFA, create a company, invite a second user; audited | **Met via API tests.** In the browser: sign-up, verify, MFA, dashboard. Creating a company and inviting a user have **no UI** (Phase 3) |
 | 3 | Isolation suite passes and fails closed on empty context | **Met** (TS-ISO-01, 02, 04, 05, 08, 09, 10 executed; see `TEST_SCENARIOS.md`) |
 | 4 | Company beyond `limit.companies` fails via the raw API; concurrency test passes | **Met** (8 parallel creators, one slot left → exactly 1 success) |
-| 5 | OpenAPI → TS client generation in CI; breaking-change check active | **Not met:** generation and drift check run locally; CI never ran; no breaking-change check |
-| 6 | CI is green; report lists every command | **Not met** for CI (never ran). Commands are listed in §2 |
+| 5 | OpenAPI → TS client generation in CI; breaking-change check active | **Met:** generation, drift check and breaking-change check run in CI |
+| 6 | CI is green; report lists every command | **Met once the final run is green** (see the last line); commands are in §2. CI has failed twice on real defects, both fixed |
 
 ## 4. Defects the verification found (and what was done)
 1. Schema `CHECK` on `permissions.scope` rejected the `member` scope → caught by the first seed run; schema fixed.
@@ -134,6 +140,15 @@ Implemented and tested: realm-separated tokens, MFA enforcement for privileged r
 7. **E2E harness leaked servers** (cleanup killed the wrapper, not the child), so one run silently hit a stale API → script now uses process groups and refuses to start if ports are busy.
 8. User-level auth events invisible to tenant admins → **not fixed**, recorded as a known limitation.
 9. Dev-toolchain vulnerabilities (Vitest critical) → fixed by upgrade.
+
+Found in the follow-up pass:
+
+10. Missing `celery[redis]`/`packaging` dependency — the worker crashed in a production-style image; invisible in dev because `pytest` pulled `packaging` in. Fixed; the container smoke test now guards it.
+11. A TOTP replay test depended on the wall clock staying in one 30-second window → failed once in four runs. Made deterministic (uses the recorded step).
+12. Three real accessibility defects found by axe: links distinguished by colour alone; the language button's accessible name did not contain its visible text; (and a redundant group label that made locators ambiguous). Fixed.
+13. gitleaks (CI) flagged a fake key literal in a test → removed (generated at test time) + documented `.gitleaksignore` entry for the historical commit.
+14. CI `web` and `e2e` jobs failed: I pinned an exact version in `package.json` after `pnpm add` had written a caret range, so `--frozen-lockfile` failed; local runs used a non-frozen install and hid it. Fixed; `make lockfiles` now checks it.
+15. A language switch refetched all dashboard data (effect depended on translated strings) → uses `useEffectEvent`.
 
 ## 5. RLS performance baseline (indicative, one machine, one run each)
 
@@ -152,24 +167,27 @@ Python (locked in `uv.lock`): fastapi, uvicorn, pydantic, pydantic-settings, sql
 ## 7. Files
 92 tracked files at the time of writing (Phase 0 contributed 43). New in Phase 1: the API service, migrations, tests, generated client, UI/web packages, tooling, six skills, `THREAT_MODEL_AUTH.md`, this report. Modified: README, CLAUDE.md, DECISIONS, TECHNOLOGY_STACK, ISOLATION_AND_RLS, ENTITY_CATALOG, TEST_SCENARIOS, PROJECT_SKILLS_PLAN, roadmap, PHASE_1, docs index, `tools/check_docs.py`, `.gitignore`.
 
-## 8. Not done / outstanding for Phase 1 (do these or consciously defer)
-1. Run CI on GitHub and fix whatever it finds (workflow unrun); add a dependency-scan step.
-2. Verify `docker-compose.yml`; write API/worker Dockerfiles.
-3. Pre-commit hooks; import-linter module boundaries; JSON structured logging.
-4. Extract a real `AuthProvider` interface; implement member role changes.
-5. Org/company switcher in the web shell; dark-mode visual check; keyboard and screen-reader audit.
-6. Native review of Arabic strings.
-7. Semantic OpenAPI breaking-change check.
-8. Make user-level auth events visible to tenant admins (decide attribution rule).
-9. Real e-mail delivery adapter (needs D-3 hosting decision).
-10. Investigate the single uncaptured e2e failure if it recurs (traces are now retained on failure).
+## 8. Still open after the follow-up pass
+
+1. **Native review of the Arabic strings** — needs a human with accounting vocabulary.
+2. **Manual screen-reader / expert accessibility audit** — only automated axe and keyboard checks were done.
+3. **MinIO service** unverified (no reachable image); not needed until Phase 6.
+4. **Real e-mail provider** (D-3) and **durable** delivery through the outbox (Phase 3). The SMTP adapter is tested only against a local SMTP server.
+5. **Branch protection** making the CI checks *required* (a repository setting).
+6. **Dependabot**: 5 pull requests it opened (#1–#5) await your decision; one Dependabot `npm_and_yarn` update run failed and was not investigated.
+7. **Local gitleaks run** was not possible; CI covers it.
+8. **Unexplained single e2e failure** from the first pass: not reproduced in 12 + several further runs; traces are retained if it recurs.
+9. Confirm the **audit attribution rule** (ADR-025).
+10. Residual security items in `THREAT_MODEL_AUTH.md` (breached-password check, trusted-proxy IP handling, nonce CSP, key rotation, device-bound refresh tokens).
 
 ## 9. Risks
-- **Unrun CI** is the largest process risk: nothing yet proves the project builds from a clean clone on a neutral machine.
+- **CI has caught two defects my local runs missed** (a lockfile mismatch and a secret-scanner finding). It is the most valuable safety net here; making its checks *required* (branch protection) is still a repository setting to configure.
 - **Security controls are tested on one database cluster**: PostgreSQL 16 as superuser owner. A non-superuser owner role (production) needs `BYPASSRLS` or explicit owner policies for `seed`/bootstrap; documented in ADR-023 but not exercised.
 - **HS256 shared secrets, no key rotation (`kid`)**.
 - **Strict refresh-reuse policy** may sign out legitimate clients after network retries.
 - **Arabic accounting terminology** needs a domain reviewer before any customer sees it.
+- **Automated accessibility checks are partial** by nature; a manual audit is still required.
+- **Best-effort e-mail** can lose queued messages on a crash until the outbox-based delivery exists.
 - **Policy performance** was measured for the `companies` table only; every future company-scoped table must follow ADR-024 and be re-benchmarked at realistic row counts (documents will be orders of magnitude larger).
 
 ## 10. Docs check
@@ -179,9 +197,9 @@ Python (locked in `uv.lock`): fastapi, uvicorn, pydantic, pydantic-settings, sql
 | ID | Question | Needed by |
 |---|---|---|
 | D-2 | Billing provider (or confirm manual invoicing first) | Phase 2 |
-| — | Org-level audit attribution of user-level auth events (see §8.8) | Phase 3 |
-| — | Whether Phase 2 may begin while §8 items 1–3 (CI, compose, hooks) are still open, or they should be closed first (recommended: close CI first) | Now |
+| — | Confirm ADR-025 (user-level security events visible to each tenant the user belongs to) | Now |
+| — | What to do with the 5 Dependabot PRs and whether to enable branch protection | Now |
 | D-7, D-5, D-6, D-10, D-4, D-11 | unchanged from `DECISIONS.md` | see roadmap |
 
 ## 12. Instructions for beginning Phase 2
-Do not begin until this report is approved. Recommended order: (1) push and let CI run, fix findings; (2) approve or amend §8; (3) answer D-2; (4) say "Start Phase 2". Phase 2 then builds the Super Admin on the existing platform realm: plan/version/entitlement editing, subscriptions and usage views, support-access grant workflow with tenant approval and the grant-scoped RLS policies (TS-ISO-07), platform audit viewer — see `PHASE_2.md`.
+Do not begin until this report is approved. Recommended order: (1) confirm the final CI run is green (last line below); (2) decide on the Dependabot PRs and ADR-025; (3) answer D-2; (4) say "Start Phase 2". Phase 2 then builds the Super Admin on the existing platform realm: plan/version/entitlement editing, subscriptions and usage views, support-access grant workflow with tenant approval and the grant-scoped RLS policies (TS-ISO-07), platform audit viewer — see `PHASE_2.md`.

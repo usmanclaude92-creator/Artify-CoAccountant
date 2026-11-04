@@ -9,7 +9,26 @@ const NAMES = {
   platform: { access: "artify_pat", refresh: "artify_prt" },
 } as const;
 
-export const API_URL = process.env.ARTIFY_API_URL ?? "http://localhost:8000/api/v1";
+/** Backend base URL. A localhost default exists only outside production: a deployed build without a
+ * configured backend (e.g. a UI-only preview) must say so, not silently call localhost. */
+export const API_URL =
+  process.env.ARTIFY_API_URL ?? (process.env.NODE_ENV !== "production" ? "http://localhost:8000/api/v1" : undefined);
+
+/** fetch() against the API that never throws: an unconfigured or unreachable backend becomes a 503
+ * problem document with code `api_unavailable`, which the UI translates. */
+export async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const unavailable = () =>
+    new Response(
+      JSON.stringify({ code: "api_unavailable", status: 503, detail: "The backend is not connected to this deployment." }),
+      { status: 503, headers: { "content-type": "application/problem+json" } },
+    );
+  if (!API_URL) return unavailable();
+  try {
+    return await fetch(`${API_URL}${path}`, { cache: "no-store", ...init });
+  } catch {
+    return unavailable();
+  }
+}
 const secure = process.env.NODE_ENV === "production";
 
 export interface TokenBundle {
@@ -49,10 +68,9 @@ export async function apiWithSession(
   init: { method: string; body?: string; headers?: Record<string, string> },
 ): Promise<Response> {
   const call = async (access: string | undefined) =>
-    fetch(`${API_URL}${path}`, {
+    apiFetch(path, {
       method: init.method,
       body: init.body,
-      cache: "no-store",
       headers: {
         "content-type": "application/json",
         ...(init.headers ?? {}),
@@ -63,9 +81,8 @@ export async function apiWithSession(
   let res = await call(access);
   if (res.status === 401 && refresh) {
     const refreshPath = realm === "platform" ? "/platform/auth/refresh" : "/auth/refresh";
-    const r = await fetch(`${API_URL}${refreshPath}`, {
+    const r = await apiFetch(refreshPath, {
       method: "POST",
-      cache: "no-store",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ refresh_token: refresh }),
     });

@@ -85,6 +85,7 @@ export const en = {
     "limit.devices": "Devices",
   } as Record<string, string>,
   errors: {
+    api_unavailable: "This preview is not connected to a backend yet, so accounts and data are not available.",
     unauthenticated: "Your email or password is not correct, or your session has ended.",
     email_not_verified: "Verify your email address before signing in.",
     rate_limited: "Too many attempts. Please wait and try again.",
@@ -183,6 +184,7 @@ export const ar: Messages = {
     "limit.devices": "الأجهزة",
   },
   errors: {
+    api_unavailable: "هذه المعاينة غير متصلة بخادم خلفي بعد، لذا لا تتوفر الحسابات والبيانات.",
     unauthenticated: "البريد الإلكتروني أو كلمة المرور غير صحيحة، أو انتهت الجلسة.",
     email_not_verified: "تحقق من بريدك الإلكتروني قبل تسجيل الدخول.",
     rate_limited: "محاولات كثيرة. يرجى الانتظار ثم المحاولة مجددًا.",

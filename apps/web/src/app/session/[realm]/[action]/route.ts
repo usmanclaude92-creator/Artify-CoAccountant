@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { API_URL, apiWithSession, clearTokens, getTokens, isRealm, setTokens, type TokenBundle } from "@/lib/server-session";
+import { apiFetch, apiWithSession, clearTokens, getTokens, isRealm, setTokens, type TokenBundle } from "@/lib/server-session";
 
 /** Session endpoints that set/clear the token cookies: login, mfa, confirm-mfa, logout. */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ realm: string; action: string }> }) {
@@ -12,9 +12,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ realm: str
   const base = realm === "platform" ? "/platform/auth" : "/auth";
   const raw = await req.text();
   const forward = (path: string, body?: string, access?: string) =>
-    fetch(`${API_URL}${path}`, {
+    apiFetch(path, {
       method: "POST",
-      cache: "no-store",
       headers: { "content-type": "application/json", ...(access ? { authorization: `Bearer ${access}` } : {}) },
       body,
     });

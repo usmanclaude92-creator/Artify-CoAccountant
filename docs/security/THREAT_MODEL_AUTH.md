@@ -12,7 +12,8 @@ Scope: tenant-realm and platform-realm login, MFA, refresh, password reset, e-ma
 | **Spoofing — MFA code replay** | Accepted time step recorded; same/older step rejected; recovery codes single-use | `test_mfa_login_challenge_replay_and_recovery_codes`, `test_recovery_code_works_once` |
 | **Tampering — token forgery / alg confusion** | Algorithm pinned to HS256; `iss`, `aud`, `exp`, `iat`, `sub`, `sid` required; token type (`access` vs `mfa_challenge`) checked | `test_realms_are_separate` (challenge token rejected as access token) |
 | **Tampering — CSRF (web)** | Tokens in HttpOnly SameSite=Strict cookies; BFF rejects non-GET without custom header or with foreign Origin | Playwright e2e (403 without header; cookie flags asserted) |
-| **Repudiation** | `audit_events` / `platform_audit_events` append-only (privileges + trigger); login success/failure, MFA, session revoke, password reset, invitations, denials recorded | `test_audit_tables_are_append_only`, `test_audit_log_records_actions…` |
+| **Repudiation** | `audit_events` / `platform_audit_events` append-only (privileges + trigger); login success/failure, MFA, session revoke, password reset, invitations, denials recorded; user-level events are visible to every tenant the user belongs to and cannot be forged for another user | `test_audit_tables_are_append_only`, `test_audit_log_records_actions…`, `test_audit_visibility.py` |
+| **Information disclosure — logs and errors** | Structured logs carry identifiers only (never bodies, tokens or passwords); database errors omit bound parameters (`hide_parameters=True`); mail logs never contain message content | `test_database_errors_do_not_expose_bound_parameters`, `test_smtp_failure_never_raises_into_the_request_and_never_logs_content`, container smoke test (no password in any log) |
 | **Information disclosure — secrets at rest** | Passwords Argon2id; TOTP secrets Fernet-encrypted; refresh/email/invitation tokens stored as SHA-256 only; audit redacts sensitive keys | `test_passwords_are_stored_as_argon2id`, `test_audit_redacts_sensitive_values` |
 | **Information disclosure — cross-tenant** | RLS + composite FKs + 404 semantics | `test_isolation_api.py`, `test_database_rls.py` |
 | **Information disclosure — tokens in JS** | Web never exposes tokens to scripts | e2e: `document.cookie` contains no `artify_*` |
@@ -21,13 +22,15 @@ Scope: tenant-realm and platform-realm login, MFA, refresh, password reset, e-ma
 | **Elevation — invitation abuse** | Single-use hashed tokens with expiry; existing accounts must authenticate as the invited user; `firm_owner` cannot be invited | `test_invitation_edge_cases`, `test_existing_user_must_authenticate…` |
 | **Elevation — platform admin reading tenant data** | No platform policies/grants on business tables | `test_platform_role_cannot_read_tenant_business_data` |
 
-## Residual risks and gaps (not mitigated in Phase 1)
-1. No breached-password screening (small denylist only).
-2. Client IP is taken from the socket; behind a reverse proxy, trusted-proxy header handling must be configured (Phase 12) or rate limits key on the proxy address.
-3. Refresh reuse is strict: a legitimate client retrying a rotation after a network failure will be signed out.
-4. No device binding of refresh tokens yet (sessions can carry a `device_id`, but registration flows arrive in Phase 5).
-5. CSP allows inline scripts required by this Next.js version; nonce-based CSP is planned.
-6. HS256 shared-secret signing: acceptable for one deployable; asymmetric keys/rotation (`kid`) are not implemented.
-7. User-level auth events are stored without an organization and are not visible to tenant admins (Phase 3 audit viewer).
-8. No account lockout notification e-mails, no "new device" alerts.
-9. The in-memory mailer/console mailer is a placeholder: real delivery is not implemented (D-3 pending hosting choice).
+## Residual risks and gaps (status after the Phase 1 follow-up)
+1. No breached-password screening (small denylist only). **Open.**
+2. Client IP is taken from the socket; behind a reverse proxy, trusted-proxy header handling must be configured (Phase 12) or rate limits key on the proxy address. **Open.**
+3. Refresh reuse is strict: a legitimate client retrying a rotation after a network failure will be signed out. **Open (by design).**
+4. No device binding of refresh tokens yet (sessions can carry a `device_id`, but registration flows arrive in Phase 5). **Open.**
+5. CSP allows inline scripts required by this Next.js version; nonce-based CSP is planned. **Open.**
+6. HS256 shared-secret signing, no key rotation (`kid`). **Open.**
+7. ~~User-level auth events invisible to tenant admins.~~ **Resolved** (ADR-025); the attribution rule awaits owner confirmation.
+8. No account-lockout notification e-mails and no "new device" alerts. **Open.**
+9. ~~Mail is a placeholder.~~ **Partly resolved:** an SMTP adapter exists and is tested against a real SMTP server, but delivery is best-effort and in-process (ADR-026) and no provider is chosen (D-3).
+10. Automated accessibility checks (axe, keyboard) pass, but **no manual screen-reader or expert audit has been done.** **Open.**
+11. CI secret scanning (gitleaks) could not be run locally (binary download blocked); it runs in CI only. **Open.**

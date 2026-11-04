@@ -20,5 +20,14 @@ One transaction per request, committed **before** the response is sent (dependen
 - Limited resources: call `entitlements.guard(...)` before the mutation and `refresh_counter` after (see `routers/companies.py`).
 - Money in JSON is a string; models live next to routers or in `routers/schemas.py`. Give each route a stable `operation_id` (client method name).
 
+## Authentication seam
+Routes call `get_auth_provider()` (`auth_provider.py`), never `auth_service` directly. A new identity provider implements the `AuthProvider` protocol; tests can swap one in with `set_auth_provider`.
+
+## Module boundaries
+`lint-imports` (from `services/api`) enforces the layering in `pyproject.toml`: routes → context/services → entitlements/audit/policy/… → db/security/primitives. Put new modules in a layer. `policy`/`permissions` stay free of FastAPI and SQLAlchemy.
+
+## Logging
+`logging_config.py` emits JSON with a correlation id (text in local). Log identifiers and outcomes only.
+
 ## Contract
-After changing routes/models: `make client` (regenerates `packages/api-client/openapi.json` and `src/schema.d.ts`). CI fails if either is stale (`make openapi-check`).
+After changing routes/models: `make client` (regenerates `packages/api-client/openapi.json` and `src/schema.d.ts`). CI fails if either is stale (`make openapi-check`) or if the change is breaking for existing clients (`make openapi-breaking BASE=<git ref>`; accepted breaks go in `packages/api-client/breaking-changes-allowed.txt` with a reason). Rules: see `services/api/scripts/check_openapi_breaking.py`.

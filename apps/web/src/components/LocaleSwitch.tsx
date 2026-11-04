@@ -10,13 +10,15 @@ export function LocaleSwitch() {
     <button
       type="button"
       className="a-link bg-transparent"
-      aria-label={t.language}
+      lang={next}
       onClick={() => {
         document.cookie = `artify_locale=${next}; path=/; max-age=31536000; samesite=lax`;
         router.refresh();
       }}
     >
-      {next === "ar" ? "العربية" : "English"}
+      {/* the accessible name must contain the visible text (WCAG 2.5.3 Label in Name) */}
+      <span>{next === "ar" ? "العربية" : "English"}</span>
+      <span className="a-visually-hidden"> ({t.language})</span>
     </button>
   );
 }

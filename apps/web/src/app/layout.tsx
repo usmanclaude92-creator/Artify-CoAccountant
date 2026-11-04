@@ -13,8 +13,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     <html lang={locale} dir={locale === "ar" ? "rtl" : "ltr"}>
       <body>
         <I18nProvider locale={locale}>
-          <a href="#main" className="a-visually-hidden">
-            {LOCALES[locale].continue}
+          <a href="#main" className="a-skip-link">
+            {LOCALES[locale].skipToContent}
           </a>
           {children}
         </I18nProvider>

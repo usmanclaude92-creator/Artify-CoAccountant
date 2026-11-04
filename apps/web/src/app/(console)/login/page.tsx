@@ -10,6 +10,11 @@ export default function LoginPage() {
     <AuthShell title={t.loginTitle}>
       <LoginForm realm="tenant" />
       <p className="a-hint mt-4">
+        <Link className="a-link" href="/forgot-password">
+          {t.forgotPassword}
+        </Link>
+      </p>
+      <p className="a-hint mt-2">
         {t.noAccount} <Link className="a-link" href="/signup">{t.signUp}</Link>
       </p>
     </AuthShell>

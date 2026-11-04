@@ -55,7 +55,7 @@ New keys are added by migration to the catalog without schema change to subscrip
 Rules:
 
 1. **The backend is the only enforcement point.** Frontends may display limits and disable buttons for UX but are never trusted.
-2. **Same-transaction accounting for counts.** Count-type limits (companies, sections…) use locked counter rows so concurrent requests cannot oversubscribe. Counters are reconcilable: a nightly job recomputes from source tables and alerts on drift.
+2. **Same-transaction accounting for counts.** Count-type limits (companies, sections…) use locked counter rows so concurrent requests cannot oversubscribe. Counters are reconcilable: `artify-api reconcile` recomputes every organization's counters from the source tables, repairs drift and prints what it changed (tested). *Phase 1 ships the command; running it on a schedule (cron / Kubernetes CronJob) and alerting on drift is a deployment concern for Phase 12.*
 3. **Quotas** (storage, AI units, documents/month) use *reserve-then-commit*: reserve before expensive work, commit actual usage after; reservations expire. Overage policy per key: `hard` (block), `soft` (allow, notify, bill), `grace` (allow until date).
 4. **Change sets** (workspace, templates) check the **resulting** totals for the whole set atomically.
 5. **State-based gating.** Subscription status `suspended` or `past_due` beyond grace restricts creation/upload/AI while keeping read/export of existing data.

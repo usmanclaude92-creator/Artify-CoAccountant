@@ -1,28 +1,6 @@
-import { expect, test, type Page } from "@playwright/test";
-import { readFileSync } from "node:fs";
+import { expect, test } from "@playwright/test";
+import { PASSWORD, enrollMfa, mailedToken } from "./helpers";
 import { totp } from "./totp";
-
-const PASSWORD = "correct horse battery staple";
-
-/** The API runs with the console mailer in local mode; the log line carries the e-mailed token. */
-function mailedToken(email: string, template: string): string {
-  const log = readFileSync(process.env.E2E_API_LOG ?? "/dev/null", "utf8");
-  const re = new RegExp(`MAIL to=${email.replace(/[.+]/g, "\\$&")} template=${template} context=\\{'token': '([^']+)'\\}`, "g");
-  const all = [...log.matchAll(re)];
-  const last = all.at(-1);
-  if (!last?.[1]) throw new Error(`no ${template} mail for ${email} in API log`);
-  return last[1];
-}
-
-async function enrollMfa(page: Page): Promise<string> {
-  await page.getByRole("button", { name: "Start setup" }).click();
-  const secret = (await page.getByTestId("mfa-secret").textContent())?.trim() ?? "";
-  expect(secret.length).toBeGreaterThan(10);
-  await page.getByLabel("Code").fill(totp(secret));
-  await page.getByRole("button", { name: "Confirm and enable" }).click();
-  await expect(page.getByTestId("recovery-codes").locator("li")).toHaveCount(10);
-  return secret;
-}
 
 test("firm owner: signup -> verify -> mandatory MFA -> dashboard -> re-login -> Arabic/RTL", async ({ page, context }) => {
   const email = `e2e-${Date.now()}@example.com`;
@@ -47,8 +25,8 @@ test("firm owner: signup -> verify -> mandatory MFA -> dashboard -> re-login -> 
   await page.getByRole("button", { name: "Continue" }).click();
 
   await expect(page).toHaveURL(/\/dashboard$/);
-  await expect(page.getByRole("cell", { name: "Acme E2E Accounting" })).toBeVisible();
-  await expect(page.getByRole("cell", { name: "Firm owner" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Acme E2E Accounting" })).toBeVisible();
+  await expect(page.getByText("Role: Firm owner")).toBeVisible();
   await expect(page.getByText("No client companies yet.")).toBeVisible();
   await expect(page.getByRole("cell", { name: "Client companies" })).toBeVisible();
 
@@ -78,11 +56,12 @@ test("firm owner: signup -> verify -> mandatory MFA -> dashboard -> re-login -> 
   await expect(page).toHaveURL(/\/dashboard$/);
 
   // Arabic + RTL
-  await page.getByRole("button", { name: "Language" }).click();
+  await page.getByRole("button", { name: /\(Language\)|\(اللغة\)/ }).click();
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
   await expect(page.locator("html")).toHaveAttribute("lang", "ar");
   await expect(page.getByRole("heading", { name: "نظرة عامة" })).toBeVisible();
   // Bidi correctness: in RTL the first logical figure ("used") must sit to the RIGHT of the limit.
+  await expect(page.locator("td.num").first()).toBeVisible();
   const [used, limit] = await page.locator("td.num").first().locator("bdi").all();
   const usedBox = await used!.boundingBox();
   const limitBox = await limit!.boundingBox();

@@ -63,13 +63,13 @@ Executable: TS-ISO-01, 02, 04, 05, 08, 09, 10; TS-ENT-01 (companies/users/device
 
 ## Completion checklist
 
-- [ ] Versions pinned and recorded in the completion report
-- [ ] Migrations reviewed; RLS coverage check green
-- [ ] Isolation suite wired as a required CI check
-- [ ] Skills created: `co-accountant-architecture`, `multi-tenant-saas`, `api-development`, `security-audit`, `automated-testing`, `code-review`
-- [ ] Threat-model note for auth surface
-- [ ] `DECISIONS.md` updated (D-1, D-3, D-9 outcomes)
-- [ ] `PHASE_1_COMPLETION_REPORT.md` written honestly
+- [x] Versions pinned and recorded (`uv.lock`, `pnpm-lock.yaml`, `TECHNOLOGY_STACK.md`)
+- [x] Migrations reviewed; RLS coverage check green (pytest; also runs in CI)
+- [ ] Isolation suite wired as a **required** CI check — it runs on every push, but branch protection requiring it is a repository setting that has not been configured
+- [x] Skills created: `co-accountant-architecture`, `multi-tenant-saas`, `api-development`, `security-audit`, `automated-testing`, `code-review`
+- [x] Threat-model note for the auth surface (`docs/security/THREAT_MODEL_AUTH.md`)
+- [x] `DECISIONS.md` updated (D-1, D-3, D-8, D-9 outcomes; ADR-020…027)
+- [x] `PHASE_1_COMPLETION_REPORT.md` written honestly (with a follow-up pass)
 
 ## Known risks
 

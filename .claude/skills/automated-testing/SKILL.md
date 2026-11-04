@@ -14,12 +14,18 @@ description: Use when writing, running or reporting tests in the Artify repo —
 | Browser e2e (API + built web + Chromium) | `make e2e` (set `E2E_CHROMIUM_PATH` if Chromium is pre-installed) |
 | RLS performance baseline | `uv run --project services/api python infrastructure/dev/bench_rls.py <db>` |
 | Docs consistency | `make check-docs` |
+| Module boundaries | `make boundaries` |
+| Dependency vulnerabilities | `make audit` |
+| Docker stack smoke test | `make compose-smoke` (needs a Docker daemon; see Makefile for registry-mirror variables) |
+| Git hooks | `make hooks` once; `uvx pre-commit run --all-files` to run them all |
+| Breaking API change check | `make openapi-breaking BASE=<ref>` |
 
 ## Rules
 - RLS and entitlement behaviour must be tested against real PostgreSQL; never mock the database for these.
 - Synthetic data only: fabricated users/companies, `@example.com`. No real documents or credentials.
 - Fixtures live in `services/api/tests/conftest.py` (`new_owner`, `invite_and_accept`, `make_company`, `set_plan_limit`). The autouse fixture resets the in-memory rate limiter and mailer per test.
-- TOTP: a code can be used once per 30 s step; use `totp_now(secret, 1)` for the next step after enrollment.
+- TOTP: a code can be used once per 30 s step. Never assume the wall clock stays inside one step; for replay tests use `totp_at_step(secret, step)` with the step recorded in `mfa_factors.last_used_step` (a clock-dependent version of this test was flaky until fixed).
+- Browser tests: `apps/web/e2e` (journeys, `accessibility.spec.ts` with axe + keyboard checks in light/dark/Arabic, `switcher.spec.ts`). Automated accessibility checks do not replace a manual screen-reader review.
 - When changing a security control, add a **mutation check**: weaken the control temporarily and confirm a test fails (done for RLS in Phase 1 — see the completion report).
 - Scenario IDs (`TS-*`) are defined in `docs/development/TEST_SCENARIOS.md`; reference them in test docstrings.
 

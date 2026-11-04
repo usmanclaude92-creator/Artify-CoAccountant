@@ -2,7 +2,7 @@
 
 Implements ADR-002, ADR-003 and ADR-013. This is a **design**; no SQL has been executed in Phase 0. Phase 1 turns it into migrations and proves it with the isolation test suite (TS-ISO-*).
 
-> **Status (Phase 1):** implemented in `services/api/migrations/sql/0002_rls_and_grants.sql` and exercised by `tests/test_database_rls.py` and `tests/test_isolation_api.py`. Differences from the illustrative SQL below: policies inline the company-scope expression (§4.1); a dedicated `artify_definer` role owns narrow pre-authentication functions; the `app.realm` / `app.section_grants` / `app.support_grant_id` variables are not implemented yet (sections and support grants arrive in Phases 4 and 2).
+> **Status (Phase 1):** implemented in `services/api/migrations/sql/0002_rls_and_grants.sql` and exercised by `tests/test_database_rls.py` and `tests/test_isolation_api.py`. Differences from the illustrative SQL below: policies inline the company-scope expression (§4.1); a dedicated `artify_definer` role owns narrow SECURITY DEFINER functions (pre-authentication lookups, `measure_entitlement`, `create_trial_subscription`, and `audit_user_event`, which only accepts the authenticated subject); the `app.realm` / `app.section_grants` / `app.support_grant_id` variables are not implemented yet (sections and support grants arrive in Phases 4 and 2).
 
 ## 1. Threat being addressed
 

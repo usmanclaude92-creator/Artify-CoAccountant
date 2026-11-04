@@ -21,4 +21,9 @@ Authoritative design: `docs/security/SECURITY_ARCHITECTURE.md`; auth threat mode
 Argon2id; separate JWT secret+audience per realm; refresh rotation with reuse detection (family revoked); TOTP with replay protection and encrypted secrets; MFA mandatory for platform admins, `firm_owner`, `practice_admin`; sessions revocable; password reset revokes sessions. Web: tokens only in HttpOnly SameSite=Strict cookies behind a BFF; custom-header CSRF check.
 
 ## Known gaps (do not claim otherwise)
-Breached-password check, trusted-proxy IP handling, nonce-based CSP, audit hash-chaining, WebAuthn, per-tenant encryption keys (D-4), user-level auth events not visible to tenant admins. Tracked in `docs/development/PHASE_1_COMPLETION_REPORT.md`.
+Breached-password check, trusted-proxy IP handling, nonce-based CSP, audit hash-chaining, WebAuthn, per-tenant encryption keys (D-4), refresh-token device binding, key rotation (`kid`), durable e-mail delivery, manual screen-reader audit. Local gitleaks run (CI only). Details: `docs/security/THREAT_MODEL_AUTH.md` and `docs/development/PHASE_1_COMPLETION_REPORT.md`.
+
+## Also check
+- Logs/errors: identifiers only; DB engines keep `hide_parameters=True`.
+- User-level security events go through `audit.write_user_event` (tenant-visible copies), not `write_audit` with no organization.
+- Secret scanning: gitleaks runs in CI on pushes. If it flags a fake test value, remove the literal (generate it at test time) rather than ignore it; `.gitleaksignore` is for reviewed, documented false positives only.

@@ -1,0 +1,6 @@
+# Reviewed false positives only. Each line is a gitleaks fingerprint; justify it in a comment.
+#
+# A fake base64 string used as a throwaway `mfa_encryption_key` in a settings-validation test
+# (it decodes to "fake-key-for-tests..."; it protects nothing). The literal was removed from the
+# code in the next commit; this entry keeps full-history scans quiet.
+f0a581eea84098657a400bedf558087bee33f553:services/api/tests/test_followups.py:generic-api-key:237

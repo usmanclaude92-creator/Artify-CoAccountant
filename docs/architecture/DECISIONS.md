@@ -76,13 +76,22 @@ Permissions, system roles, entitlement definitions and currencies are defined in
 ### ADR-024 — Company-scope policies inline a once-per-query array expression
 See `docs/database/ISOLATION_AND_RLS.md` §4.1 (65 ms → 1.2 ms measured). Policies must not call `app.can_see_company()` per row.
 
+### ADR-025 — User-level security events fan out to every tenant the user belongs to
+Login, MFA, session-revoke and password-reset events are written once to the platform security stream (`organization_id` NULL) **and** once per organization the user belongs to (organization or company membership), so a tenant's `audit.read` holders see their members' security events. Implemented by `app.audit_user_event` (SECURITY DEFINER, accepts only the authenticated subject, so it cannot forge another user's history). Consequence to be aware of: organization admins can see members' login times, IP addresses and user agents. *This attribution rule was chosen by the implementer when closing the Phase 1 gap and is **open for product-owner confirmation**.* Platform admins read the unattributed stream, never tenant copies.
+
+### ADR-026 — E-mail delivery is an adapter with best-effort background sending for now
+`Mailer` has console, memory and SMTP implementations. SMTP sends on a small background pool with retries so requests never wait on a mail server. It is **not durable** (a crash can lose queued mail); durable delivery through the transactional outbox arrives with the notification framework (Phase 3). Production settings require SMTP and https links. The mail *provider* is still undecided (D-3).
+
+### ADR-027 — Module boundaries are enforced by import-linter contracts
+`services/api/pyproject.toml` defines a layered contract (routes → services → infrastructure → primitives) and a purity contract (`policy`/`permissions` must not import the web framework or the database). CI and pre-commit run `lint-imports`. New modules must be placed in a layer.
+
 ## Outcomes of decisions taken at the start of Phase 1
 
 The product owner replied "Accept the recommendations and start Phase 1" on 2026-11-04, which settles:
 
 | ID | Outcome |
 |---|---|
-| D-1 | **Decided:** in-house authentication behind an `AuthProvider`-style seam (implemented in `auth_service.py`; a formal `AuthProvider` interface is *not* yet extracted). |
+| D-1 | **Decided:** in-house authentication behind the `AuthProvider` protocol (`auth_provider.py`); routes depend only on the protocol. |
 | D-3 (dev infra) | **Decided:** cloud-neutral development infrastructure (PostgreSQL, Redis, S3-compatible MinIO). Production hosting/region remains open for Phase 12. |
 | D-8 (schema) | **Decided:** retention policy *schema* only (`retention_policies`, values NULL). Values remain open for Phase 12. |
 | D-9 | **Decided:** English + Arabic with RTL from the first screen. Arabic strings are a first-pass translation needing native review. |

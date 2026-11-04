@@ -17,6 +17,7 @@ from artify_api.logging_config import JsonFormatter, correlation_id_var
 from artify_api.mailer import Message, SmtpMailer
 from artify_api.settings import Settings
 from conftest import PASSWORD, invite_and_accept, make_company, new_owner, set_plan_limit, uniq
+from cryptography.fernet import Fernet
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import DBAPIError
 
@@ -234,7 +235,7 @@ def test_settings_require_smtp_in_production() -> None:
             environment="production",
             tenant_jwt_secret="a" * 40,
             platform_jwt_secret="b" * 40,  # type: ignore[arg-type]
-            mfa_encryption_key="ZmFrZS1rZXktZm9yLXRlc3RzLTAxMjM0NTY3ODlhYg==",
+            mfa_encryption_key=Fernet.generate_key().decode(),
             rate_limit_backend="redis",  # type: ignore[arg-type]
             database_url_app="postgresql+psycopg://u:p@h/db",
             database_url_platform="postgresql+psycopg://u:p@h/db",

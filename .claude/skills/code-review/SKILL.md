@@ -14,5 +14,6 @@ description: Use when reviewing a diff or pull request in the Artify repo. A foc
 7. **Errors/logging/audit** — problem+json with stable codes; no sensitive data in logs or audit; state changes audited.
 8. **Contract** — `make client` run; generated files committed; no hand edits to `openapi.json`/`schema.d.ts`.
 9. **Tests** — security-relevant change has a negative test (and ideally a mutation check). Skipped tests are called out.
-10. **Docs & honesty** — docs/ADRs updated; PR text distinguishes implemented / documented / not done, and states which commands were run.
-11. **Web** — no tokens in JS-visible storage; all strings via i18n (en + ar); logical CSS properties; keyboard focus and labels on every control.
+10. **Boundaries & logging** — `make boundaries` passes; routes go through `AuthProvider`; no sensitive data in logs.
+11. **Docs & honesty** — docs/ADRs updated; PR text distinguishes implemented / documented / not done, and states which commands were run.
+12. **Web** — no tokens in JS-visible storage; all strings via i18n (en + ar); logical CSS properties; keyboard focus and labels on every control.

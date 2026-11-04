@@ -2,9 +2,37 @@
 
 Date: 2026-11-04 · Branch: `ccr-f7e172c5-lwnudw` · Decisions applied: D-1, D-3 (dev infra), D-8 (schema), D-9 (owner replied "Accept the recommendations and start Phase 1").
 
-**Verdict: Phase 1 is substantially delivered but NOT fully complete.** The backend, database isolation, authentication, entitlement enforcement and a minimal web shell are implemented and were verified by executed tests. Several items in `PHASE_1.md` were not done or could not be verified (listed in §3 and §8). Phase 2 has not been started and must not start until this report is reviewed.
+**Verdict: Phase 1 is delivered. Two passes were made:** the first built the foundation; a follow-up pass (see "Follow-up pass" below) closed most of the open items it left. The few items still open are listed in §8. Phase 2 has not been started and must not start until this report is reviewed.
 
 Classification: **IMPLEMENTED** (exists and was verified by something that ran) · **IMPLEMENTED, NOT VERIFIED** (exists, nothing ran it) · **NOT IMPLEMENTED** · **DEFERRED** · **REQUIRES DECISION**.
+
+## Follow-up pass (closing the §8 list from the first report)
+
+Every item that was open at the end of the first pass, with what was done and the evidence. "Evidence" means something that ran.
+
+| # | Open item | Outcome | Evidence |
+|---|---|---|---|
+| 1 | Run CI on GitHub | **Done.** Run 1 (first push): all 5 jobs green on a clean runner. Run 2 (follow-up push): 6 of 7 jobs green (API, web, Docker smoke, Playwright e2e, docs, dependency audit); **gitleaks failed** on a fake test key literal (false positive) — fixed by generating the key at test time + a documented `.gitleaksignore`. Result of the run after that fix: see "CI after the final push" below | GitHub Actions runs 41816747468 and 41819604051 |
+| 1b | Dependency-scan step in CI | **Done** (`audit` job: `pip-audit`, `pnpm audit --prod`, `pnpm audit --audit-level high`) | job green in run 2 |
+| 2 | Verify `docker-compose.yml`, write Dockerfiles | **Done.** `services/api/Dockerfile` (non-root, no dev dependencies, 234 MB); compose now has migrate → api, worker, dispatcher. Running the worker for real exposed a **missing `celery[redis]`/`packaging` dependency** (would have crashed in production) — fixed. `compose_smoke.py` proves sign-up → MFA → company → outbox → dispatcher → Redis → Celery worker, the Redis-backed rate limiter, JSON logs, and that no password reaches any log. **MinIO service remains unverified** (no reachable registry image here); it sits behind the `storage` profile | local run, and CI `docker` job green in run 2 |
+| 3a | Pre-commit hooks | **Done** (6 local hooks; a planted private key is rejected) | `uvx pre-commit run --all-files` |
+| 3b | Module boundaries | **Done** (import-linter: layered + purity contracts; a deliberate violation breaks both) | `make boundaries`, CI |
+| 3c | Structured JSON logging | **Done** (correlation ids; database errors no longer expose bound parameters) | `test_json_log_format…`, `test_database_errors_do_not_expose_bound_parameters`, container logs |
+| 4a | `AuthProvider` interface | **Done** (protocol + `LocalAuthProvider`; routes depend only on it; proven with a fake provider) | `test_routes_use_the_auth_provider_interface`, mypy conformance |
+| 4b | Member role changes | **Done** with safety rules (only firm owners touch the owner role, last owner protected, no self-change, accountant-limit and reactivation guarded, assignments end when leaving accountant/staff roles; promotion demands MFA at once) | `test_followups.py` (4 tests) |
+| 5a | Org/company switcher | **Done** (selection in the URL; switching org clears company; company isolation visible: unassigned staff see none) | `switcher.spec.ts` |
+| 5b | Dark-mode check | **Done** (rendered and viewed; contrast checked by axe in dark scheme) | screenshots reviewed; `accessibility.spec.ts` |
+| 5c | Keyboard / screen-reader audit | **Partly done.** Automated axe (WCAG 2.0–2.2 A/AA tags) on 7 public pages × light/dark, Arabic RTL, and the signed-in dashboard; keyboard order, visible focus, skip link, error association. It **found and I fixed 3 real defects** (links distinguished by colour only; language button name not containing its visible text). **No manual screen-reader or expert audit has been done** — automated tools find only part of real issues | `accessibility.spec.ts` |
+| 6 | Native review of Arabic | **Not done — needs a human.** | — |
+| 7 | Semantic OpenAPI breaking-change check | **Done** (rules + allow-list + 7 unit tests; run for real against the previously pushed contract: 0 breaking) and wired into CI | `test_openapi_breaking.py`, CI step |
+| 8 | User-level auth events invisible to tenants | **Done** with an implementer-chosen rule, **open for your confirmation** (ADR-025) | `test_audit_visibility.py` (5 tests) |
+| 9 | Real e-mail adapter | **Partly done.** SMTP adapter tested against a real SMTP server (links, failure handling, no content in logs); delivery is best-effort/in-process; provider undecided (D-3); no real mail provider was ever contacted | `test_smtp_*` |
+| 10 | Uncaptured e2e failure | **Not explained.** Likely candidates examined: a leaked server from my own script (fixed), and a TOTP-window test assumption (fixed in the API suite, where it failed once). Traces are now retained on failure; see the repeatability result below | batch result |
+| — | Also closed | `reconcile` CLI (counter drift), Idempotency-Key on invitations and devices, forgot/reset-password and accept-invitation pages (e-mailed links now resolve), `bootstrap-dev` and `migrate` commands, Dependabot config | tests / e2e |
+
+**Things I caused that you should know about**
+- Adding `.github/dependabot.yml` made Dependabot immediately open **5 pull requests** (#1–#5, all major version bumps of GitHub Actions) on your repository. I did not merge or close them; their CI runs were green. Decide whether to merge, close or keep Dependabot.
+- A Dependabot `npm_and_yarn` update run failed on GitHub; I did not investigate it (it is Dependabot's job, not CI) — likely pnpm workspace handling, unconfirmed.
 
 ## 1. What was built
 

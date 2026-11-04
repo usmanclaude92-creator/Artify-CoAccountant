@@ -32,5 +32,5 @@ cd "$ROOT/apps/web"
 ARTIFY_API_URL="http://localhost:$API_PORT/api/v1" pnpm build >"$LOG/web-build.log" 2>&1
 ARTIFY_API_URL="http://localhost:$API_PORT/api/v1" setsid ./node_modules/.bin/next start -p "$WEB_PORT" >"$LOG/web.log" 2>&1 & WEB_PID=$!
 for _ in $(seq 1 60); do curl -fsS "http://localhost:$WEB_PORT/login" >/dev/null 2>&1 && break; sleep 0.5; done
-E2E_API_LOG="$LOG/api.log" E2E_BASE_URL="http://localhost:$WEB_PORT" pnpm exec playwright test "$@"
+E2E_API_LOG="$LOG/api.log" E2E_API_URL="http://localhost:$API_PORT/api/v1" E2E_BASE_URL="http://localhost:$WEB_PORT" pnpm exec playwright test "$@"
 echo "logs: $LOG"

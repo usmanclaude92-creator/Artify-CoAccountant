@@ -4,8 +4,15 @@ PGPORT ?= 54329
 PGUSER ?= postgres
 export PGHOST PGPORT PGUSER
 API = uv run --project services/api
+.DEFAULT_GOAL := install
 
-.PHONY: install db-reset test-api lint typecheck boundaries openapi openapi-check openapi-breaking client web-build web-test e2e check-docs audit hooks check
+compose-smoke:      ## build + start the Docker stack, smoke-test it, tear it down
+	docker compose build
+	docker compose up -d --no-build
+	sleep 15
+	$(API) python infrastructure/dev/compose_smoke.py; status=$$?; docker compose down -v; exit $$status
+
+.PHONY: compose-smoke install db-reset test-api lint typecheck boundaries openapi openapi-check openapi-breaking client web-build web-test e2e check-docs audit hooks check
 
 install:            ## install Python and JS dependencies from lockfiles
 	uv sync --project services/api

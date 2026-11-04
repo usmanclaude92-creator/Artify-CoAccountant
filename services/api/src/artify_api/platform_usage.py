@@ -86,14 +86,17 @@ SELECT o.id AS org_id, d.key, d.description, d.unit, d.enforcement,
 """
 
 
-def _row(r: Any) -> UsageRow:
+def _row(r: Any, measured: dict[str, int] | None = None) -> UsageRow:
     if r.ov_id is not None:
         source, unl, lim, flag = "override", bool(r.ov_unl), r.ov_int, r.ov_bool
     elif r.pe_key is not None:
         source, unl, lim, flag = "plan", bool(r.pe_unl), r.pe_int, r.pe_bool
     else:
         source, unl, lim, flag = "default", False, None, None
-    current = int(r.current) if r.current is not None else None
+    if measured is not None and r.key in measured:
+        current: int | None = measured[r.key]  # live measurement beats a possibly missing counter
+    else:
+        current = int(r.current) if r.current is not None else None
     remaining = percent = None
     if r.enforcement == "flag":
         status = "flag"
@@ -125,10 +128,12 @@ def _row(r: Any) -> UsageRow:
     )
 
 
-def usage_for_orgs(conn: Connection, org_ids: list[uuid.UUID]) -> dict[uuid.UUID, list[UsageRow]]:
+def usage_for_orgs(
+    conn: Connection, org_ids: list[uuid.UUID], measured: dict[uuid.UUID, dict[str, int]] | None = None
+) -> dict[uuid.UUID, list[UsageRow]]:
     out: dict[uuid.UUID, list[UsageRow]] = {i: [] for i in org_ids}
     if not org_ids:
         return out
     for r in conn.execute(text(_USAGE_SQL), {"ids": org_ids}):
-        out[r.org_id].append(_row(r))
+        out[r.org_id].append(_row(r, (measured or {}).get(r.org_id)))
     return out

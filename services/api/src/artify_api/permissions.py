@@ -39,6 +39,13 @@ PERMISSIONS: tuple[Permission, ...] = (
     _P("assignments.manage", "company", "Assign / unassign accountants"),
     _P("devices.manage_own", "member", "Register and revoke the caller's own devices"),
     _P("support_grants.manage", "organization", "Approve, deny and revoke Artify support-access requests"),
+    _P("organization.settings.update", "organization", "Edit organization contact, regional and notification settings"),
+    _P("member_profiles.manage", "organization", "Edit team members' professional profiles"),
+    _P("ownership.transfer", "organization", "Transfer organization ownership to another member"),
+    _P("companies.archive", "company", "Archive, restore, activate and deactivate a client company"),
+    _P(
+        "company_settings.manage", "company", "Edit a company's accounting settings (financial year, VAT, jurisdiction)"
+    ),
     # ---- platform realm (Artify Super Admin) ----
     _P("platform.self.read", "platform", "Read own platform-admin profile"),
     _P("platform.dashboard.read", "platform", "View the platform overview"),
@@ -76,7 +83,7 @@ def permission_scope(key: str) -> str:
 ORG_ADMIN_PERMS = frozenset(
     k
     for k in PERMISSION_KEYS
-    if not k.startswith("platform.") and k not in ("organization.update", "support_grants.manage")
+    if not k.startswith("platform.") and k not in ("organization.update", "support_grants.manage", "ownership.transfer")
 )
 
 # role key -> (scope, display name, permissions)
@@ -87,6 +94,29 @@ SYSTEM_ROLES: dict[str, tuple[str, str, frozenset[str]]] = {
         frozenset(k for k in PERMISSION_KEYS if not k.startswith("platform.")),
     ),
     "practice_admin": ("organization", "Practice administrator", ORG_ADMIN_PERMS),
+    "practice_manager": (
+        "organization",
+        "Practice manager",
+        frozenset(
+            {
+                "organization.read",
+                "members.read",
+                "invitations.manage",
+                "audit.read",
+                "entitlements.read",
+                "companies.create",
+                "companies.list",
+                "companies.read",
+                "companies.update",
+                "company_settings.manage",
+                "company_members.read",
+                "company_members.manage",
+                "assignments.read",
+                "assignments.manage",
+                "devices.manage_own",
+            }
+        ),
+    ),
     "accountant": (
         "organization",
         "Accountant",
@@ -102,10 +132,34 @@ SYSTEM_ROLES: dict[str, tuple[str, str, frozenset[str]]] = {
             }
         ),
     ),
+    "assistant_accountant": (
+        "organization",
+        "Assistant accountant",
+        frozenset(
+            {
+                "organization.read",
+                "companies.list",
+                "companies.read",
+                "company_members.read",
+                "assignments.read",
+                "devices.manage_own",
+            }
+        ),
+    ),
     "staff": (
         "organization",
         "Staff",
         frozenset({"organization.read", "companies.list", "companies.read", "devices.manage_own"}),
+    ),
+    "document_operator": (
+        "organization",
+        "Document operator",
+        frozenset({"organization.read", "companies.list", "companies.read", "devices.manage_own"}),
+    ),
+    "read_only": (
+        "organization",
+        "Read-only user",
+        frozenset({"organization.read", "companies.list", "companies.read"}),
     ),
     "company_owner": (
         "company",
@@ -129,11 +183,38 @@ SYSTEM_ROLES: dict[str, tuple[str, str, frozenset[str]]] = {
 }
 
 # Organization roles that reach every Company of the Organization.
-ALL_COMPANY_ROLES = frozenset({"firm_owner", "practice_admin"})
+ALL_COMPANY_ROLES = frozenset({"firm_owner", "practice_admin", "practice_manager"})
 # Roles whose holders must complete MFA (docs/security/SECURITY_ARCHITECTURE.md §2).
-MFA_REQUIRED_ROLES = frozenset({"firm_owner", "practice_admin"})
+MFA_REQUIRED_ROLES = frozenset({"firm_owner", "practice_admin", "practice_manager"})
 # Roles that may be assigned through invitations (firm_owner is created only at signup).
-INVITABLE_ORG_ROLES = frozenset({"practice_admin", "accountant", "staff"})
+INVITABLE_ORG_ROLES = frozenset(
+    {
+        "practice_admin",
+        "practice_manager",
+        "accountant",
+        "assistant_accountant",
+        "document_operator",
+        "read_only",
+        "staff",
+    }
+)
+# Roles counted by `limit.accountants` (professional staff). Keep in step with app.measure_entitlement (migration 0005).
+ACCOUNTANT_ROLES = frozenset({"accountant", "assistant_accountant", "staff"})
+# Organization roles that can be assigned to specific client companies: everyone who does NOT reach all companies.
+# Keep in step with app.check_assignment_member (migration 0005).
+ASSIGNABLE_ROLES = frozenset({"accountant", "assistant_accountant", "document_operator", "read_only", "staff"})
+# Seniority of organization roles. A caller may invite or grant only roles at or below their own rank, never
+# firm_owner (that moves only through an ownership transfer).
+ORG_ROLE_RANK = {
+    "firm_owner": 100,
+    "practice_admin": 80,
+    "practice_manager": 60,
+    "accountant": 40,
+    "assistant_accountant": 30,
+    "staff": 30,
+    "document_operator": 20,
+    "read_only": 10,
+}
 INVITABLE_COMPANY_ROLES = frozenset({"company_owner", "company_admin", "company_employee"})
 # Company roles a company_admin may grant/change/remove (never owner or admin: no lateral escalation).
 COMPANY_ADMIN_MANAGEABLE_ROLES = frozenset({"company_employee"})

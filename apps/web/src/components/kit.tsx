@@ -28,12 +28,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
 /* ---------------------------------------------------------------- page chrome */
 export interface Crumb { label: string; href?: string }
-export function PageHeader({ title, crumbs = [], actions }: { title: string; crumbs?: Crumb[]; actions?: ReactNode }) {
+export function PageHeader({ title, crumbs = [], actions, home = { label: "Super Admin", href: "/platform" } }: { title: string; crumbs?: Crumb[]; actions?: ReactNode; home?: Crumb & { href: string } }) {
   return (
     <div className="grid gap-2">
       <nav aria-label="Breadcrumb" className="a-crumbs">
         <ol>
-          <li><Link className="a-link" href="/platform">Super Admin</Link></li>
+          <li><Link className="a-link" href={home.href}>{home.label}</Link></li>
           {crumbs.map((c) => <li key={c.label}>{c.href ? <Link className="a-link" href={c.href}>{c.label}</Link> : <span aria-current="page">{c.label}</span>}</li>)}
         </ol>
       </nav>

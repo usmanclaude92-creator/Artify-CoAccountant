@@ -10,7 +10,7 @@ import { ApiProblem, bff, problemMessage } from "@/lib/client";
 function AcceptForm() {
   const { t } = useI18n();
   const token = useSearchParams().get("token") ?? "";
-  const [done, setDone] = useState(false);
+  const [done, setDone] = useState<"accepted" | "declined" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -24,7 +24,7 @@ function AcceptForm() {
       await bff("/bff/auth/invitations/accept", {
         body: { token, display_name: f.get("display_name") || null, password: f.get("password") || null },
       });
-      setDone(true);
+      setDone("accepted");
     } catch (err) {
       setError(err instanceof ApiProblem && [401, 402, 422].includes(err.status) ? (err.problem.detail ?? t.errors.generic ?? "") : problemMessage(err, t.errors));
     } finally {
@@ -33,10 +33,23 @@ function AcceptForm() {
   }
 
   if (!token) return <Alert tone="danger">{t.resetFailed}</Alert>;
+  async function decline() {
+    setBusy(true);
+    setError(null);
+    try {
+      await bff("/bff/auth/invitations/decline", { body: { token } });
+      setDone("declined");
+    } catch (err) {
+      setError(problemMessage(err, t.errors));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (done)
     return (
       <div className="grid gap-4">
-        <Alert tone="success">{t.acceptDone}</Alert>
+        <Alert tone="success">{done === "declined" ? t.declineDone : t.acceptDone}</Alert>
         <Link className="a-link" href="/login">
           {t.signIn}
         </Link>
@@ -50,6 +63,9 @@ function AcceptForm() {
       <TextField name="password" type="password" label={t.password} hint={t.passwordHint} autoComplete="new-password" />
       <Button type="submit" disabled={busy}>
         {t.acceptBtn}
+      </Button>
+      <Button type="button" variant="secondary" disabled={busy} onClick={decline}>
+        {t.declineBtn}
       </Button>
       <Link className="a-link" href="/login">
         {t.signIn}

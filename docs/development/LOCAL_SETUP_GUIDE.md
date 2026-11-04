@@ -104,3 +104,10 @@ If Playwright reports a missing browser, point it at an installed Chromium: `E2E
 3. A customer firm owner approves Artify support requests at `/support-access`.
 4. Settings that change behaviour without a deploy (default plan, trial days, support grant cap, invoice prefix) are under **Platform Settings**.
 5. In sandboxes where PostgreSQL stops with the session, restart it before `make db-reset` / tests (`pg_ctl -D <data dir> -o "-p 54329 -k /var/run/postgresql" start`). If Playwright reports a missing browser: `E2E_CHROMIUM_PATH=/path/to/chromium make e2e`.
+
+## 8. Firm Control Center (Phase 3)
+
+1. Start the API and web app as in §3, create a firm at `http://localhost:3000/signup`, verify the e-mail using the link printed in the API console, sign in and enrol an authenticator app (mandatory for owners, administrators and practice managers).
+2. You land on `/dashboard`. Create a company at **My Companies → Create company** (4 steps), invite people at **Invitations**; with `ARTIFY_MAILER_BACKEND=console` (default locally) the invitation link appears in the API console and the page says that no e-mail server is configured. Open the link at `/accept-invitation?token=…` in another browser profile to accept.
+3. Settings that must be configured outside the app: SMTP for real invitation e-mail (`ARTIFY_MAILER_BACKEND=smtp` and its host settings), plans and limits in the Super Admin (the Control Center only reads them).
+4. Tests: `make test-api` (includes the Phase 3 files `test_p3_*.py`), `make e2e` (adds `controlcenter.spec.ts`). After API changes run `make client`.

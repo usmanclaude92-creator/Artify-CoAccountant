@@ -100,6 +100,30 @@ A trigger rejects changes to a version, or its entitlements, that any subscripti
 ### ADR-032 — Sensitive platform actions use reason + typed confirmation + audit; dual control is deferred; the Super Admin UI is English-only
 Destructive or privileged actions require a reason (≥ 10 characters) and the target's identifier typed exactly; all are audited with outcome and reason, and denials are audited in their own transaction. A second-person approval is **not** implemented and is recommended before production. The internal console is English only; the customer console keeps English + Arabic.
 
+### ADR-033 — Organization roles have a rank; callers grant, change or invite only at or below their own rank
+`ORG_ROLE_RANK` (owner 100, administrator 80, practice manager 60, accountant 40, assistant accountant and staff 30, document operator 20, read-only 10) is a single table in `permissions.py`. Inviting, changing or suspending a member above the caller’s rank is refused (403), nobody changes their own role (422), and `firm_owner` is never granted by invitation or role change. With today’s catalog only owner and administrator hold `members.manage`, so the rank rule on member updates is defence in depth; `test_p3_catalog.py` fails if a future role makes it reachable without a behavioural test.
+
+### ADR-034 — Ownership moves only through an explicit transfer
+The last owner cannot be demoted, suspended or removed. `POST /orgs/{id}/ownership-transfer` (permission `ownership.transfer`, owner only, MFA-verified session, typed organization identifier, active target) promotes the target and demotes the caller to administrator in one transaction, so an organization never has zero or two-way-ambiguous ownership. No second-person approval yet (see Phase 3 known issues).
+
+### ADR-035 — A company’s configuration is owned by a `company_configurations` row created with the company
+One row per company with its own `config_version` and `workspace_state`, composite FK and forced RLS. Phase 4 attaches the workspace builder to it; nothing seeds default sections, categories or folders, and organization-level values never overwrite company values. See `docs/firm-control-center/PHASE_4_INTEGRATION.md`.
+
+### ADR-036 — Assignment windows and active membership decide company visibility
+`accountant_assignments` gained `starts_on`, `ends_on` and `responsibility`. `resolve_principal` includes an assignment only while its window is open **and** the organization membership is active; reactivation restores exactly the assignments that existed. Assignable roles are those that do not already reach every company (`ASSIGNABLE_ROLES`, mirrored in the database trigger).
+
+### ADR-037 — Company lifecycle and accounting settings have their own permissions and endpoints
+`POST /companies/{id}/status` (`companies.archive`) replaces editing `status` through `PATCH /companies/{id}`; accounting settings are edited through `PATCH /companies/{id}/settings` (`company_settings.manage`). “Inactive” in the UI is the existing `suspended` status; archiving frees the subscription slot and restoring needs a free one. Known compatibility effect: clients that sent `status` to `PATCH /companies/{id}` must move to the new endpoint (the breaking-change detector does not see removed request fields).
+
+### ADR-038 — New organization roles are added to the code catalog, not as editable data
+Practice manager, assistant accountant, document operator and read-only user join the catalog; `artify-api seed` synchronizes them. Custom, organization-defined roles and per-user permission overrides are **not** implemented (the brief allowed configuration “where the architecture supports it”; supporting it safely needs a permission-editing audit model and `feature.custom_roles`, deferred to a later phase).
+
+### ADR-039 — The Control Center never claims to have sent something that was not sent
+E-mail delivery is reported from the mailer backend (`configured` only for SMTP). Notification preferences are stored but `notifications_sent` is `false` until a notification service exists. Usage rows that are not metered show “Not metered”, never zero. Upgrade and billing actions are text only (“Contact Artify support”) because no commercial workflow exists for customers.
+
+### ADR-040 — The Control Center UI is English-only in Phase 3 (deviation from D-9 and ADR-032)
+D-9 decided English + Arabic with RTL from the first screen and ADR-032 said the customer console keeps both. The Phase 3 screens were built in English only to finish within scope; the Phase 1 customer dashboard that had Arabic strings was replaced, so signed-in pages regressed to English. Public pages (sign-in, sign-up, invitation) remain bilingual. Restoring Arabic and RTL for the Control Center is open work and needs native-reviewed strings.
+
 ## Outcomes of decisions taken at the start of Phase 1
 
 The product owner replied "Accept the recommendations and start Phase 1" on 2026-11-04, which settles:

@@ -16,6 +16,7 @@ from artify_api.context import Public, RequestCtx, Requires, request_meta
 from artify_api.db import DbContext, app_engine, transaction
 from artify_api.errors import NotFound, Unauthenticated, Unprocessable
 from artify_api.ids import new_id
+from artify_api.permissions import ACCOUNTANT_ROLES
 from artify_api.ratelimit import enforce
 from artify_api.routers.schemas import (
     LoginRequest,
@@ -249,8 +250,8 @@ def accept_invitation(body: AcceptInvitationRequest, request: Request) -> Messag
             {
                 "u": str(user_id),
                 "o": str(inv.organization_id),
-                "s": "list" if is_company else "none",
-                "c": str(inv.company_id) if is_company else "",
+                "s": "list" if (is_company or inv.company_ids) else "none",
+                "c": str(inv.company_id) if is_company else ",".join(str(c) for c in (inv.company_ids or [])),
             },
         )
         if user is None:
@@ -264,6 +265,16 @@ def accept_invitation(body: AcceptInvitationRequest, request: Request) -> Messag
             )
         role_id = inv.company_role_id if is_company else inv.org_role_id
         role_key = conn.execute(text("SELECT key FROM roles WHERE id = :r"), {"r": role_id}).scalar_one()
+        if (
+            not is_company
+            and conn.execute(
+                text(
+                    "SELECT 1 FROM organization_memberships WHERE user_id = :u AND organization_id = :o AND status = 'active'"
+                ),
+                {"u": user_id, "o": inv.organization_id},
+            ).first()
+        ):
+            raise Unprocessable("You are already an active member of this organization.")
         already_counted = conn.execute(
             text(
                 "SELECT 1 FROM organization_memberships WHERE user_id = :u AND organization_id = :o AND status = 'active'"
@@ -274,7 +285,7 @@ def accept_invitation(body: AcceptInvitationRequest, request: Request) -> Messag
         ).first()
         if already_counted is None:
             entitlements.guard(conn, inv.organization_id, "limit.users")
-        if role_key in ("accountant", "staff"):
+        if role_key in ACCOUNTANT_ROLES:
             entitlements.guard(conn, inv.organization_id, "limit.accountants")
         if is_company:
             conn.execute(
@@ -295,6 +306,22 @@ def accept_invitation(body: AcceptInvitationRequest, request: Request) -> Messag
                 ),
                 {"id": new_id(), "o": inv.organization_id, "u": user_id, "r": role_id},
             )
+        assigned = 0
+        if not is_company and inv.company_ids:
+            for cid in conn.execute(
+                text(
+                    "SELECT id FROM companies WHERE organization_id = :o AND id = ANY(CAST(:c AS uuid[])) AND status <> 'archived'"
+                ),
+                {"o": inv.organization_id, "c": list(inv.company_ids)},
+            ).scalars():
+                conn.execute(
+                    text(
+                        "INSERT INTO accountant_assignments (id, organization_id, company_id, user_id, assignment_type)"
+                        " VALUES (:id, :o, :c, :u, 'secondary') ON CONFLICT (company_id, user_id) DO NOTHING"
+                    ),
+                    {"id": new_id(), "o": inv.organization_id, "c": cid, "u": user_id},
+                )
+                assigned += 1
         conn.execute(text("UPDATE invitations SET accepted_at = now() WHERE id = :i"), {"i": inv.id})
         for key in ("limit.users", "limit.accountants"):
             entitlements.refresh_counter(conn, inv.organization_id, key)
@@ -306,10 +333,42 @@ def accept_invitation(body: AcceptInvitationRequest, request: Request) -> Messag
             company_id=inv.company_id,
             entity_type="invitation",
             entity_id=inv.id,
-            summary={"role": role_key},
+            summary={"role": role_key, "companies_assigned": assigned},
             meta=meta,
         )
     return MessageOut(status="accepted")
+
+
+@router.post(
+    "/invitations/decline",
+    response_model=MessageOut,
+    dependencies=[Depends(Public("invitation token is the credential; declining needs no account"))],
+)
+def decline_invitation(body: TokenBody, request: Request) -> MessageOut:
+    """The invitee refuses. The link stops working and the organization sees the invitation as declined."""
+    meta = request_meta(request)
+    enforce(f"invite_decline:ip:{meta.ip}", 20, 3600)
+    digest = hash_token(body.token)
+    with transaction(app_engine()) as conn:
+        inv = conn.execute(text("SELECT * FROM app.auth_invitation_by_hash(:h)"), {"h": digest}).first()
+        if inv is None or inv.accepted_at is not None or inv.revoked_at is not None:
+            raise Unprocessable("This invitation is invalid, already used or revoked.")
+        if not conn.execute(text("SELECT app.decline_invitation(:h)"), {"h": digest}).scalar():
+            raise Unprocessable("This invitation has expired.")
+        conn.execute(
+            text("SELECT set_config('app.org_id', :o, true), set_config('app.company_scope', 'none', true)"),
+            {"o": str(inv.organization_id)},
+        )
+        audit.write_audit(
+            conn,
+            action="invitation.declined",
+            org_id=inv.organization_id,
+            entity_type="invitation",
+            entity_id=inv.id,
+            actor_type="system",
+            meta=meta,
+        )
+    return MessageOut(status="declined")
 
 
 __all__ = ["DbContext", "router", "to_login_response", "to_token_response"]

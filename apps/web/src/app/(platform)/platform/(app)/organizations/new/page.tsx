@@ -2,7 +2,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Alert, Button, Panel } from "@artify/ui";
-import { Field, PageHeader, useToast } from "@/components/platform/kit";
+import { Field, PageHeader, useToast } from "@/components/kit";
 import { errorText, papi, useApi, type S } from "@/lib/platform";
 
 export default function NewOrganization() {

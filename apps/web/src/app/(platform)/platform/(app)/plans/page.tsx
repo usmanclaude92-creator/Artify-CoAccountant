@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Button, Panel } from "@artify/ui";
 import { useCan } from "@/components/platform/shell";
-import { DataTable, ErrorBox, Loading, PageHeader, Status } from "@/components/platform/kit";
+import { DataTable, ErrorBox, Loading, PageHeader, Status } from "@/components/kit";
 import { fmtMoney, fmtNumber, label, useApi, type S } from "@/lib/platform";
 
 export default function Plans() {

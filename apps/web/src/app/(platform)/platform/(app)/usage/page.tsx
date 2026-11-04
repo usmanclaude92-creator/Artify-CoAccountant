@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { DataTable, Meter, PageHeader, SearchBox, SelectFilter, Status } from "@/components/platform/kit";
+import { DataTable, Meter, PageHeader, SearchBox, SelectFilter, Status } from "@/components/kit";
 import { fmtNumber, useApi, useListState, type Page, type S } from "@/lib/platform";
 
 const COUNT_KEYS = ["limit.companies", "limit.users", "limit.accountants", "limit.devices"];

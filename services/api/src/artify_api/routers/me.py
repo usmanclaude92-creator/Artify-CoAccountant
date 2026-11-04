@@ -12,11 +12,22 @@ from sqlalchemy import text
 
 from artify_api import audit, entitlements
 from artify_api.context import RequestCtx, Requires, resolve_principal
-from artify_api.errors import NotFound
+from artify_api.errors import NotFound, Unprocessable
 from artify_api.idempotency import run_idempotent
 from artify_api.ids import new_id
-from artify_api.permissions import PERMISSIONS, SYSTEM_ROLES
+from artify_api.permissions import (
+    ACCOUNTANT_ROLES,
+    ALL_COMPANY_ROLES,
+    ASSIGNABLE_ROLES,
+    INVITABLE_ORG_ROLES,
+    MFA_REQUIRED_ROLES,
+    ORG_ROLE_RANK,
+    PERMISSIONS,
+    SYSTEM_ROLES,
+)
+from artify_api.ratelimit import enforce
 from artify_api.routers.schemas import PermissionOut, RoleOut
+from artify_api.security import passwords
 
 router = APIRouter(tags=["me"])
 
@@ -224,9 +235,85 @@ def list_roles(
     ctx: Annotated[RequestCtx, Depends(Requires(reason="static catalog of system roles; contains no tenant data"))],
 ) -> list[RoleOut]:
     return [
-        RoleOut(key=key, scope=scope, name=name, permissions=sorted(perms))
+        RoleOut(
+            key=key,
+            scope=scope,
+            name=name,
+            permissions=sorted(perms),
+            rank=ORG_ROLE_RANK.get(key),
+            invitable=key in INVITABLE_ORG_ROLES,
+            assignable_to_companies=key in ASSIGNABLE_ROLES,
+            reaches_all_companies=key in ALL_COMPANY_ROLES,
+            mfa_required=key in MFA_REQUIRED_ROLES,
+            counts_as_accountant=key in ACCOUNTANT_ROLES,
+        )
         for key, (scope, name, perms) in SYSTEM_ROLES.items()
     ]
+
+
+class ProfilePatch(BaseModel):
+    display_name: str | None = Field(default=None, min_length=1, max_length=100)
+    locale: Literal["en", "ar"] | None = None
+
+
+@router.patch("/me", response_model=MeOut, operation_id="me_update")
+def update_me(
+    body: ProfilePatch,
+    ctx: Annotated[RequestCtx, Depends(Requires(reason="edits the caller's own account profile"))],
+    x_organization_id: Annotated[uuid.UUID | None, Header()] = None,
+) -> MeOut:
+    """Change your own display name or language. E-mail and roles are not editable here."""
+    changes = body.model_dump(exclude_unset=True, exclude_none=True)
+    if not changes:
+        raise Unprocessable("Provide display_name and/or locale.")
+    sets = ", ".join(f"{k} = :{k}" for k in changes)
+    ctx.conn.execute(text(f"UPDATE users SET {sets}, updated_at = now() WHERE id = :u"), {**changes, "u": ctx.user_id})
+    audit.write_user_event(
+        ctx.conn,
+        actor_id=ctx.user_id,
+        action="user.profile_updated",
+        summary={"fields": sorted(changes)},
+        meta=ctx.meta,
+    )
+    return get_me(ctx, x_organization_id)
+
+
+class PasswordChange(BaseModel):
+    current_password: str = Field(min_length=1, max_length=256)
+    new_password: str = Field(min_length=1, max_length=256)
+
+
+@router.post("/me/password", status_code=204, operation_id="me_change_password")
+def change_password(
+    body: PasswordChange, ctx: Annotated[RequestCtx, Depends(Requires(reason="changes the caller's own password"))]
+) -> Response:
+    """Needs the current password. Every OTHER session of the user is signed out; this one continues."""
+    enforce(f"pwchange:user:{ctx.user_id}", 5, 900)
+    stored = ctx.conn.execute(
+        text("SELECT password_hash FROM auth_credentials WHERE user_id = :u"), {"u": ctx.user_id}
+    ).scalar()
+    if not passwords.verify_password(stored, body.current_password):
+        raise Unprocessable("The current password is not correct.")
+    email = ctx.conn.execute(text("SELECT email::text FROM users WHERE id = :u"), {"u": ctx.user_id}).scalar_one()
+    passwords.validate_password_policy(body.new_password, email=email)
+    ctx.conn.execute(
+        text("UPDATE auth_credentials SET password_hash = :h WHERE user_id = :u"),
+        {"h": passwords.hash_password(body.new_password), "u": ctx.user_id},
+    )
+    revoked = ctx.conn.execute(
+        text(
+            "UPDATE sessions SET revoked_at = now(), revoke_reason = 'password_changed' WHERE user_id = :u AND id <> :s AND revoked_at IS NULL"
+        ),
+        {"u": ctx.user_id, "s": ctx.session_id},
+    ).rowcount
+    audit.write_user_event(
+        ctx.conn,
+        actor_id=ctx.user_id,
+        action="user.password_changed",
+        summary={"other_sessions_revoked": revoked},
+        meta=ctx.meta,
+    )
+    return Response(status_code=204)
 
 
 @router.get("/permissions", response_model=list[PermissionOut], operation_id="permissions_list")

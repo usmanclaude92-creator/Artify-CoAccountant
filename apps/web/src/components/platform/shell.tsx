@@ -5,7 +5,7 @@ import { createContext, Suspense, useContext, useEffect, useRef, useState, type 
 import { Alert, Button } from "@artify/ui";
 import { bff } from "@/lib/client";
 import { ROLE_LABEL, papi, useApi, type S } from "@/lib/platform";
-import { Loading, ErrorBox, ToastProvider } from "./kit";
+import { Loading, ErrorBox, ToastProvider } from "@/components/kit";
 
 const MeCtx = createContext<S["PlatformMe"] | null>(null);
 /** The signed-in administrator (profile and permission keys). Permissions only shape the UI; the API re-checks each call. */

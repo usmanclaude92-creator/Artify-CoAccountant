@@ -16,7 +16,14 @@ from artify_api.errors import Conflict, Forbidden, NotFound, Unprocessable
 from artify_api.idempotency import run_idempotent
 from artify_api.ids import new_id
 from artify_api.mailer import Message, get_mailer
-from artify_api.permissions import INVITABLE_COMPANY_ROLES, INVITABLE_ORG_ROLES
+from artify_api.permissions import (
+    ACCOUNTANT_ROLES,
+    ASSIGNABLE_ROLES,
+    INVITABLE_COMPANY_ROLES,
+    INVITABLE_ORG_ROLES,
+    ORG_ROLE_RANK,
+)
+from artify_api.routers.control_center import email_delivery
 from artify_api.routers.schemas import (
     AuditEventOut,
     EntitlementOut,
@@ -33,12 +40,35 @@ router = APIRouter(tags=["organizations"])
 
 class OrgInvite(BaseModel):
     email: EmailStr
-    role: Literal["practice_admin", "accountant", "staff"]
+    company_ids: list[uuid.UUID] = Field(
+        default_factory=list, max_length=50
+    )  # companies the invitee is assigned to on acceptance
+    role: Literal[
+        "practice_admin",
+        "practice_manager",
+        "accountant",
+        "assistant_accountant",
+        "document_operator",
+        "read_only",
+        "staff",
+    ]
 
 
 class MemberUpdate(BaseModel):
     status: Literal["active", "suspended", "removed"] | None = None
-    role: Literal["firm_owner", "practice_admin", "accountant", "staff"] | None = None
+    role: (
+        Literal[
+            "firm_owner",
+            "practice_admin",
+            "practice_manager",
+            "accountant",
+            "assistant_accountant",
+            "document_operator",
+            "read_only",
+            "staff",
+        ]
+        | None
+    ) = None
 
 
 @router.get("/orgs/{org_id}", response_model=OrganizationOut, operation_id="organizations_get")
@@ -156,6 +186,11 @@ def update_member(
 
     if body.role is not None and user_id == ctx.user_id:
         raise Unprocessable("You cannot change your own role.")
+    caller_rank = ORG_ROLE_RANK.get(ctx.principal.org_role or "", 0)
+    if (body.role is not None and ORG_ROLE_RANK[body.role] > caller_rank) or ORG_ROLE_RANK.get(
+        target.role, 0
+    ) > caller_rank:
+        raise Forbidden("You cannot grant or change a role above your own.")
     if (target.role == "firm_owner" or new_role == "firm_owner") and not caller_is_owner:
         raise Forbidden("Only a firm owner can grant, change or remove the firm-owner role.")
     losing_owner = (
@@ -183,7 +218,7 @@ def update_member(
         ).first()
         if has_company_seat is None:  # a user is counted once, however many memberships they hold
             entitlements.guard(ctx.conn, org_id, "limit.users")
-    acct_roles = ("accountant", "staff")
+    acct_roles = ACCOUNTANT_ROLES
     was_acct = counted_before and target.role in acct_roles
     will_acct = counted_after and new_role in acct_roles
     if will_acct and not was_acct:
@@ -242,7 +277,13 @@ def update_member(
 
 
 def _create_invitation(
-    ctx: RequestCtx, *, org_id: uuid.UUID, email: str, role_key: str, company_id: uuid.UUID | None
+    ctx: RequestCtx,
+    *,
+    org_id: uuid.UUID,
+    email: str,
+    role_key: str,
+    company_id: uuid.UUID | None,
+    company_ids: list[uuid.UUID] | None = None,
 ) -> InvitationOut:
     plaintext, digest = new_opaque_token()
     inv_id = new_id()
@@ -255,7 +296,8 @@ def _create_invitation(
     ctx.conn.execute(
         text(
             "INSERT INTO invitations (id, organization_id, email, org_role_id, company_id, company_role_id,"
-            " token_hash, invited_by, expires_at) VALUES (:id, :o, :e, :orole, :c, :crole, :h, :by, :exp)"
+            " token_hash, invited_by, expires_at, company_ids) VALUES (:id, :o, :e, :orole, :c, :crole, :h, :by, :exp,"
+            " CAST(:cids AS uuid[]))"
         ),
         {
             "id": inv_id,
@@ -267,6 +309,7 @@ def _create_invitation(
             "h": digest,
             "by": ctx.user_id,
             "exp": expires,
+            "cids": company_ids or [],
         },
     )
     audit.write_audit(
@@ -277,7 +320,7 @@ def _create_invitation(
         company_id=company_id,
         entity_type="invitation",
         entity_id=inv_id,
-        summary={"role": role_key},
+        summary={"role": role_key, "company_ids": [str(c) for c in company_ids or []]},
         meta=ctx.meta,
     )
     get_mailer().send(Message(to=email, template="invitation", context={"token": plaintext}))
@@ -289,6 +332,8 @@ def _create_invitation(
         expires_at=expires,
         accepted_at=None,
         revoked_at=None,
+        company_ids=company_ids or [],
+        email_delivery=email_delivery(),
     )
 
 
@@ -305,34 +350,125 @@ def invite_member(
     idempotency_key: Annotated[str | None, Header()] = None,
 ) -> JSONResponse:
     assert body.role in INVITABLE_ORG_ROLES
+    assert ctx.principal is not None
+    if ORG_ROLE_RANK[body.role] > ORG_ROLE_RANK.get(ctx.principal.org_role or "", 0):
+        raise Forbidden("You cannot invite someone to a role above your own.")
+    if body.company_ids and body.role not in ASSIGNABLE_ROLES:
+        raise Unprocessable("Company access applies only to roles that are assigned to specific companies.")
+    email = str(body.email)
 
     def work() -> tuple[int, dict[str, object]]:
-        inv = _create_invitation(ctx, org_id=org_id, email=body.email, role_key=body.role, company_id=None)
+        if ctx.conn.execute(
+            text(
+                "SELECT 1 FROM organization_memberships m JOIN users u ON u.id = m.user_id"
+                " WHERE m.organization_id = :o AND u.email = :e AND m.status = 'active'"
+            ),
+            {"o": org_id, "e": email},
+        ).first():
+            raise Conflict("This person is already an active member of the organization.")
+        if ctx.conn.execute(
+            text(
+                "SELECT 1 FROM invitations WHERE organization_id = :o AND email = :e AND company_id IS NULL"
+                " AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > now()"
+            ),
+            {"o": org_id, "e": email},
+        ).first():
+            raise Conflict("A pending invitation for this address already exists; resend or cancel it instead.")
+        if body.company_ids:
+            found = ctx.conn.execute(
+                text(
+                    "SELECT count(*) FROM companies WHERE organization_id = :o AND id = ANY(CAST(:c AS uuid[])) AND status <> 'archived'"
+                ),
+                {"o": org_id, "c": list(body.company_ids)},
+            ).scalar_one()  # row-level security also hides companies the caller may not see
+            if found != len(set(body.company_ids)):
+                raise NotFound("One or more companies were not found.")
+        inv = _create_invitation(
+            ctx,
+            org_id=org_id,
+            email=email,
+            role_key=body.role,
+            company_id=None,
+            company_ids=sorted(set(body.company_ids), key=str),
+        )
         return 201, inv.model_dump(mode="json")
 
-    status, payload = run_idempotent(ctx, idempotency_key, body.model_dump(), work)
+    status, payload = run_idempotent(ctx, idempotency_key, body.model_dump(mode="json"), work)
     return JSONResponse(payload, status_code=status)
+
+
+_INV_SELECT = (
+    "SELECT i.id, i.email::text AS email, r.key AS role, i.company_id, i.expires_at, i.accepted_at, i.revoked_at,"
+    " i.declined_at, i.company_ids, i.resent_count, i.created_at, ub.display_name AS invited_by_name,"
+    " CASE WHEN i.accepted_at IS NOT NULL THEN 'accepted' WHEN i.declined_at IS NOT NULL THEN 'declined'"
+    " WHEN i.revoked_at IS NOT NULL THEN 'revoked' WHEN i.expires_at <= now() THEN 'expired' ELSE 'pending' END AS state"
+    " FROM invitations i JOIN roles r ON r.id = COALESCE(i.org_role_id, i.company_role_id)"
+    " LEFT JOIN users ub ON ub.id = i.invited_by"
+)
 
 
 @router.get(
     "/orgs/{org_id}/invitations", response_model=list[InvitationOut], operation_id="organizations_list_invitations"
 )
 def list_invitations(
-    org_id: uuid.UUID, ctx: Annotated[RequestCtx, Depends(Requires("invitations.manage"))]
+    org_id: uuid.UUID,
+    ctx: Annotated[RequestCtx, Depends(Requires("invitations.manage"))],
+    state: Literal["pending", "accepted", "revoked", "declined", "expired"] | None = None,
 ) -> list[InvitationOut]:
     rows = (
         ctx.conn.execute(
             text(
-                "SELECT i.id, i.email, r.key AS role, i.company_id, i.expires_at, i.accepted_at, i.revoked_at"
-                " FROM invitations i JOIN roles r ON r.id = COALESCE(i.org_role_id, i.company_role_id)"
-                " WHERE i.organization_id = :o ORDER BY i.created_at DESC"
+                f"SELECT * FROM ({_INV_SELECT} WHERE i.organization_id = :o) t WHERE (CAST(:s AS text) IS NULL OR t.state = :s) ORDER BY t.created_at DESC LIMIT 200"
             ),
-            {"o": org_id},
+            {"o": org_id, "s": state},
         )
         .mappings()
         .all()
     )
-    return [InvitationOut(**r) for r in rows]
+    return [InvitationOut(**r, email_delivery=None) for r in rows]
+
+
+@router.post(
+    "/orgs/{org_id}/invitations/{invitation_id}/resend",
+    response_model=InvitationOut,
+    operation_id="organizations_resend_invitation",
+)
+def resend_invitation(
+    org_id: uuid.UUID, invitation_id: uuid.UUID, ctx: Annotated[RequestCtx, Depends(Requires("invitations.manage"))]
+) -> InvitationOut:
+    """Issue a NEW secret link (the old one stops working) and a fresh expiry for a pending invitation."""
+    assert ctx.principal is not None
+    row = ctx.conn.execute(
+        text(
+            "SELECT i.email::text AS email, r.key AS role FROM invitations i JOIN roles r ON r.id = COALESCE(i.org_role_id, i.company_role_id)"
+            " WHERE i.id = :i AND i.organization_id = :o AND i.accepted_at IS NULL AND i.revoked_at IS NULL"
+        ),
+        {"i": invitation_id, "o": org_id},
+    ).first()
+    if row is None:
+        raise NotFound("Pending invitation not found.")
+    if row.role in ORG_ROLE_RANK and ORG_ROLE_RANK[row.role] > ORG_ROLE_RANK.get(ctx.principal.org_role or "", 0):
+        raise Forbidden("You cannot manage an invitation for a role above your own.")
+    plaintext, digest = new_opaque_token()
+    ctx.conn.execute(
+        text(
+            "UPDATE invitations SET token_hash = :h, expires_at = now() + make_interval(secs => :t), resent_at = now(),"
+            " resent_count = resent_count + 1 WHERE id = :i"
+        ),
+        {"h": digest, "t": get_settings().invitation_ttl_seconds, "i": invitation_id},
+    )
+    audit.write_audit(
+        ctx.conn,
+        action="invitation.resent",
+        actor_id=ctx.user_id,
+        org_id=org_id,
+        entity_type="invitation",
+        entity_id=invitation_id,
+        meta=ctx.meta,
+    )
+    get_mailer().send(Message(to=row.email, template="invitation", context={"token": plaintext}))
+    out = ctx.conn.execute(text(f"{_INV_SELECT} WHERE i.id = :i"), {"i": invitation_id}).mappings().one()
+    return InvitationOut(**out, email_delivery=email_delivery())
 
 
 @router.delete(

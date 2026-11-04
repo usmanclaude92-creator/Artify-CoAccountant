@@ -159,11 +159,20 @@ def resolve_principal(conn: Connection, user_id: uuid.UUID, org_id: uuid.UUID, m
             {"u": user_id, "o": org_id},
         )
     }
-    assigned = frozenset(
-        conn.execute(
-            text("SELECT company_id FROM accountant_assignments WHERE user_id = :u AND organization_id = :o"),
-            {"u": user_id, "o": org_id},
-        ).scalars()
+    # Assignments grant company visibility only while the person holds an ACTIVE organization membership and the
+    # assignment window (starts_on .. ends_on) is open. Removed/suspended members keep no access through old rows.
+    assigned = (
+        frozenset(
+            conn.execute(
+                text(
+                    "SELECT company_id FROM accountant_assignments WHERE user_id = :u AND organization_id = :o"
+                    " AND starts_on <= current_date AND (ends_on IS NULL OR ends_on >= current_date)"
+                ),
+                {"u": user_id, "o": org_id},
+            ).scalars()
+        )
+        if org_role is not None
+        else frozenset()
     )
     if org_role is None and not company_roles:
         return None

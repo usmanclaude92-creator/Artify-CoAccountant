@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { DataTable, PageHeader, Status } from "@/components/platform/kit";
+import { DataTable, PageHeader, Status } from "@/components/kit";
 import { fmtDateTime, label, useApi, type S } from "@/lib/platform";
 
 export default function Activity() {

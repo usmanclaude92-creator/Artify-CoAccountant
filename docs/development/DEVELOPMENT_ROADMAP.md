@@ -2,7 +2,7 @@
 
 Phases 0–12 as specified in the product brief. Each phase has its own document (`PHASE_N.md`) with objectives, scope, technical implementation, database changes, API requirements, dependencies, security requirements, testing requirements, acceptance criteria, completion checklist and known risks.
 
-**Status: Phase 0 approved. Phase 1 delivered for review (partially complete — see `PHASE_1_COMPLETION_REPORT.md`). Phase 2 (Super Admin) delivered for review — see `PHASE_2_COMPLETION_REPORT.md`. Phase 3 must not start until Phase 2 is approved.**
+**Status: Phase 0 approved. Phase 1 delivered for review (partially complete — see `PHASE_1_COMPLETION_REPORT.md`). Phase 2 (Super Admin) delivered for review — see `PHASE_2_COMPLETION_REPORT.md`. Phase 3 (Firm Control Center) delivered for review — see `PHASE_3_COMPLETION_REPORT.md`. Phase 4 must not start until Phase 3 is approved.**
 
 Sizing is relative (S/M/L/XL), not a schedule; calendar estimates need team size and are intentionally not invented here.
 

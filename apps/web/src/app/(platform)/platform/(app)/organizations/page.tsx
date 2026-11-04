@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { Button } from "@artify/ui";
 import { useCan } from "@/components/platform/shell";
-import { DataTable, PageHeader, SearchBox, SelectFilter, Status } from "@/components/platform/kit";
+import { DataTable, PageHeader, SearchBox, SelectFilter, Status } from "@/components/kit";
 import { fmtDate, fmtNumber, label, useApi, useListState, type Page, type S } from "@/lib/platform";
 
 const KEYS = ["q", "type", "status", "subscription_status", "sort", "order", "offset"];

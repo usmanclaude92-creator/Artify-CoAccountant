@@ -353,3 +353,43 @@ def walk_dependencies(dependant):  # type: ignore[no-untyped-def]
     for d in dependant.dependencies:
         yield d.call
         yield from walk_dependencies(d)
+
+
+# ------------------------------------------------------------------ Firm Control Center helpers (Phase 3)
+def enroll_actor_mfa(actor: Actor) -> Actor:
+    """Privileged organization roles must complete MFA before any organization request."""
+    enroll = actor.client.post("/api/v1/auth/mfa/enroll", headers=actor.headers())
+    assert enroll.status_code == 200, enroll.text
+    secret = enroll.json()["secret"]
+    confirm = actor.client.post("/api/v1/auth/mfa/confirm", json={"code": totp_now(secret)}, headers=actor.headers())
+    assert confirm.status_code == 200, confirm.text
+    actor.access, actor.mfa_secret = confirm.json()["access_token"], secret
+    return actor
+
+
+def make_member(
+    owner: Actor, mailer, role: str, *, email: str | None = None, company_ids: list[str] | None = None
+) -> Actor:  # type: ignore[no-untyped-def]
+    """Invite `role` to the owner's organization, accept as that user, and complete MFA when the role requires it."""
+    from artify_api.permissions import MFA_REQUIRED_ROLES
+
+    email = email or uniq(role)
+    body: dict = {"email": email, "role": role}
+    if company_ids:
+        body["company_ids"] = company_ids
+    r = owner.post(f"/orgs/{owner.org_id}/invitations", body)
+    assert r.status_code == 201, r.text
+    token = mailer.last("invitation", email).context["token"]
+    ok = owner.client.post(
+        "/api/v1/auth/invitations/accept", json={"token": token, "display_name": role.title(), "password": PASSWORD}
+    )
+    assert ok.status_code == 200, ok.text
+    body = login(owner.client, email)
+    actor = Actor(owner.client, email, body["tokens"]["access_token"], body["tokens"]["refresh_token"], owner.org_id)
+    return enroll_actor_mfa(actor) if role in MFA_REQUIRED_ROLES else actor
+
+
+def uid(actor: Actor) -> str:
+    """The user's id, read WITHOUT an organization header so it also works after a membership was suspended."""
+    r = actor.client.get("/api/v1/me", headers={"Authorization": f"Bearer {actor.access}"})
+    return r.json()["user_id"]

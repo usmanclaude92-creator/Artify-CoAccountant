@@ -4,7 +4,7 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 import { Button, Panel } from "@artify/ui";
 import { useCan } from "@/components/platform/shell";
-import { ActionDialog, DataTable, ErrorBox, Field, Loading, Meter, PageHeader, Status, Tabs, useToast } from "@/components/platform/kit";
+import { ActionDialog, DataTable, ErrorBox, Field, Loading, Meter, PageHeader, Status, Tabs, useToast } from "@/components/kit";
 import { fmtDate, fmtDateTime, fmtNumber, label, papi, useApi, type Page, type S } from "@/lib/platform";
 
 export default function OrganizationDetail() {

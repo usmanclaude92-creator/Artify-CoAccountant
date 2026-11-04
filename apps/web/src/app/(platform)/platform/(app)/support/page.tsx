@@ -3,7 +3,7 @@ import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Alert, Button, Panel } from "@artify/ui";
 import { useCan } from "@/components/platform/shell";
-import { ActionDialog, DataTable, Field, PageHeader, SelectFilter, Status, useToast } from "@/components/platform/kit";
+import { ActionDialog, DataTable, Field, PageHeader, SelectFilter, Status, useToast } from "@/components/kit";
 import { fmtDateTime, label, papi, useApi, useListState, type Page, type S } from "@/lib/platform";
 
 export default function Support() {

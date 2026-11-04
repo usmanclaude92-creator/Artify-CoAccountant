@@ -18,7 +18,8 @@ export function proxy(req: NextRequest) {
   }
   const hasAccess = req.cookies.has("artify_at") || req.cookies.has("artify_rt");
   const hasPlatformAccess = req.cookies.has("artify_pat") || req.cookies.has("artify_prt");
-  const protectedTenant = pathname.startsWith("/dashboard") || pathname.startsWith("/security");
+  const TENANT_PREFIXES = ["/dashboard", "/security", "/companies", "/team", "/accountants", "/assignments", "/invitations", "/subscription", "/activity", "/settings", "/profile", "/support-access"];
+  const protectedTenant = TENANT_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
   // sign-in and invitation acceptance are the only platform pages reachable without a session
   const publicPlatform = pathname.startsWith("/platform/login") || pathname.startsWith("/platform/accept-invitation");
   const protectedPlatform = pathname.startsWith("/platform") && !publicPlatform;

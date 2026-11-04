@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { DataTable, PageHeader, SearchBox, SelectFilter, Status } from "@/components/platform/kit";
+import { DataTable, PageHeader, SearchBox, SelectFilter, Status } from "@/components/kit";
 import { Alert } from "@artify/ui";
 import { fmtBytes, fmtDate, fmtNumber, label, useApi, useListState, type Page, type S } from "@/lib/platform";
 

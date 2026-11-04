@@ -17,6 +17,7 @@ from artify_api.logging_config import configure_logging, correlation_id_var
 from artify_api.routers import (
     auth,
     companies,
+    control_center,
     health,
     me,
     orgs,
@@ -40,6 +41,7 @@ ROUTERS = (
     auth.router,
     orgs.router,
     companies.router,
+    control_center.router,
     me.router,
     platform.router,
     platform_orgs.router,

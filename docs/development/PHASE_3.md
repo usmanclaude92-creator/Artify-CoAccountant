@@ -1,6 +1,6 @@
 # Phase 3 — Firm Control Center and Client Management
 
-**Status: NOT STARTED.**
+**Status: DELIVERED FOR REVIEW (2026-11-04) — see [`PHASE_3_COMPLETION_REPORT.md`](PHASE_3_COMPLETION_REPORT.md) for what is implemented, tested and still open (notably: notifications framework, custom roles, audit export, Arabic UI and the roles-configuration screen are not delivered).** Phase 4 must not start until this phase is approved.
 
 ## Objectives
 

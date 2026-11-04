@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Button, Panel } from "@artify/ui";
 import { useCan } from "@/components/platform/shell";
-import { ActionDialog, DataTable, Field, PageHeader, useToast } from "@/components/platform/kit";
+import { ActionDialog, DataTable, Field, PageHeader, useToast } from "@/components/kit";
 import { fmtDateTime, papi, useApi, type S } from "@/lib/platform";
 
 export default function Settings() {

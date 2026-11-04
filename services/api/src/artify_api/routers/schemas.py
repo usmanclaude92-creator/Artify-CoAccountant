@@ -88,6 +88,23 @@ class CompanyOut(BaseModel):
     base_currency: str
     status: Literal["active", "suspended", "archived"]
     created_at: datetime
+    # profile (all optional: companies created before Phase 3 have none of these)
+    legal_name: str | None = None
+    registration_number: str | None = None
+    company_type: str | None = None
+    industry: str | None = None
+    city: str | None = None
+    address_line: str | None = None
+    contact_email: str | None = None
+    contact_phone: str | None = None
+    # accounting settings owned by this company alone
+    financial_year_start_month: int = 1
+    financial_year_start_day: int = 1
+    accounting_basis: Literal["accrual", "cash"] | None = None
+    vat_registered: bool = False
+    vat_number: str | None = None
+    tax_jurisdiction: str | None = None
+    updated_at: datetime | None = None
 
 
 class MemberOut(BaseModel):
@@ -106,6 +123,14 @@ class InvitationOut(BaseModel):
     expires_at: datetime
     accepted_at: datetime | None
     revoked_at: datetime | None
+    # Phase 3 additions (all optional so older clients keep working)
+    state: Literal["pending", "accepted", "revoked", "declined", "expired"] = "pending"
+    company_ids: list[uuid.UUID] = []
+    resent_count: int = 0
+    created_at: datetime | None = None
+    invited_by_name: str | None = None
+    declined_at: datetime | None = None
+    email_delivery: dict[str, object] | None = None
 
 
 class EntitlementOut(BaseModel):
@@ -141,6 +166,13 @@ class RoleOut(BaseModel):
     scope: Literal["organization", "company"]
     name: str
     permissions: list[str]
+    # organization roles only (None for company roles)
+    rank: int | None = None
+    invitable: bool = False
+    assignable_to_companies: bool = False
+    reaches_all_companies: bool = False
+    mfa_required: bool = False
+    counts_as_accountant: bool = False
 
 
 class PermissionOut(BaseModel):

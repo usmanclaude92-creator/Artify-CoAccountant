@@ -130,6 +130,11 @@ def test_audit_log_records_actions_and_is_tenant_scoped(client, mailer) -> None:
 
 
 def test_outbox_dispatch_and_failure_backoff(client, mailer, owner_engine) -> None:  # type: ignore[no-untyped-def]
+    # Earlier tests leave pending events in the shared test database. `dispatch_pending` takes at most 100 per call, so
+    # drain first; otherwise this test's own event can fall outside the first batch once the suite is large enough
+    # (it did, when Phase 3 added tests that create many companies).
+    while outbox.dispatch_pending(lambda _event: None):
+        pass
     a = new_owner(client, mailer)
     make_company(a, "OBX")  # emits company.created in the same transaction
     sent: list[dict] = []

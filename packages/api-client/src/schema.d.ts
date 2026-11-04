@@ -21,6 +21,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/invitations/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Decline Invitation
+         * @description The invitee refuses. The link stops working and the organization sees the invitation as declined.
+         */
+        post: operations["auth_decline_invitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/login": {
         parameters: {
             query?: never;
@@ -239,7 +259,11 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Update Company */
+        /**
+         * Update Company
+         * @description Edit the company PROFILE (names, registration, contact). Accounting settings have their own endpoint and
+         *     permission; lifecycle (archive, restore, activate, deactivate) has its own too.
+         */
         patch: operations["companies_update"];
         trace?: never;
     };
@@ -261,6 +285,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/companies/{company_id}/assignments/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Assignment History
+         * @description Who was assigned, changed or removed, by whom and when (from the append-only audit log).
+         */
+        get: operations["companies_assignment_history"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/companies/{company_id}/assignments/{user_id}": {
         parameters: {
             query?: never;
@@ -273,6 +317,52 @@ export interface paths {
         post?: never;
         /** Unassign Accountant */
         delete: operations["companies_unassign"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Assignment
+         * @description Change type, responsibility or the assignment window. Setting `ends_on` in the past ends the person's access to
+         *     the company from that day; the row stays as history of who was assigned.
+         */
+        patch: operations["companies_update_assignment"];
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/configuration": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Company Configuration
+         * @description The record that OWNS this company's configuration. Phase 4 attaches workspace structure, categories,
+         *     folders, fields, templates, workflows and folder mappings to it; in Phase 3 it only says nothing is configured.
+         */
+        get: operations["companies_configuration"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Company History
+         * @description Creation, modification, lifecycle, settings, assignment and membership events of this company.
+         */
+        get: operations["companies_history"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -332,6 +422,49 @@ export interface paths {
          *     reactivation counts against limit.users (a user is counted once across memberships).
          */
         patch: operations["companies_update_member"];
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Company Settings
+         * @description Edit this company's accounting settings. They never propagate to, or inherit from, another company or the
+         *     organization. The base currency can only change while nothing has been configured for the company (later
+         *     phases will attach data denominated in it).
+         */
+        patch: operations["companies_update_settings"];
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Change Company Status
+         * @description Activate / deactivate / archive / restore. Nothing is deleted: archived companies keep all their data and
+         *     free their subscription slot; restoring needs a free slot again.
+         */
+        post: operations["companies_status"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/devices": {
@@ -417,6 +550,30 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
+        /**
+         * Update Me
+         * @description Change your own display name or language. E-mail and roles are not editable here.
+         */
+        patch: operations["me_update"];
+        trace?: never;
+    };
+    "/api/v1/me/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Change Password
+         * @description Needs the current password. Every OTHER session of the user is signed out; this one continues.
+         */
+        post: operations["me_change_password"];
+        delete?: never;
+        options?: never;
+        head?: never;
         patch?: never;
         trace?: never;
     };
@@ -459,6 +616,87 @@ export interface paths {
         patch: operations["organizations_update"];
         trace?: never;
     };
+    "/api/v1/orgs/{org_id}/accountants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Accountants
+         * @description Professional staff (accountant, assistant accountant, staff) with their assigned companies and workload.
+         *     The professional profile (job title, licence) is separate from the authorization role shown in `role`.
+         *     Assignment lists show only companies the viewer may see.
+         */
+        get: operations["control_center_accountants"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orgs/{org_id}/accountants/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Accountant */
+        get: operations["control_center_accountant"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orgs/{org_id}/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Activity
+         * @description Organization activity (the customer's own audit log). Platform-internal logs are never part of it; Artify
+         *     support activity appears here only because it is mirrored into the customer's log (see support policy).
+         */
+        get: operations["control_center_activity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orgs/{org_id}/assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Assignments
+         * @description All company-accountant assignments the viewer may see, filterable by company, person and whether the
+         *     assignment window is currently open.
+         */
+        get: operations["control_center_assignments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/orgs/{org_id}/audit-events": {
         parameters: {
             query?: never;
@@ -486,8 +724,51 @@ export interface paths {
         /** List Companies */
         get: operations["companies_list"];
         put?: never;
-        /** Create Company */
+        /**
+         * Create Company
+         * @description Create a company with its profile, its OWN accounting settings, its configuration-ownership record and
+         *     (optionally) its first accountant assignments, atomically. Nothing is copied from the organization or from
+         *     another company, and no default sections, folders or categories are created.
+         */
         post: operations["companies_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orgs/{org_id}/companies/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Companies Overview
+         * @description Searchable, filterable, paginated company directory. `status=open` means active or inactive (not archived).
+         *     Rows are limited by row-level security to the companies the caller may see.
+         */
+        get: operations["companies_overview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orgs/{org_id}/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dashboard */
+        get: operations["control_center_dashboard"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -546,6 +827,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/orgs/{org_id}/invitations/{invitation_id}/resend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resend Invitation
+         * @description Issue a NEW secret link (the old one stops working) and a fresh expiry for a pending invitation.
+         */
+        post: operations["organizations_resend_invitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/orgs/{org_id}/members": {
         parameters: {
             query?: never;
@@ -584,6 +885,93 @@ export interface paths {
          *     member stops being an accountant/staff member.
          */
         patch: operations["organizations_update_member"];
+        trace?: never;
+    };
+    "/api/v1/orgs/{org_id}/members/{user_id}/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Member Profile
+         * @description Professional details (job title, phone, licence). They are descriptive only and never grant or limit access:
+         *     the organization role does. A person may edit their own; `member_profiles.manage` edits anyone's.
+         */
+        patch: operations["control_center_member_profile"];
+        trace?: never;
+    };
+    "/api/v1/orgs/{org_id}/ownership-transfer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Transfer Ownership
+         * @description The approved way to hand an organization over: the current owner (MFA-verified, typing the organization slug)
+         *     makes another ACTIVE member the firm owner and becomes a practice administrator in the same transaction. The
+         *     organization therefore never has zero owners, and the last owner can never be removed any other way.
+         */
+        post: operations["control_center_transfer_ownership"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orgs/{org_id}/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Settings View */
+        get: operations["control_center_settings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Settings
+         * @description Organization-level contact, regional and notification settings. These never overwrite any company's own
+         *     currency, financial year, VAT or configuration (each company owns those). The organization's name, display
+         *     name and language are changed through `PATCH /orgs/{id}` (owner only).
+         */
+        patch: operations["control_center_update_settings"];
+        trace?: never;
+    };
+    "/api/v1/orgs/{org_id}/subscription": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Subscription
+         * @description The organization's plan, status and entitlements exactly as the platform configured them. Customers cannot
+         *     change any of it; limits are enforced by the backend, never by this page.
+         */
+        get: operations["control_center_subscription"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/orgs/{org_id}/support-grants": {
@@ -648,6 +1036,23 @@ export interface paths {
         put?: never;
         /** Revoke */
         post: operations["support_grants_revoke"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orgs/{org_id}/team": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Team */
+        get: operations["control_center_team"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1843,6 +2248,33 @@ export interface components {
             /** Token */
             token: string;
         };
+        /** AccountantRow */
+        AccountantRow: {
+            /** Active Company Count */
+            active_company_count: number;
+            /** Assignments */
+            assignments: components["schemas"]["AssignedCompany"][];
+            /** Display Name */
+            display_name: string;
+            /** Email */
+            email: string;
+            /** Job Title */
+            job_title: string | null;
+            /** License Number */
+            license_number: string | null;
+            /** Role */
+            role: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "suspended" | "removed";
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
+        };
         /** ActivityItem */
         ActivityItem: {
             /**
@@ -1989,6 +2421,31 @@ export interface components {
             /** Note */
             note?: string | null;
         };
+        /** AssignedCompany */
+        AssignedCompany: {
+            /** Active */
+            active: boolean;
+            /** Assignment Type */
+            assignment_type: string;
+            /**
+             * Company Id
+             * Format: uuid
+             */
+            company_id: string;
+            /** Company Name */
+            company_name: string;
+            /** Company Status */
+            company_status: string;
+            /** Ends On */
+            ends_on: string | null;
+            /** Responsibility */
+            responsibility: string | null;
+            /**
+             * Starts On
+             * Format: date
+             */
+            starts_on: string;
+        };
         /** AssignmentCreate */
         AssignmentCreate: {
             /**
@@ -1997,6 +2454,32 @@ export interface components {
              * @enum {string}
              */
             assignment_type: "primary" | "secondary" | "reviewer";
+            /** Ends On */
+            ends_on?: string | null;
+            /** Responsibility */
+            responsibility?: string | null;
+            /** Starts On */
+            starts_on?: string | null;
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
+        };
+        /** AssignmentInput */
+        AssignmentInput: {
+            /**
+             * Assignment Type
+             * @default secondary
+             * @enum {string}
+             */
+            assignment_type: "primary" | "secondary" | "reviewer";
+            /** Ends On */
+            ends_on?: string | null;
+            /** Responsibility */
+            responsibility?: string | null;
+            /** Starts On */
+            starts_on?: string | null;
             /**
              * User Id
              * Format: uuid
@@ -2005,17 +2488,82 @@ export interface components {
         };
         /** AssignmentOut */
         AssignmentOut: {
+            /** Active */
+            active: boolean;
             /** Assignment Type */
             assignment_type: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
             /** Display Name */
             display_name: string;
             /** Email */
             email: string;
+            /** Ends On */
+            ends_on: string | null;
+            /** Responsibility */
+            responsibility: string | null;
+            /** Role */
+            role: string;
+            /**
+             * Starts On
+             * Format: date
+             */
+            starts_on: string;
             /**
              * User Id
              * Format: uuid
              */
             user_id: string;
+        };
+        /** AssignmentRow */
+        AssignmentRow: {
+            /** Active */
+            active: boolean;
+            /** Assignment Type */
+            assignment_type: string;
+            /**
+             * Company Id
+             * Format: uuid
+             */
+            company_id: string;
+            /** Company Name */
+            company_name: string;
+            /** Company Status */
+            company_status: string;
+            /** Display Name */
+            display_name: string;
+            /** Email */
+            email: string;
+            /** Ends On */
+            ends_on: string | null;
+            /** Responsibility */
+            responsibility: string | null;
+            /** Role */
+            role: string;
+            /**
+             * Starts On
+             * Format: date
+             */
+            starts_on: string;
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
+        };
+        /** AssignmentUpdate */
+        AssignmentUpdate: {
+            /** Assignment Type */
+            assignment_type?: ("primary" | "secondary" | "reviewer") | null;
+            /** Ends On */
+            ends_on?: string | null;
+            /** Responsibility */
+            responsibility?: string | null;
+            /** Starts On */
+            starts_on?: string | null;
         };
         /** AuditEventOut */
         AuditEventOut: {
@@ -2178,18 +2726,68 @@ export interface components {
              */
             role_key: "platform_owner" | "platform_admin" | "platform_support" | "platform_billing" | "platform_auditor" | "platform_readonly";
         };
+        /** CompanyCounts */
+        CompanyCounts: {
+            /** Active */
+            active: number;
+            /** Archived */
+            archived: number;
+            /** Inactive */
+            inactive: number;
+            /** Total */
+            total: number;
+        };
         /** CompanyCreate */
         CompanyCreate: {
+            /** Accounting Basis */
+            accounting_basis?: ("accrual" | "cash") | null;
+            /** Address Line */
+            address_line?: string | null;
+            /** Assignments */
+            assignments?: components["schemas"]["AssignmentInput"][];
             /** Base Currency */
             base_currency: string;
+            /** City */
+            city?: string | null;
             /** Code */
             code: string;
+            /** Company Type */
+            company_type?: string | null;
+            /** Contact Email */
+            contact_email?: string | null;
+            /** Contact Phone */
+            contact_phone?: string | null;
             /** Country */
             country: string;
+            /**
+             * Financial Year Start Day
+             * @default 1
+             */
+            financial_year_start_day: number;
+            /**
+             * Financial Year Start Month
+             * @default 1
+             */
+            financial_year_start_month: number;
+            /** Industry */
+            industry?: string | null;
+            /** Legal Name */
+            legal_name?: string | null;
             /** Name */
             name: string;
+            /** Registration Number */
+            registration_number?: string | null;
+            /** Tax Jurisdiction */
+            tax_jurisdiction?: string | null;
             /** Tax Registration */
             tax_registration?: string | null;
+            /** Vat Number */
+            vat_number?: string | null;
+            /**
+             * Vat Registered
+             * @default false
+             */
+            vat_registered: boolean;
         };
         /** CompanyInvite */
         CompanyInvite: {
@@ -2204,15 +2802,12 @@ export interface components {
              */
             role: "company_owner" | "company_admin" | "company_employee";
         };
-        /** CompanyMemberUpdate */
-        CompanyMemberUpdate: {
-            /** Role */
-            role?: ("company_owner" | "company_admin" | "company_employee") | null;
-            /** Status */
-            status?: ("active" | "suspended" | "removed") | null;
-        };
-        /** CompanyOut */
-        CompanyOut: {
+        /** CompanyListRow */
+        CompanyListRow: {
+            /** Accountant Count */
+            accountant_count: number;
+            /** Assigned To Me */
+            assigned_to_me: boolean;
             /** Base Currency */
             base_currency: string;
             /** Code */
@@ -2229,6 +2824,69 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** Legal Name */
+            legal_name: string | null;
+            /** Member Count */
+            member_count: number;
+            /** Name */
+            name: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "suspended" | "archived";
+        };
+        /** CompanyMemberUpdate */
+        CompanyMemberUpdate: {
+            /** Role */
+            role?: ("company_owner" | "company_admin" | "company_employee") | null;
+            /** Status */
+            status?: ("active" | "suspended" | "removed") | null;
+        };
+        /** CompanyOut */
+        CompanyOut: {
+            /** Accounting Basis */
+            accounting_basis?: ("accrual" | "cash") | null;
+            /** Address Line */
+            address_line?: string | null;
+            /** Base Currency */
+            base_currency: string;
+            /** City */
+            city?: string | null;
+            /** Code */
+            code: string;
+            /** Company Type */
+            company_type?: string | null;
+            /** Contact Email */
+            contact_email?: string | null;
+            /** Contact Phone */
+            contact_phone?: string | null;
+            /** Country */
+            country: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Financial Year Start Day
+             * @default 1
+             */
+            financial_year_start_day: number;
+            /**
+             * Financial Year Start Month
+             * @default 1
+             */
+            financial_year_start_month: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Industry */
+            industry?: string | null;
+            /** Legal Name */
+            legal_name?: string | null;
             /** Name */
             name: string;
             /**
@@ -2236,13 +2894,26 @@ export interface components {
              * Format: uuid
              */
             organization_id: string;
+            /** Registration Number */
+            registration_number?: string | null;
             /**
              * Status
              * @enum {string}
              */
             status: "active" | "suspended" | "archived";
+            /** Tax Jurisdiction */
+            tax_jurisdiction?: string | null;
             /** Tax Registration */
             tax_registration: string | null;
+            /** Updated At */
+            updated_at?: string | null;
+            /** Vat Number */
+            vat_number?: string | null;
+            /**
+             * Vat Registered
+             * @default false
+             */
+            vat_registered: boolean;
         };
         /** CompanyRow */
         CompanyRow: {
@@ -2284,12 +2955,43 @@ export interface components {
             /** User Count */
             user_count: number;
         };
+        /** CompanySettingsUpdate */
+        CompanySettingsUpdate: {
+            /** Accounting Basis */
+            accounting_basis?: ("accrual" | "cash") | null;
+            /** Base Currency */
+            base_currency?: string | null;
+            /** Financial Year Start Day */
+            financial_year_start_day?: number | null;
+            /** Financial Year Start Month */
+            financial_year_start_month?: number | null;
+            /** Tax Jurisdiction */
+            tax_jurisdiction?: string | null;
+            /** Vat Number */
+            vat_number?: string | null;
+            /** Vat Registered */
+            vat_registered?: boolean | null;
+        };
         /** CompanyUpdate */
         CompanyUpdate: {
+            /** Address Line */
+            address_line?: string | null;
+            /** City */
+            city?: string | null;
+            /** Company Type */
+            company_type?: string | null;
+            /** Contact Email */
+            contact_email?: string | null;
+            /** Contact Phone */
+            contact_phone?: string | null;
+            /** Industry */
+            industry?: string | null;
+            /** Legal Name */
+            legal_name?: string | null;
             /** Name */
             name?: string | null;
-            /** Status */
-            status?: ("active" | "suspended" | "archived") | null;
+            /** Registration Number */
+            registration_number?: string | null;
             /** Tax Registration */
             tax_registration?: string | null;
         };
@@ -2337,6 +3039,33 @@ export interface components {
             /** Rows */
             rows: components["schemas"]["CompareRow"][];
         };
+        /** ConfigurationOut */
+        ConfigurationOut: {
+            /**
+             * Company Id
+             * Format: uuid
+             */
+            company_id: string;
+            /** Config Version */
+            config_version: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Future Areas */
+            future_areas: string[];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /**
+             * Workspace State
+             * @enum {string}
+             */
+            workspace_state: "not_configured" | "configured";
+        };
         /** CountBy */
         CountBy: {
             /** Breakdown */
@@ -2352,6 +3081,17 @@ export interface components {
             amount: string;
             /** Currency */
             currency: string;
+        };
+        /** DashSubscription */
+        DashSubscription: {
+            /** Current Period End */
+            current_period_end: string | null;
+            /** Plan Name */
+            plan_name: string;
+            /** Status */
+            status: string;
+            /** Trial Ends At */
+            trial_ends_at: string | null;
         };
         /** Dashboard */
         Dashboard: {
@@ -2388,6 +3128,36 @@ export interface components {
             subscriptions: components["schemas"]["CountBy"];
             usage_trend: components["schemas"]["Unavailable"];
             users: components["schemas"]["CountBy"];
+        };
+        /** DashboardOut */
+        DashboardOut: {
+            /** Assigned To Me */
+            assigned_to_me: number;
+            companies: components["schemas"]["CompanyCounts"];
+            /** Email Delivery */
+            email_delivery: {
+                [key: string]: unknown;
+            };
+            /**
+             * Organization Id
+             * Format: uuid
+             */
+            organization_id: string;
+            /** Organization Name */
+            organization_name: string;
+            /** Organization Status */
+            organization_status: string;
+            /** Organization Type */
+            organization_type: string;
+            /** Pending Invitations */
+            pending_invitations: number | null;
+            /** Recent Activity */
+            recent_activity: components["schemas"]["OrgActivityRow"][] | null;
+            subscription: components["schemas"]["DashSubscription"] | null;
+            team: components["schemas"]["TeamCounts"] | null;
+            /** Usage */
+            usage: components["schemas"]["UsageBrief"][] | null;
+            viewer: components["schemas"]["Viewer"];
         };
         /** Deny */
         Deny: {
@@ -2624,14 +3394,54 @@ export interface components {
              */
             status: "ok" | "degraded" | "down" | "not_configured" | "unknown";
         };
+        /** HistoryEvent */
+        HistoryEvent: {
+            /** Action */
+            action: string;
+            /** Actor Id */
+            actor_id: string | null;
+            /** Actor Name */
+            actor_name: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Entity Id */
+            entity_id: string | null;
+            /** Entity Type */
+            entity_type: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Summary */
+            summary: {
+                [key: string]: unknown;
+            };
+        };
         /** InvitationOut */
         InvitationOut: {
             /** Accepted At */
             accepted_at: string | null;
             /** Company Id */
             company_id: string | null;
+            /**
+             * Company Ids
+             * @default []
+             */
+            company_ids: string[];
+            /** Created At */
+            created_at?: string | null;
+            /** Declined At */
+            declined_at?: string | null;
             /** Email */
             email: string;
+            /** Email Delivery */
+            email_delivery?: {
+                [key: string]: unknown;
+            } | null;
             /**
              * Expires At
              * Format: date-time
@@ -2642,10 +3452,23 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** Invited By Name */
+            invited_by_name?: string | null;
+            /**
+             * Resent Count
+             * @default 0
+             */
+            resent_count: number;
             /** Revoked At */
             revoked_at: string | null;
             /** Role */
             role: string;
+            /**
+             * State
+             * @default pending
+             * @enum {string}
+             */
+            state: "pending" | "accepted" | "revoked" | "declined" | "expired";
         };
         /** InvitationRow */
         InvitationRow: {
@@ -2863,7 +3686,7 @@ export interface components {
         /** MemberUpdate */
         MemberUpdate: {
             /** Role */
-            role?: ("firm_owner" | "practice_admin" | "accountant" | "staff") | null;
+            role?: ("firm_owner" | "practice_admin" | "practice_manager" | "accountant" | "assistant_accountant" | "document_operator" | "read_only" | "staff") | null;
             /** Status */
             status?: ("active" | "suspended" | "removed") | null;
         };
@@ -2943,6 +3766,37 @@ export interface components {
             /** Month */
             month: string;
         };
+        /** OrgActivityRow */
+        OrgActivityRow: {
+            /** Action */
+            action: string;
+            /** Actor Id */
+            actor_id: string | null;
+            /** Actor Name */
+            actor_name: string | null;
+            /** Company Id */
+            company_id: string | null;
+            /** Company Name */
+            company_name: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Entity Id */
+            entity_id: string | null;
+            /** Entity Type */
+            entity_type: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Summary */
+            summary: {
+                [key: string]: unknown;
+            };
+        };
         /** OrgCreate */
         OrgCreate: {
             /** Country */
@@ -2981,6 +3835,8 @@ export interface components {
         };
         /** OrgInvite */
         OrgInvite: {
+            /** Company Ids */
+            company_ids?: string[];
             /**
              * Email
              * Format: email
@@ -2990,7 +3846,7 @@ export interface components {
              * Role
              * @enum {string}
              */
-            role: "practice_admin" | "accountant" | "staff";
+            role: "practice_admin" | "practice_manager" | "accountant" | "assistant_accountant" | "document_operator" | "read_only" | "staff";
         };
         /** OrgRow */
         OrgRow: {
@@ -3046,6 +3902,69 @@ export interface components {
             type: "accounting_firm" | "independent_accountant";
             /** User Count */
             user_count: number;
+        };
+        /** OrgSettingsOut */
+        OrgSettingsOut: {
+            /** Address Line */
+            address_line: string | null;
+            /** City */
+            city: string | null;
+            /** Contact Email */
+            contact_email: string | null;
+            /** Contact Phone */
+            contact_phone: string | null;
+            /** Country */
+            country: string;
+            /** Default Currency */
+            default_currency: string;
+            /** Display Name */
+            display_name: string;
+            /** Email Delivery */
+            email_delivery: {
+                [key: string]: unknown;
+            };
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Legal Name */
+            legal_name: string;
+            /** Locale */
+            locale: string;
+            /** Notification Preferences */
+            notification_preferences: {
+                [key: string]: boolean;
+            };
+            /** Notifications Sent */
+            notifications_sent: boolean;
+            /** Slug */
+            slug: string;
+            /** Status */
+            status: string;
+            /** Timezone */
+            timezone: string;
+            /** Type */
+            type: string;
+        };
+        /** OrgSettingsUpdate */
+        OrgSettingsUpdate: {
+            /** Address Line */
+            address_line?: string | null;
+            /** City */
+            city?: string | null;
+            /** Contact Email */
+            contact_email?: string | null;
+            /** Contact Phone */
+            contact_phone?: string | null;
+            /** Default Currency */
+            default_currency?: string | null;
+            /** Notification Preferences */
+            notification_preferences?: {
+                [key: string]: boolean;
+            } | null;
+            /** Timezone */
+            timezone?: string | null;
         };
         /** OrgUpdate */
         OrgUpdate: {
@@ -3148,6 +4067,27 @@ export interface components {
             reason: string;
             value: components["schemas"]["EntitlementValue"];
         };
+        /** OwnershipTransfer */
+        OwnershipTransfer: {
+            /** Confirm */
+            confirm: string;
+            /**
+             * New Owner User Id
+             * Format: uuid
+             */
+            new_owner_user_id: string;
+        };
+        /** Page[AccountantRow] */
+        Page_AccountantRow_: {
+            /** Items */
+            items: components["schemas"]["AccountantRow"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Total */
+            total: number;
+        };
         /** Page[ActivityRow] */
         Page_ActivityRow_: {
             /** Items */
@@ -3159,10 +4099,32 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** Page[AssignmentRow] */
+        Page_AssignmentRow_: {
+            /** Items */
+            items: components["schemas"]["AssignmentRow"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Total */
+            total: number;
+        };
         /** Page[AuditOut] */
         Page_AuditOut_: {
             /** Items */
             items: components["schemas"]["AuditOut"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Total */
+            total: number;
+        };
+        /** Page[CompanyListRow] */
+        Page_CompanyListRow_: {
+            /** Items */
+            items: components["schemas"]["CompanyListRow"][];
             /** Limit */
             limit: number;
             /** Offset */
@@ -3192,10 +4154,32 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** Page[HistoryEvent] */
+        Page_HistoryEvent_: {
+            /** Items */
+            items: components["schemas"]["HistoryEvent"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Total */
+            total: number;
+        };
         /** Page[InvoiceRow] */
         Page_InvoiceRow_: {
             /** Items */
             items: components["schemas"]["InvoiceRow"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Total */
+            total: number;
+        };
+        /** Page[OrgActivityRow] */
+        Page_OrgActivityRow_: {
+            /** Items */
+            items: components["schemas"]["OrgActivityRow"][];
             /** Limit */
             limit: number;
             /** Offset */
@@ -3246,6 +4230,24 @@ export interface components {
             offset: number;
             /** Total */
             total: number;
+        };
+        /** Page[TeamMember] */
+        Page_TeamMember_: {
+            /** Items */
+            items: components["schemas"]["TeamMember"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Total */
+            total: number;
+        };
+        /** PasswordChange */
+        PasswordChange: {
+            /** Current Password */
+            current_password: string;
+            /** New Password */
+            new_password: string;
         };
         /** PasswordResetConfirm */
         PasswordResetConfirm: {
@@ -3351,6 +4353,23 @@ export interface components {
             /** Versions */
             versions: components["schemas"]["VersionOut"][];
         };
+        /** PlanInfo */
+        PlanInfo: {
+            /** Billing Interval */
+            billing_interval: string;
+            /** Key */
+            key: string;
+            /** Name */
+            name: string;
+            /** Price Amount */
+            price_amount: string | null;
+            /** Price Currency */
+            price_currency: string | null;
+            /** Support Level */
+            support_level: string;
+            /** Version */
+            version: number;
+        };
         /** PlanRow */
         PlanRow: {
             /** Billing Interval */
@@ -3422,6 +4441,22 @@ export interface components {
             permissions: string[];
             /** Role */
             role: string;
+        };
+        /** ProfilePatch */
+        ProfilePatch: {
+            /** Display Name */
+            display_name?: string | null;
+            /** Locale */
+            locale?: ("en" | "ar") | null;
+        };
+        /** ProfileUpdate */
+        ProfileUpdate: {
+            /** Job Title */
+            job_title?: string | null;
+            /** License Number */
+            license_number?: string | null;
+            /** Phone */
+            phone?: string | null;
         };
         /** Reasoned */
         Reasoned: {
@@ -3526,12 +4561,39 @@ export interface components {
         };
         /** RoleOut */
         RoleOut: {
+            /**
+             * Assignable To Companies
+             * @default false
+             */
+            assignable_to_companies: boolean;
+            /**
+             * Counts As Accountant
+             * @default false
+             */
+            counts_as_accountant: boolean;
+            /**
+             * Invitable
+             * @default false
+             */
+            invitable: boolean;
             /** Key */
             key: string;
+            /**
+             * Mfa Required
+             * @default false
+             */
+            mfa_required: boolean;
             /** Name */
             name: string;
             /** Permissions */
             permissions: string[];
+            /** Rank */
+            rank?: number | null;
+            /**
+             * Reaches All Companies
+             * @default false
+             */
+            reaches_all_companies: boolean;
             /**
              * Scope
              * @enum {string}
@@ -3662,6 +4724,16 @@ export interface components {
             organization_type: string;
             /** Password */
             password: string;
+        };
+        /** StatusAction */
+        StatusAction: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "activate" | "deactivate" | "archive" | "restore";
+            /** Reason */
+            reason?: string | null;
         };
         /** StatusEventOut */
         StatusEventOut: {
@@ -3812,6 +4884,31 @@ export interface components {
             /** Trial Ends At */
             trial_ends_at: string | null;
         };
+        /** SubscriptionView */
+        SubscriptionView: {
+            /** Attention */
+            attention: string[];
+            /** Cancel At Period End */
+            cancel_at_period_end: boolean;
+            /** Cancelled At */
+            cancelled_at: string | null;
+            /** Current Period End */
+            current_period_end: string | null;
+            /**
+             * Current Period Start
+             * Format: date-time
+             */
+            current_period_start: string;
+            /** Entitlements */
+            entitlements: components["schemas"]["UsageRow"][];
+            /** Next Step */
+            next_step: string;
+            plan: components["schemas"]["PlanInfo"];
+            /** Status */
+            status: string;
+            /** Trial Ends At */
+            trial_ends_at: string | null;
+        };
         /** SupportGrantOut */
         SupportGrantOut: {
             /**
@@ -3856,6 +4953,49 @@ export interface components {
              * @enum {string}
              */
             status: "requested" | "active" | "revoked" | "expired" | "denied";
+        };
+        /** TeamCounts */
+        TeamCounts: {
+            /** Accountants Active */
+            accountants_active: number;
+            /** Members Active */
+            members_active: number;
+            /** Members Suspended */
+            members_suspended: number;
+        };
+        /** TeamMember */
+        TeamMember: {
+            /** Assigned Company Count */
+            assigned_company_count: number | null;
+            /** Display Name */
+            display_name: string;
+            /** Email */
+            email: string;
+            /** Job Title */
+            job_title: string | null;
+            /**
+             * Joined At
+             * Format: date-time
+             */
+            joined_at: string;
+            /** Last Activity At */
+            last_activity_at: string | null;
+            /** License Number */
+            license_number: string | null;
+            /** Phone */
+            phone: string | null;
+            /** Role */
+            role: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "suspended" | "removed";
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
         };
         /** TimelineEntry */
         TimelineEntry: {
@@ -3904,6 +5044,21 @@ export interface components {
             available: boolean;
             /** Note */
             note: string;
+        };
+        /** UsageBrief */
+        UsageBrief: {
+            /** Current */
+            current: number | null;
+            /** Key */
+            key: string;
+            /** Limit */
+            limit: number | null;
+            /** Percent */
+            percent: number | null;
+            /** Status */
+            status: string;
+            /** Unlimited */
+            unlimited: boolean;
         };
         /** UsageHistory */
         UsageHistory: {
@@ -4028,6 +5183,20 @@ export interface components {
             /** Trial Days */
             trial_days?: number | null;
         };
+        /** Viewer */
+        Viewer: {
+            /** Permissions */
+            permissions: string[];
+            /** Reaches All Companies */
+            reaches_all_companies: boolean;
+            /** Role */
+            role: string | null;
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -4047,6 +5216,39 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["AcceptInvitationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    auth_decline_invitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TokenBody"];
             };
         };
         responses: {
@@ -4549,6 +5751,40 @@ export interface operations {
             };
         };
     };
+    companies_assignment_history: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_HistoryEvent_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     companies_unassign: {
         parameters: {
             query?: never;
@@ -4567,6 +5803,107 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    companies_update_assignment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignmentUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssignmentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    companies_configuration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfigurationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    companies_history: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_HistoryEvent_"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -4670,6 +6007,76 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MemberOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    companies_update_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompanySettingsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    companies_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StatusAction"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyOut"];
                 };
             };
             /** @description Validation Error */
@@ -4842,6 +6249,72 @@ export interface operations {
             };
         };
     };
+    me_update: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-organization-id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfilePatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    me_change_password: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     organizations_list: {
         parameters: {
             query?: never;
@@ -4915,6 +6388,151 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrganizationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    control_center_accountants: {
+        parameters: {
+            query?: {
+                q?: string | null;
+                status?: ("active" | "suspended" | "removed") | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_AccountantRow_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    control_center_accountant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountantRow"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    control_center_activity: {
+        parameters: {
+            query?: {
+                q?: string | null;
+                action?: string | null;
+                actor_id?: string | null;
+                company_id?: string | null;
+                since?: string | null;
+                until?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_OrgActivityRow_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    control_center_assignments: {
+        parameters: {
+            query?: {
+                company_id?: string | null;
+                user_id?: string | null;
+                active?: boolean | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_AssignmentRow_"];
                 };
             };
             /** @description Validation Error */
@@ -5029,6 +6647,77 @@ export interface operations {
             };
         };
     };
+    companies_overview: {
+        parameters: {
+            query?: {
+                q?: string | null;
+                status?: ("active" | "suspended" | "archived" | "open") | null;
+                country?: string | null;
+                assigned_to_me?: boolean;
+                sort?: string | null;
+                order?: "asc" | "desc";
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_CompanyListRow_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    control_center_dashboard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     organizations_entitlements: {
         parameters: {
             query?: never;
@@ -5062,7 +6751,9 @@ export interface operations {
     };
     organizations_list_invitations: {
         parameters: {
-            query?: never;
+            query?: {
+                state?: ("pending" | "accepted" | "revoked" | "declined" | "expired") | null;
+            };
             header?: never;
             path: {
                 org_id: string;
@@ -5158,6 +6849,38 @@ export interface operations {
             };
         };
     };
+    organizations_resend_invitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+                invitation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     organizations_list_members: {
         parameters: {
             query?: never;
@@ -5212,6 +6935,174 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MemberOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    control_center_member_profile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamMember"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    control_center_transfer_ownership: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OwnershipTransfer"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamMember"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    control_center_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrgSettingsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    control_center_update_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrgSettingsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrgSettingsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    control_center_subscription: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionView"];
                 };
             };
             /** @description Validation Error */
@@ -5351,6 +7242,45 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SupportGrantOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    control_center_team: {
+        parameters: {
+            query?: {
+                q?: string | null;
+                status?: ("active" | "suspended" | "removed") | null;
+                role?: string | null;
+                sort?: string | null;
+                order?: "asc" | "desc";
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_TeamMember_"];
                 };
             };
             /** @description Validation Error */

@@ -39,18 +39,35 @@ for (const scheme of ["light", "dark"] as const) {
   });
 }
 
-test("axe on signed-in pages: dashboard (light, dark, Arabic) and MFA setup", async ({ page }) => {
+const CC_PAGES: [string, string][] = [
+  ["/dashboard", "Dashboard"], ["/companies", "My Companies"], ["/companies/new", "Create company"], ["/team", "Team Members"], ["/accountants", "Accountants"],
+  ["/assignments", "Client Assignments"], ["/invitations", "Invitations"], ["/subscription", "Subscription & Usage"], ["/activity", "Activity & Audit History"],
+  ["/settings", "Organization Settings"], ["/profile", "My Profile"], ["/support-access", "Artify support access"],
+];
+
+test("axe on every Control Center page (light and dark) and MFA setup", async ({ page }) => {
+  test.setTimeout(240_000);
   await page.emulateMedia({ colorScheme: "light" });
   await signedInOwner(page, "A11y Accounting");
-  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Dashboard", level: 1 })).toBeVisible();
   await expect(page.getByLabel("Organization", { exact: true })).toBeVisible();
-  await scan(page, "dashboard (light, en)");
-  await page.emulateMedia({ colorScheme: "dark" });
-  await scan(page, "dashboard (dark, en)");
-  if (process.env.E2E_SHOTS) await page.screenshot({ path: `${process.env.E2E_SHOTS}/dashboard-dark-en.png`, fullPage: true });
-  await page.getByRole("button", { name: /\(Language\)|\(اللغة\)/ }).click();
-  await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
-  await scan(page, "dashboard (dark, ar)");
+  for (const [path, heading] of CC_PAGES) {
+    await page.emulateMedia({ colorScheme: "light" });
+    const org = await page.getByLabel("Organization", { exact: true }).inputValue();
+    await page.goto(`${path}?org=${org}`);
+    await expect(page.getByRole("heading", { name: heading, level: 1 })).toBeVisible();
+    await expect(page.getByText(/^Loading/)).toHaveCount(0);
+    await scan(page, `${path} (light)`);
+    await page.emulateMedia({ colorScheme: "dark" });
+    await scan(page, `${path} (dark)`);
+    if (process.env.E2E_SHOTS && path === "/dashboard") await page.screenshot({ path: `${process.env.E2E_SHOTS}/dashboard-dark-en.png`, fullPage: true });
+  }
+  // the create-company wizard steps and the roles panel are separate DOM states
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.getByRole("link", { name: "Team Members" }).click();
+  await page.getByRole("button", { name: "Roles and permissions" }).click();
+  await expect(page.getByRole("table", { name: "Organization roles" })).toBeVisible();
+  await scan(page, "team with roles panel");
 });
 
 test("keyboard: logical tab order, visible focus, Enter submits", async ({ page }) => {

@@ -3,7 +3,7 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 import { Alert, Button, Panel } from "@artify/ui";
 import { useCan } from "@/components/platform/shell";
-import { ActionDialog, DataTable, ErrorBox, Field, Loading, PageHeader, Status, useToast } from "@/components/platform/kit";
+import { ActionDialog, DataTable, ErrorBox, Field, Loading, PageHeader, Status, useToast } from "@/components/kit";
 import { errorText, fmtDateTime, fmtMoney, fmtNumber, label, papi, useApi, type S } from "@/lib/platform";
 import { EntitlementEditor, fromVersion, toBody, type EntState } from "../entitlement-editor";
 

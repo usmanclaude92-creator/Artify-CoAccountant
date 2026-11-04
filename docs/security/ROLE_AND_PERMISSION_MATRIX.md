@@ -122,3 +122,7 @@ Separate realm: platform roles never appear in the tenant tables above, hold no 
 Rules (tested): only `platform.admins.manage` (owner) manages administrators; nobody changes their own role or status; nobody grants a role above their own (rank owner 100 > administrator 80 > support/finance 40 > read-only/auditor 20); every route declares exactly one permission and its type (read vs write) must match its HTTP verb. Support grants are the only route to tenant members and audit logs and need customer approval (`SUPPORT_ACCESS_POLICY.md`). Tenant side: `support_grants.manage` is held by `firm_owner` only (not `practice_admin`).
 
 Gaps: no per-administrator custom permission sets; no dual control; no IP allow-list. Details and threats: `PLATFORM_ADMIN_SECURITY.md`.
+
+## 8. Phase 3 additions (Firm Control Center)
+
+Phase 3 adds roles `practice_manager`, `assistant_accountant`, `document_operator` and `read_only`, and the permissions `organization.settings.update`, `member_profiles.manage`, `ownership.transfer`, `companies.archive` and `company_settings.manage`. The rank rule (invite or grant only at or below your own rank), ownership transfer and assignment windows are described, with generated role and permission tables, in [`../firm-control-center/ROLE_AND_PERMISSION_MODEL.md`](../firm-control-center/ROLE_AND_PERMISSION_MODEL.md). Where the two documents differ, the code in `permissions.py` wins. Custom roles are not implemented.

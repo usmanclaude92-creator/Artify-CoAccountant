@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Field } from "@/components/platform/kit";
+import { Field } from "@/components/kit";
 import { papi, type S } from "@/lib/platform";
 
 export type EntState = Record<string, { mode: "unset" | "number" | "unlimited" | "flag"; value: string; flag: boolean }>;

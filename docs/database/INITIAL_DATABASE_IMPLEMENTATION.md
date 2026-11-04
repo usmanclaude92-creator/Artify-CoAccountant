@@ -10,6 +10,7 @@ What exists in PostgreSQL 16 after `alembic upgrade head` + `artify-api seed`. D
 | 0002 | `sql/0002_rls_and_grants.sql` | DB roles, `app.*` context functions, role-scope and assignment triggers, immutability triggers, `SECURITY DEFINER` functions, RLS enable+force, policies, least-privilege grants |
 | 0003 | `sql/0003_auth_audit_fanout.sql` | tenant-visible fan-out of user-level security events (ADR-025) |
 | 0004 | `sql/0004_super_admin.sql` | **Phase 2:** Super Admin — see §8 |
+| 0005 | `sql/0005_control_center.sql` | **Phase 3:** Firm Control Center — see §9 |
 
 Alembic revisions are thin wrappers executing the hand-written SQL. **Migrations are forward-only (no downgrade)** — a deliberate deviation from the brief's "rollback where supported" (DECISIONS ADR-020): the schema is RLS/trigger-heavy and an unreviewed automatic downgrade would be more dangerous than useful. Recovery path in development: `make db-reset`; in production: restore from backup / forward fix. Tests build the database from migration 0001 upward on every run; `Base.metadata.create_all()` is never used.
 
@@ -81,3 +82,10 @@ New tables: `platform_admin_invitations`, `organization_status_events`, `subscri
 - Every new table has RLS enabled and forced and at least one policy (`test_every_table_is_classified_and_protected`).
 
 Limitations: views run as `artify_definer`, so any new column added to them must be reviewed as a disclosure; the usage alert scan is capped at 500 organizations; `invitations` now allows an Artify inviter (`invited_by_platform_admin`) so the provisioned owner invitation has a non-user inviter.
+
+## 9. Phase 3 additions (migration 0005)
+
+- **New tables:** `company_configurations` (one row per company, owner record for Phase 4 configuration; composite FK; forced RLS with the ADR-024 company-scope policy; no DELETE grant) and `member_profiles` (job title, phone, licence number per organization member; forced RLS by organization). Both are classified in `test_every_table_is_classified_and_protected` and isolation-tested in `test_phase3_tables_are_isolated_between_organizations_and_companies`.
+- **Altered:** `organizations` (contact e-mail/phone, address, city, time zone, notification preferences); `companies` (legal name, registration number, company type, industry, city, address, contact, financial-year start, accounting basis, VAT registered/number with a CHECK that a number needs registration, tax jurisdiction, `updated_at`); `accountant_assignments` (`responsibility`, `starts_on`, `ends_on`, `updated_at`, window CHECK); `invitations` (`company_ids uuid[]`, `declined_at`, `resent_at`, `resent_count`).
+- **Functions replaced:** `check_assignment_member` (assignable roles), `measure_entitlement` (accountant seats count accountant, assistant accountant and staff), `auth_invitation_by_hash` (new columns), `platform_provision_organization` (seeds zero usage counters), `decline_invitation` (new); view `platform_org_overview` replaced.
+- **Limitation:** `invitations.company_ids` is an array and cannot have a foreign key; ids are validated at invitation and at acceptance by the API. Migrations remain forward-only (ADR-020).

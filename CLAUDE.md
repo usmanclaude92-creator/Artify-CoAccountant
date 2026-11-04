@@ -3,7 +3,7 @@
 Guidance for Claude Code working in this repository. Keep this file short; the canonical detail is in `docs/`.
 
 ## Status
-Phase 0 approved. Phase 1 (SaaS foundation) delivered for review with a few open items (`docs/development/PHASE_1_COMPLETION_REPORT.md`). Phase 2 (Super Admin) delivered for review (`docs/development/PHASE_2_COMPLETION_REPORT.md`). **Do not start Phase 3 until the owner approves Phase 2.** Phase scopes are in `docs/development/PHASE_N.md`. Project skills in `.claude/skills/` (6 of 17) describe the Phase 1 code; the Super Admin has no skill yet.
+Phase 0 approved. Phase 1 (SaaS foundation) delivered for review with a few open items (`docs/development/PHASE_1_COMPLETION_REPORT.md`). Phase 2 (Super Admin) delivered for review (`docs/development/PHASE_2_COMPLETION_REPORT.md`). Phase 3 (Firm Control Center) delivered for review (`docs/development/PHASE_3_COMPLETION_REPORT.md`, docs in `docs/firm-control-center/`), started on the owner's Phase 3 brief. **Do not start Phase 4 until the owner approves Phase 3.** Phase scopes are in `docs/development/PHASE_N.md`. Project skills in `.claude/skills/` (6 of 17) describe the Phase 1 code; the Super Admin and the Control Center have no skill yet.
 
 ## Commands
 `make check` (everything except browser e2e), `make test-api`, `make db-reset`, `make client` (regenerate OpenAPI + TS client after API changes), `make e2e`, `make boundaries`, `make audit`, `make compose-smoke`, `make hooks`.

@@ -4,7 +4,7 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 import { Button, Panel } from "@artify/ui";
 import { useCan } from "@/components/platform/shell";
-import { ActionDialog, DataTable, ErrorBox, Field, Loading, PageHeader, Status, useToast } from "@/components/platform/kit";
+import { ActionDialog, DataTable, ErrorBox, Field, Loading, PageHeader, Status, useToast } from "@/components/kit";
 import { fmtDate, fmtDateTime, fmtMoney, label, papi, useApi, type S } from "@/lib/platform";
 
 type Dlg = "pay" | "refund" | "adjust" | "void" | null;

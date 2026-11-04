@@ -3,22 +3,16 @@
 from __future__ import annotations
 
 import uuid
-from typing import Annotated, Any
+from typing import Any
 
-from fastapi import Depends, Query
+from fastapi import Depends
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 
 from artify_api import audit
 from artify_api.context import PlatformCtx, PlatformRequires
 from artify_api.errors import ApiError, Unprocessable
-
-
-class Page[T](BaseModel):
-    items: list[T]
-    total: int
-    limit: int
-    offset: int
+from artify_api.routers.common import Limit, Offset, Page, like, order_clause
 
 
 class Sensitive(BaseModel):
@@ -40,25 +34,6 @@ class ConfirmationMismatch(ApiError):
 def require_confirmation(given: str, expected: str) -> None:
     if given.strip().lower() != expected.strip().lower():
         raise ConfirmationMismatch(f"Type “{expected}” to confirm this action.")
-
-
-Limit = Annotated[int, Query(ge=1, le=200)]
-Offset = Annotated[int, Query(ge=0)]
-
-
-def like(q: str | None) -> str | None:
-    """ILIKE pattern with wildcards in the user input escaped."""
-    if not q or not q.strip():
-        return None
-    escaped = q.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-    return f"%{escaped}%"
-
-
-def order_clause(sort: str | None, order: str, allowed: dict[str, str], default: str) -> str:
-    """Whitelisted ORDER BY (never interpolates user input)."""
-    column = allowed.get(sort or "", allowed[default])
-    direction = "ASC" if order.lower() == "asc" else "DESC"
-    return f"{column} {direction}, 1 ASC"
 
 
 def require_uuid_list(values: list[str]) -> list[uuid.UUID]:
@@ -127,3 +102,21 @@ def paudit_isolated(
 
 def total_of(conn: Any, base_sql: str, params: dict[str, Any]) -> int:
     return int(conn.execute(text(f"SELECT count(*) FROM ({base_sql}) t"), params).scalar_one())
+
+
+__all__ = [
+    "ConfirmationMismatch",
+    "Limit",
+    "Offset",
+    "Page",
+    "Reasoned",
+    "Sensitive",
+    "like",
+    "order_clause",
+    "padmin",
+    "paudit",
+    "paudit_isolated",
+    "require_confirmation",
+    "require_uuid_list",
+    "total_of",
+]

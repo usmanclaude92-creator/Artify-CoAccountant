@@ -235,3 +235,48 @@ def test_company_scope_policy_is_planned_once_per_query(app_engine, client, mail
         plan = "\n".join(r[0] for r in conn.execute(text("EXPLAIN SELECT id FROM companies")))
     assert "InitPlan" in plan, plan
     assert "can_see_company" not in plan, plan
+
+
+def test_phase3_tables_are_isolated_between_organizations_and_companies(
+    app_engine, owner_engine, client, mailer
+) -> None:  # type: ignore[no-untyped-def]
+    """Added after a mutation check showed `member_profiles` could be opened to every organization without any test
+    failing. Both Phase 3 tables must show a caller only their own organization (and, for configurations, their own
+    company scope)."""
+    a, b = new_owner(client, mailer, org_name="P3 RLS A"), new_owner(client, mailer, org_name="P3 RLS B")
+    ca1, ca2 = make_company(a, "RA1"), make_company(a, "RA2")
+    make_company(b, "RB1")
+    # a professional profile in each organization, written through the API like a user would
+    for owner in (a, b):
+        me = owner.get("/me").json()
+        res = owner.patch(f"/orgs/{owner.org_id}/members/{me['user_id']}/profile", {"job_title": "Partner"})
+        assert res.status_code == 200, res.text
+
+    with app_engine.connect() as conn, conn.begin():  # organization B, all companies
+        _ctx(conn, org=b.org_id, scope="all")
+        assert {str(r[0]) for r in conn.execute(text("SELECT DISTINCT organization_id FROM member_profiles"))} == {
+            b.org_id
+        }
+        assert {
+            str(r[0]) for r in conn.execute(text("SELECT DISTINCT organization_id FROM company_configurations"))
+        } == {b.org_id}
+    with app_engine.connect() as conn, conn.begin():  # no organization context: nothing at all
+        _ctx(conn)
+        assert conn.execute(text("SELECT count(*) FROM member_profiles")).scalar_one() == 0
+        assert conn.execute(text("SELECT count(*) FROM company_configurations")).scalar_one() == 0
+    with app_engine.connect() as conn, conn.begin():  # organization A restricted to one company
+        _ctx(conn, org=a.org_id, scope="assigned", companies=ca1["id"])
+        seen = {str(r[0]) for r in conn.execute(text("SELECT company_id FROM company_configurations"))}
+        assert seen == {ca1["id"]} and ca2["id"] not in seen
+    with (
+        pytest.raises(DBAPIError),
+        app_engine.connect() as conn,
+        conn.begin(),
+    ):  # cannot write into another organization
+        _ctx(conn, org=a.org_id, scope="all")
+        conn.execute(
+            text(
+                "INSERT INTO member_profiles (organization_id, user_id, job_title) VALUES (:o, gen_random_uuid(), 'x')"
+            ),
+            {"o": b.org_id},
+        )

@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Alert, Button, Panel } from "@artify/ui";
 import { useCan, useMe } from "@/components/platform/shell";
-import { ActionDialog, DataTable, Field, PageHeader, Status, useToast } from "@/components/platform/kit";
+import { ActionDialog, DataTable, Field, PageHeader, Status, useToast } from "@/components/kit";
 import { ApiProblem } from "@/lib/client";
 import { ROLE_LABEL, fmtDateTime, papi, useApi, type Page, type S } from "@/lib/platform";
 

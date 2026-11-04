@@ -1,6 +1,6 @@
 "use client";
 import { Alert, Button, Panel } from "@artify/ui";
-import { DataTable, ErrorBox, Kpi, Loading, PageHeader, Status } from "@/components/platform/kit";
+import { DataTable, ErrorBox, Kpi, Loading, PageHeader, Status } from "@/components/kit";
 import { fmtDateTime, useApi, type S } from "@/lib/platform";
 
 export default function HealthPage() {

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Alert, Button, Panel } from "@artify/ui";
 import { useCan } from "@/components/platform/shell";
-import { ActionDialog, DataTable, Field, Kpi, PageHeader, SearchBox, SelectFilter, Status, useToast } from "@/components/platform/kit";
+import { ActionDialog, DataTable, Field, Kpi, PageHeader, SearchBox, SelectFilter, Status, useToast } from "@/components/kit";
 import { fmtDate, fmtMoney, label, papi, useApi, useListState, type Page, type S } from "@/lib/platform";
 
 const KEYS = ["q", "status", "organization_id", "overdue", "sort", "order", "offset"];

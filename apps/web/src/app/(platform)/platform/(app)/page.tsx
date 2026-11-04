@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { Alert, Panel } from "@artify/ui";
 import { useCan } from "@/components/platform/shell";
-import { DataTable, ErrorBox, Kpi, Loading, PageHeader, Status } from "@/components/platform/kit";
+import { DataTable, ErrorBox, Kpi, Loading, PageHeader, Status } from "@/components/kit";
 import { fmtDateTime, fmtNumber, label, useApi, type S } from "@/lib/platform";
 
 export default function Overview() {

@@ -29,9 +29,9 @@ def test_company_limit_enforced_by_raw_api(client, mailer, owner_engine) -> None
     assert len(a.get(f"/orgs/{a.org_id}/companies").json()) == 2
     # archiving frees a slot; reactivating is also limit-checked
     c1 = a.get(f"/orgs/{a.org_id}/companies").json()[0]
-    assert a.patch(f"/companies/{c1['id']}", {"status": "archived"}).status_code == 200
+    assert a.post(f"/companies/{c1['id']}/status", {"action": "archive"}).status_code == 200
     assert a.post(f"/orgs/{a.org_id}/companies", _company_body("C3")).status_code == 201
-    assert a.patch(f"/companies/{c1['id']}", {"status": "active"}).status_code == 402
+    assert a.post(f"/companies/{c1['id']}/status", {"action": "restore"}).status_code == 402
 
 
 def test_user_accountant_and_device_limits(client, mailer, owner_engine) -> None:  # type: ignore[no-untyped-def]

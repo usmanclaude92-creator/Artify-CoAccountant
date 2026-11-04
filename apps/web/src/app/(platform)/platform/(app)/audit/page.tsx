@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { Button, Dialog } from "@artify/ui";
-import { DataTable, PageHeader, SearchBox, SelectFilter, Status } from "@/components/platform/kit";
+import { DataTable, PageHeader, SearchBox, SelectFilter, Status } from "@/components/kit";
 import { fmtDateTime, useApi, useListState, type Page, type S } from "@/lib/platform";
 
 export default function AuditLogs() {

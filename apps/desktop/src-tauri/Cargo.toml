@@ -1,0 +1,25 @@
+[package]
+name = "artify-desktop"
+description = "Artify Co-Accountant for Windows"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+default-run = "artify-desktop"
+
+[lib]
+name = "artify_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+artify-core = { path = "../core", features = ["os-vault"] }
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-updater = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["rt", "time", "sync", "macros"] }
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }

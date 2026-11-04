@@ -1,6 +1,6 @@
 # Phase 5 — Windows Desktop Foundation
 
-**Status: NOT STARTED.**
+**Status: foundation delivered for review — see [`PHASE_5_COMPLETION_REPORT.md`](PHASE_5_COMPLETION_REPORT.md).** Built: sign-in/MFA/session restore, organization and company selection, dynamic workspace sync, device-bound sessions, sealed SQLite cache, storage foundation, settings, diagnostics, installer configuration. **Not built** (deliberately or for lack of backend/infrastructure): the local mirror and `_Inbox` watcher, change-feed consumption, Control Center device list, minimum-version enforcement, signed installer and auto-update, a verified Windows build.
 
 ## Objectives
 

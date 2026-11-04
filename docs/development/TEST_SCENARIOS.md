@@ -68,6 +68,18 @@ Tests: `services/api/tests/test_p4_workspace.py`, `test_p4_engine.py`, `test_dat
 | TS-ENT-05 | EXECUTED | `test_entitlements_are_enforced_by_the_backend_and_never_delete_data` | per-change and bulk (template apply, duplicate) totals, atomic |
 | TS-ISO-03 | EXECUTED for workspace | `test_company_and_tenant_isolation`, `test_rls_hides_workspace_rows_across_organizations` | Excel templates and documents still absent |
 
+### Execution status – Phase 5 (desktop foundation)
+
+Tests: `apps/desktop/core/tests/*.rs` (78 offline), `apps/desktop/core/tests/live_backend.rs` (5, real API), `apps/desktop/src/**/*.test.*` (50), `services/api/tests/test_p5_devices.py` (3). Only what exists is marked executed.
+
+| ID | Status | Implemented by | Coverage note |
+|---|---|---|---|
+| TS-SYNC-01 | NOT EXECUTED | — | needs the backend change feed (not built); workspace sync uses ETag polling instead |
+| TS-SYNC-03 | PARTIAL | `storage_and_logs.rs`, `flows::the_storage_root_is_validated_and_company_folders_are_stable_and_separate` | company root folders: separate per company, sanitized/reserved names, id-suffix collisions, stable names, length guard; the per-workspace folder tree and renames-as-moves are Phase 6 |
+| TS-SYNC-06 | NOT EXECUTED | `db_and_seal.rs` (queue table survives a cache wipe) | the queue is a table skeleton only; replay/offline capture arrive with documents |
+| TS-SYNC-07 | EXECUTED | `test_p5_devices.py`, `live_backend::revoking_the_device_ends_that_installations_session_and_wipes_its_cache` | revoked device: access token dead, refresh fails, cache wiped, rebinding refused; effective at the next request (no push) |
+| TS-ENT (devices) | EXECUTED | `test_p5_devices::…limit…`, `flows::the_subscription_device_limit_is_reported_not_bypassed` | `limit.devices` surfaces as 402 and creates no local record |
+
 ## Workspace (TS-WS)
 
 | ID | Phase | Scenario |

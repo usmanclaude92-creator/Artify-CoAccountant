@@ -3245,6 +3245,18 @@
             "title": "Id",
             "type": "string"
           },
+          "last_seen_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen At"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -3252,6 +3264,18 @@
           "platform": {
             "title": "Platform",
             "type": "string"
+          },
+          "registered_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Registered At"
           },
           "status": {
             "title": "Status",
@@ -14491,6 +14515,50 @@
           }
         },
         "summary": "Revoke Device",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/api/v1/devices/{device_id}/session": {
+      "post": {
+        "description": "Bind the caller's CURRENT session to one of their own ACTIVE devices and record activity (also the heartbeat).\nA revoked or foreign device answers 404, so a revoked installation cannot re-attach a new session to itself.",
+        "operationId": "devices_bind_session",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Device Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Bind Device Session",
         "tags": [
           "me"
         ]

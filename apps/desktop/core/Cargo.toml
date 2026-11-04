@@ -1,0 +1,36 @@
+[package]
+name = "artify-core"
+description = "Platform-neutral core of Artify Co-Accountant Desktop: API client, SQLite cache, sealed storage, Windows-safe paths, workspace sync"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+# OS credential vault (Windows Credential Manager on Windows). Off in tests, which use the in-memory store.
+os-vault = ["dep:keyring"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+tokio = { version = "1", features = ["rt", "time", "sync", "macros"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+rusqlite = { version = "0.32", features = ["bundled"] }
+aes-gcm = "0.10"
+rand = "0.8"
+base64 = "0.22"
+sha2 = "0.10"
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+fs2 = "0.4"
+hostname = "0.4"
+uuid = { version = "1", features = ["v4"] }
+keyring = { version = "3", optional = true, features = ["windows-native", "apple-native", "sync-secret-service"] }
+
+[dev-dependencies]
+tempfile = "3"
+wiremock = "0.6"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync"] }
+hmac = "0.12"
+sha1 = "0.10"
+data-encoding = "2"

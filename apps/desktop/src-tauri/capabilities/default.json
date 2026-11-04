@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Minimum capability for the main window: event delivery to the UI. Everything else goes through the app's own allow-listed commands; there are no file-system, shell, HTTP or opener permissions.",
+  "windows": ["main"],
+  "permissions": ["core:event:default"]
+}

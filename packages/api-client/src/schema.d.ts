@@ -1237,6 +1237,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/devices/{device_id}/session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bind Device Session
+         * @description Bind the caller's CURRENT session to one of their own ACTIVE devices and record activity (also the heartbeat).
+         *     A revoked or foreign device answers 404, so a revoked installation cannot re-attach a new session to itself.
+         */
+        post: operations["devices_bind_session"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health": {
         parameters: {
             query?: never;
@@ -4117,10 +4138,14 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** Last Seen At */
+            last_seen_at?: string | null;
             /** Name */
             name: string;
             /** Platform */
             platform: string;
+            /** Registered At */
+            registered_at?: string | null;
             /** Status */
             status: string;
         };
@@ -9185,6 +9210,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    devices_bind_session: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                device_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceOut"];
+                };
             };
             /** @description Validation Error */
             422: {

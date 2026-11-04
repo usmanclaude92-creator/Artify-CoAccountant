@@ -8,7 +8,7 @@ import uuid
 import pytest
 from artify_api import entitlements
 from artify_api.policy import Principal, authorize
-from conftest import PASSWORD, invite_and_accept, make_company, new_owner, set_plan_limit
+from conftest import PASSWORD, invite_and_accept, login, make_company, new_owner, set_plan_limit, totp_now
 from sqlalchemy import text
 
 
@@ -61,6 +61,13 @@ def test_user_accountant_and_device_limits(client, mailer, owner_engine) -> None
     assert first.status_code == 201
     assert a.post("/devices", {**d, "name": "PC-2"}).json()["key"] == "limit.devices"
     assert a.delete(f"/devices/{first.json()['id']}").status_code == 204
+    # (Phase 5) the registering session is device-bound, so revoking its own device ends it: sign in again
+    assert a.get("/devices").status_code == 401
+    ch = login(client, a.email)
+    assert ch["status"] == "mfa_required"
+    ok = client.post("/api/v1/auth/mfa/verify", json={"mfa_token": ch["mfa_token"], "code": totp_now(a.mfa_secret, 1)})
+    assert ok.status_code == 200, ok.text
+    a.access, a.refresh = ok.json()["access_token"], ok.json()["refresh_token"]
     assert a.post("/devices", {**d, "name": "PC-3"}).status_code == 201
 
 

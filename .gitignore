@@ -63,3 +63,10 @@ playwright-report/
 
 # local Redis snapshots (test Redis started from the repo folder writes these)
 dump.rdb
+
+# Desktop (Tauri / Rust)
+apps/desktop/target/
+apps/desktop/dist/
+apps/desktop/src-tauri/gen/
+*.pfx
+*.snk

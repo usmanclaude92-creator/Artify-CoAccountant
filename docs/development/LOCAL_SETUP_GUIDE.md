@@ -118,3 +118,10 @@ If Playwright reports a missing browser, point it at an installed Chromium: `E2E
 2. Sign in, create a company (optionally choosing a template in the new **Workspace** step) and open **My Companies → company → Configuration → Open the workspace builder**.
 3. Plans created in Super Admin **before** Phase 4 do not contain `limit.filing_rules_per_company` and `limit.workspace_templates`: add them to those plans, otherwise creating filing rules or organization templates is refused (default deny). The section/folder/depth/custom-field limits existed before and are now enforced.
 4. Tests: `make test-api` (includes `test_p4_*.py`), `make e2e` (adds `workspace.spec.ts`), `make client` after API changes.
+
+## 10. Windows desktop app (Phase 5)
+
+1. Prerequisites: Rust (stable), Node 22 + pnpm 10; on Linux for compile/tests also `libwebkit2gtk-4.1-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libsecret-1-dev`. The Windows installer must be built on Windows (`docs/desktop/WINDOWS_BUILD_AND_INSTALLATION.md`).
+2. Tests without a server: `make desktop-test` (Rust core + UI). With a real API and PostgreSQL: `make desktop-live`.
+3. Run the UI in a browser with demo data: `VITE_BRIDGE=mock pnpm --filter @artify/desktop dev`.
+4. Run the real app: start the API, then `ARTIFY_API_URL=http://localhost:8000/api/v1 pnpm --filter @artify/desktop tauri dev` (needs a Windows Credential Manager, or a Secret Service on Linux).

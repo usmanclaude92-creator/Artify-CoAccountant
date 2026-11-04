@@ -12,7 +12,19 @@ compose-smoke:      ## build + start the Docker stack, smoke-test it, tear it do
 	sleep 15
 	$(API) python infrastructure/dev/compose_smoke.py; status=$$?; docker compose down -v; exit $$status
 
-.PHONY: compose-smoke install db-reset test-api lint typecheck boundaries openapi openapi-check openapi-breaking client web-build web-test e2e check-docs audit hooks lockfiles check
+.PHONY: desktop-test desktop-live desktop-build compose-smoke install db-reset test-api lint typecheck boundaries openapi openapi-check openapi-breaking client web-build web-test e2e check-docs audit hooks lockfiles check
+
+desktop-test:       ## desktop: Rust core tests + UI lint/types/tests (no server needed)
+	cd apps/desktop && cargo test -p artify-core --locked
+	pnpm --filter @artify/desktop lint
+	pnpm --filter @artify/desktop typecheck
+	pnpm --filter @artify/desktop test
+
+desktop-live:       ## desktop: Rust core against a REAL API + PostgreSQL
+	infrastructure/dev/desktop_live.sh
+
+desktop-build:      ## desktop: production build of the Tauri app for THIS OS (Windows installer must be built on Windows)
+	pnpm --filter @artify/desktop tauri build
 
 install:            ## install Python and JS dependencies from lockfiles
 	uv sync --project services/api

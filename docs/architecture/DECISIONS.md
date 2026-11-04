@@ -142,6 +142,21 @@ Phase 0 allowed length-bounded regex in a “ReDoS-safe engine”. Phase 4 suppo
 ### ADR-046 — Templates are deep-copied definitions; provenance only
 A template version is an immutable JSON definition validated by the same engine that validates live configuration. Applying replays it with new ids; the company keeps `applied_template_id/_version` as provenance (no foreign key drives behaviour in code, queries never join back). `replace` archives, never deletes. System templates are seeded from code by version (changed definition → new version). The “review differences and merge” update flow is not built.
 
+### ADR-047 — The desktop cache is encrypted field-by-field (AES-256-GCM, key in the OS vault), not with SQLCipher
+Sensitive cached payloads (profile, organizations, companies, workspace, queued operation payloads) are sealed with AES-256-GCM; the key is generated on first run and stored only in the Windows Credential Manager; associated data binds each blob to `user|table|row`. Rejected: SQLCipher (adds OpenSSL/SQLCipher to the Windows build, still needs a key store) and OS-level disk encryption alone (does not protect a copied database file). Consequence: ids, statuses, timestamps, settings and notification text are not encrypted. Settles the cache-encryption ADR required by `PHASE_5.md`.
+
+### ADR-048 — Rust owns HTTP and tokens; the webview has no network or file-system capability
+All API calls are made by `artify-core` (reqwest); the access token lives in memory, the rotating refresh token in the OS vault; the UI receives data only, through 26 allow-listed commands, with a CSP that permits only `ipc:`. Rejected: calling the API with `fetch` from the webview (tokens would live in JavaScript and CORS/CSP would have to allow the API). Consequence: a typed bridge to maintain, and a mock bridge for UI tests.
+
+### ADR-049 — Sessions are device-bound; device revocation ends the session (backend change in Phase 5)
+`POST /devices` binds the registering session to the new device; `POST /devices/{id}/session` re-binds a later session to an active device of the same user and records activity; revocation already revoked bound sessions and now actually finds some. `DeviceOut` gained `registered_at`/`last_seen_at`. Additive, 0 breaking OpenAPI changes. The device id is server-issued; the client name is informational. Effect is at the next request (no push). Replaces the unmet Phase 0 promise "sessions are device-bound".
+
+### ADR-050 — The desktop core is a separate crate from the Tauri shell
+`artify-core` (API client, SQLite, sealing, paths, workspace parsing, orchestration) has no Tauri dependency, so it is tested without a window on any CI image and against a real API; the shell only wires commands, state, the sync loop and the updater hook. The UI talks to a `Bridge` interface (real Tauri implementation; in-memory mock for tests and a bannered browser preview that is excluded from production builds).
+
+### ADR-051 — Updates stay disabled and installers stay unsigned until signing infrastructure exists
+No updater key, update endpoint or code-signing certificate is in the repository (and none may be). `update_check` reports "not configured" truthfully; the Windows CI job builds an unsigned installer and is `continue-on-error` until a first verified run. Revisit when a certificate and an update host are available (`docs/desktop/RELEASE_AND_UPDATE_PROCESS.md`).
+
 ## Outcomes of decisions taken at the start of Phase 1
 
 The product owner replied "Accept the recommendations and start Phase 1" on 2026-11-04, which settles:

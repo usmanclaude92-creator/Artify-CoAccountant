@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Header, Response
@@ -65,6 +66,8 @@ class DeviceOut(BaseModel):
     name: str
     app_version: str | None
     status: str
+    registered_at: datetime | None = None
+    last_seen_at: datetime | None = None
 
 
 @router.get("/me", response_model=MeOut, operation_id="me_get")
@@ -158,6 +161,11 @@ def register_device(
                 "k": body.key_fingerprint,
             },
         )
+        # The registering session becomes device-bound, so revoking the device ends it (and its refresh tokens).
+        ctx.conn.execute(
+            text("UPDATE sessions SET device_id = :d WHERE id = :s AND user_id = :u AND device_id IS NULL"),
+            {"d": device_id, "s": ctx.session_id, "u": ctx.user_id},
+        )
         entitlements.refresh_counter(ctx.conn, org_id, "limit.devices")
         audit.write_audit(
             ctx.conn,
@@ -169,8 +177,15 @@ def register_device(
             summary={"platform": body.platform},
             meta=ctx.meta,
         )
+        now = datetime.now(UTC)
         out = DeviceOut(
-            id=device_id, platform=body.platform, name=body.name, app_version=body.app_version, status="active"
+            id=device_id,
+            platform=body.platform,
+            name=body.name,
+            app_version=body.app_version,
+            status="active",
+            registered_at=now,
+            last_seen_at=now,
         )
         return 201, out.model_dump(mode="json")
 
@@ -185,7 +200,7 @@ def list_devices(
     rows = (
         ctx.conn.execute(
             text(
-                "SELECT id, platform, name, app_version, status FROM devices"
+                "SELECT id, platform, name, app_version, status, created_at AS registered_at, last_seen_at FROM devices"
                 " WHERE user_id = :u AND organization_id = :o ORDER BY created_at DESC"
             ),
             {"u": ctx.user_id, "o": ctx.org_id},
@@ -194,6 +209,34 @@ def list_devices(
         .all()
     )
     return [DeviceOut(**r) for r in rows]
+
+
+@router.post("/devices/{device_id}/session", response_model=DeviceOut, operation_id="devices_bind_session")
+def bind_device_session(
+    device_id: uuid.UUID, ctx: Annotated[RequestCtx, Depends(Requires("devices.manage_own", org_source="header"))]
+) -> DeviceOut:
+    """Bind the caller's CURRENT session to one of their own ACTIVE devices and record activity (also the heartbeat).
+    A revoked or foreign device answers 404, so a revoked installation cannot re-attach a new session to itself."""
+    assert ctx.org_id is not None
+    row = (
+        ctx.conn.execute(
+            text(
+                "UPDATE devices SET last_seen_at = now() WHERE id = :d AND user_id = :u AND organization_id = :o"
+                " AND status = 'active' RETURNING id, platform, name, app_version, status,"
+                " created_at AS registered_at, last_seen_at"
+            ),
+            {"d": device_id, "u": ctx.user_id, "o": ctx.org_id},
+        )
+        .mappings()
+        .first()
+    )
+    if row is None:
+        raise NotFound("Device not found.")
+    ctx.conn.execute(
+        text("UPDATE sessions SET device_id = :d WHERE id = :s AND user_id = :u"),
+        {"d": device_id, "s": ctx.session_id, "u": ctx.user_id},
+    )
+    return DeviceOut(**row)
 
 
 @router.delete("/devices/{device_id}", status_code=204, operation_id="devices_revoke")

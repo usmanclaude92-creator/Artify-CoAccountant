@@ -1,0 +1,48 @@
+# Documentation Index
+
+## Reading order
+
+1. [Glossary](architecture/GLOSSARY.md) — canonical terms (all documents conform to it)
+2. [Decision log](architecture/DECISIONS.md) — accepted ADRs and **decisions requiring owner approval**
+3. [Product architecture](architecture/PRODUCT_ARCHITECTURE.md)
+4. [SaaS tenant model](architecture/SAAS_TENANT_MODEL.md)
+5. [System architecture](architecture/SYSTEM_ARCHITECTURE.md)
+6. [Application architecture](architecture/APPLICATION_ARCHITECTURE.md) (includes Super Admin vs Control Center)
+7. [Technology stack](architecture/TECHNOLOGY_STACK.md)
+8. [Workspace customization architecture](architecture/WORKSPACE_CUSTOMIZATION_ARCHITECTURE.md)
+9. [Accounting data mapping](architecture/ACCOUNTING_DATA_MAPPING.md)
+10. [Workflows and approvals](architecture/WORKFLOW_AND_APPROVALS.md)
+11. [Storage and sync](architecture/STORAGE_AND_SYNC_ARCHITECTURE.md)
+12. [AI and document processing](architecture/AI_AND_DOCUMENT_PROCESSING.md)
+13. [Excel engine design](architecture/EXCEL_ENGINE_DESIGN.md)
+14. [Subscription and entitlements](architecture/SUBSCRIPTION_AND_ENTITLEMENTS.md)
+15. Database: [design](database/DATABASE_DESIGN.md) · [entity catalog](database/ENTITY_CATALOG.md) · [isolation and RLS](database/ISOLATION_AND_RLS.md)
+16. [Security architecture](security/SECURITY_ARCHITECTURE.md)
+17. [Design system](design/DESIGN_SYSTEM.md)
+18. Development: [roadmap](development/DEVELOPMENT_ROADMAP.md) · [testing strategy](development/TESTING_STRATEGY.md) · [test scenarios](development/TEST_SCENARIOS.md) · [project skills plan](development/PROJECT_SKILLS_PLAN.md)
+19. Phases: [1](development/PHASE_1.md) · [2](development/PHASE_2.md) · [3](development/PHASE_3.md) · [4](development/PHASE_4.md) · [5](development/PHASE_5.md) · [6](development/PHASE_6.md) · [7](development/PHASE_7.md) · [8](development/PHASE_8.md) · [9](development/PHASE_9.md) · [10](development/PHASE_10.md) · [11](development/PHASE_11.md) · [12](development/PHASE_12.md)
+20. [Phase 0 completion report](development/PHASE_0_COMPLETION_REPORT.md)
+
+## Phase 0 acceptance criteria → where answered
+
+| # | Criterion | Document |
+|---|---|---|
+| 1 | Super Admin vs Control Center | [Application architecture §1](architecture/APPLICATION_ARCHITECTURE.md#1-artify-super-admin-vs-firm-control-center) |
+| 2 | Firm / independent subscription | [Tenant model §1, §4](architecture/SAAS_TENANT_MODEL.md), [ADR-001](architecture/DECISIONS.md) |
+| 3 | Companies belong to tenants | [Tenant model §1](architecture/SAAS_TENANT_MODEL.md) |
+| 4 | User/accountant assignment | [Tenant model §3](architecture/SAAS_TENANT_MODEL.md#3-how-users-and-accountants-are-assigned-to-companies) |
+| 5 | Isolation enforcement | [Isolation and RLS](database/ISOLATION_AND_RLS.md), [Tenant model §5](architecture/SAAS_TENANT_MODEL.md) |
+| 6–8 | Per-company workspace, section counts, nested folders, categories | [Workspace architecture §1–5](architecture/WORKSPACE_CUSTOMIZATION_ARCHITECTURE.md) |
+| 9 | Company-specific metadata fields | [Workspace architecture §8](architecture/WORKSPACE_CUSTOMIZATION_ARCHITECTURE.md#8-custom-fields-and-metadata) |
+| 10 | Template copy semantics | [Workspace architecture §6](architecture/WORKSPACE_CUSTOMIZATION_ARCHITECTURE.md#6-templates-and-presets) |
+| 11 | Mapping to accounting entities | [Accounting data mapping](architecture/ACCOUNTING_DATA_MAPPING.md) |
+| 12 | Workflows and approvals | [Workflows and approvals](architecture/WORKFLOW_AND_APPROVALS.md) |
+| 13 | Independent Excel templates | [Excel engine design §1](architecture/EXCEL_ENGINE_DESIGN.md) |
+| 14 | Entitlement enforcement | [Subscription and entitlements §3](architecture/SUBSCRIPTION_AND_ENTITLEMENTS.md) |
+| 15 | Desktop/Mobile config retrieval | [Application architecture §5](architecture/APPLICATION_ARCHITECTURE.md#5-how-desktop-and-mobile-retrieve-and-apply-the-workspace-configuration) |
+| 16 | Local Windows folders | [Storage and sync §3](architecture/STORAGE_AND_SYNC_ARCHITECTURE.md) |
+| 17 | Cloud storage and sync | [Storage and sync](architecture/STORAGE_AND_SYNC_ARCHITECTURE.md) |
+| 18 | Financial accuracy and traceability | [Accounting data mapping §5–6](architecture/ACCOUNTING_DATA_MAPPING.md) |
+| 19 | Security and audit | [Security architecture](security/SECURITY_ARCHITECTURE.md) |
+| 20 | Later phases | [Roadmap](development/DEVELOPMENT_ROADMAP.md), phase documents |
+| — | Required test scenarios | [Test scenarios](development/TEST_SCENARIOS.md) (specified, not executed) |

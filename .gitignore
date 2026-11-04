@@ -1,0 +1,56 @@
+# Secrets and local environment — never commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+secrets/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+
+# Node / web
+node_modules/
+.next/
+out/
+dist/
+build/
+.turbo/
+*.tsbuildinfo
+
+# Tauri / Rust
+target/
+src-tauri/target/
+
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.g.dart.tmp
+
+# Local data, uploads, test artefacts — never commit real documents
+/data/
+/storage/
+*.sqlite
+*.sqlite3
+*.db
+local-uploads/
+
+# Claude Code local settings
+.claude/settings.local.json

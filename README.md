@@ -2,7 +2,7 @@
 
 A multi-tenant accounting-operations and document-intelligence SaaS for accounting firms, independent accountants and their client companies.
 
-**Current status: Phase 0 (architecture and foundation) — documentation only. No application code exists yet.** Phase 1 has not started and begins only after Phase 0 is reviewed and approved.
+**Current status: Phase 1 (SaaS foundation) delivered for review — partially complete.** Backend (identity, tenancy, row-level security, entitlements), generated API client and a minimal web shell exist and are tested; Super Admin, Control Center modules, workspaces, documents, Desktop and Mobile do not. See [`docs/development/PHASE_1_COMPLETION_REPORT.md`](docs/development/PHASE_1_COMPLETION_REPORT.md).
 
 ## Ecosystem (planned)
 
@@ -20,6 +20,19 @@ A multi-tenant accounting-operations and document-intelligence SaaS for accounti
 2. [`docs/architecture/GLOSSARY.md`](docs/architecture/GLOSSARY.md) — canonical terms
 3. [`docs/architecture/DECISIONS.md`](docs/architecture/DECISIONS.md) — accepted decisions and open questions needing owner approval
 4. [`docs/development/PHASE_0_COMPLETION_REPORT.md`](docs/development/PHASE_0_COMPLETION_REPORT.md) — what Phase 0 did and did not do
+
+## Develop
+
+Requires `uv`, `pnpm` (Node 22+) and PostgreSQL 16 (see the `PG*` variables in `Makefile`).
+
+```bash
+make install        # dependencies from lockfiles
+make db-reset       # recreate the dev database: migrate, dev login roles, seed
+make check          # lint, strict types, OpenAPI drift, API tests (real PostgreSQL), docs check, web tests + build
+make e2e            # browser end-to-end (API + built web app + Playwright)
+```
+
+`docker-compose.yml` provides PostgreSQL/Redis/MinIO but has **not been started** in any verified run (no Docker daemon was available).
 
 ## Verify the documentation
 

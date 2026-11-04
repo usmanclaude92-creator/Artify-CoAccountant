@@ -3,7 +3,10 @@
 Guidance for Claude Code working in this repository. Keep this file short; the canonical detail is in `docs/`.
 
 ## Status
-Phase 0 (documentation and foundation) is delivered pending owner review. **Do not start Phase 1 or write application code until the owner approves Phase 0.** Phase scopes are in `docs/development/PHASE_N.md`.
+Phase 0 approved. Phase 1 (SaaS foundation) delivered for review, partially complete (`docs/development/PHASE_1_COMPLETION_REPORT.md`). **Do not start Phase 2 until the owner approves Phase 1.** Phase scopes are in `docs/development/PHASE_N.md`. Project skills in `.claude/skills/` (6 of 17) describe the implemented code.
+
+## Commands
+`make check` (everything except browser e2e), `make test-api`, `make db-reset`, `make client` (regenerate OpenAPI + TS client after API changes), `make e2e`.
 
 ## Read first
 `docs/architecture/GLOSSARY.md` (terms) → `docs/architecture/DECISIONS.md` (ADRs, open decisions) → the architecture doc for the area you touch.

@@ -2,6 +2,8 @@
 
 Implements ADR-002, ADR-003 and ADR-013. This is a **design**; no SQL has been executed in Phase 0. Phase 1 turns it into migrations and proves it with the isolation test suite (TS-ISO-*).
 
+> **Status (Phase 1):** implemented in `services/api/migrations/sql/0002_rls_and_grants.sql` and exercised by `tests/test_database_rls.py` and `tests/test_isolation_api.py`. Differences from the illustrative SQL below: policies inline the company-scope expression (§4.1); a dedicated `artify_definer` role owns narrow pre-authentication functions; the `app.realm` / `app.section_grants` / `app.support_grant_id` variables are not implemented yet (sections and support grants arrive in Phases 4 and 2).
+
 ## 1. Threat being addressed
 
 A bug, a forged client-supplied ID, a missed `WHERE organization_id = …`, a leaked token, or an over-broad support tool must not expose another tenant's or another Company's data. Application authorization is the primary control; the database is an independent second control.
@@ -84,6 +86,16 @@ CREATE POLICY support_read ON documents FOR SELECT TO artify_platform
 There is **no** platform policy on business tables without a grant, so the Super Admin interface cannot read documents even if its code were wrong.
 
 **Platform tables** (`subscription_plans`, `platform_settings`, `platform_audit_events`, …): policies for `artify_platform` only; `artify_app` has no privileges.
+
+### 4.1 Company-scope performance rule (measured in Phase 1)
+
+A policy that calls `app.can_see_company()` evaluates a `STABLE` function **per row**, re-parsing the company list each time. Measured on 50,000 synthetic companies (`infrastructure/dev/bench_rls.py`, single local run): listing 300 assigned companies took **65 ms** that way versus **1.2 ms** when the policy inlines the once-per-query pattern below (firm-wide scope: 0.8 ms; no-RLS baseline: 0.7 ms).
+
+```sql
+col = ANY (COALESCE((SELECT app.visible_company_ids()), '{}'::uuid[]))
+```
+
+The uncorrelated sub-select is planned as an InitPlan and evaluated once. Every company-scoped policy in `0002_rls_and_grants.sql` uses this form; `can_see_company()` is retained as the reference definition. `test_company_scope_policy_is_planned_once_per_query` asserts the plan shape. Numbers are an indicative baseline from one machine, not a service-level claim.
 
 ## 5. Structural guarantees beyond RLS
 

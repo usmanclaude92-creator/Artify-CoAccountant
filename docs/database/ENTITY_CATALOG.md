@@ -1,5 +1,7 @@
 # Entity Catalog
 
+> **Implementation status (end of Phase 1):** the tables listed in `PHASE_1.md` exist as migrations `0001`/`0002`. Differences from this design: `mfa_factors` has `last_used_step` (TOTP replay protection); `sessions`/`mfa_*` use two nullable subject columns (`user_id` / `platform_admin_id`) with a CHECK instead of a polymorphic id; `refresh_tokens`, `email_tokens` and `mfa_recovery_codes` are separate tables; `permissions.scope` allows `member`; `retention_policies` exists with NULL values (D-8). Company-owned tables beyond `company_memberships`, `accountant_assignments`, `invitations` and `support_access_grants` do not exist yet.
+
 Table-by-table design. Class codes (P/R/T/C/U/D) are defined in [`DATABASE_DESIGN.md`](DATABASE_DESIGN.md#2-ownership-classes-every-table-must-be-classified-ci-enforces). Common columns (`id`, audit columns, `row_version`, tenant columns per class) are implied and not repeated. "Key constraints" lists what is architecturally significant, not every column. This catalog is a **design baseline** that Phase 1+ migrations refine; tables are created in the phase that needs them, not all in Phase 1.
 
 Tables beyond the brief's proposed list are marked ➕ with the reason.

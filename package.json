@@ -1,0 +1,12 @@
+{
+  "name": "artify-co-accountant",
+  "private": true,
+  "packageManager": "pnpm@10.28.0",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "lint": "pnpm -r --if-present lint",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "build": "pnpm -r --if-present build",
+    "test": "pnpm -r --if-present test"
+  }
+}

@@ -1,6 +1,10 @@
 # Project-Specific Claude Code Skills — Plan
 
-## 1. Current state (verified in Phase 0)
+## 1. Current state
+
+**Updated at the end of Phase 1:** six skills now exist in `.claude/skills/` (`co-accountant-architecture`, `multi-tenant-saas`, `api-development`, `security-audit`, `automated-testing`, `code-review`), written against the implemented code. The remaining eleven are created in the phases listed below. The Phase 0 state follows for history.
+
+### Phase 0 state (verified then)
 
 - The repository contained **no** `.claude/` directory. There were no existing skills to inspect or preserve.
 - **No skill files are created in Phase 0.** Skills must be written against real code and conventions; skills written before code exists would be speculative and misleading. This document is the plan; `.claude/skills/README.md` points here.

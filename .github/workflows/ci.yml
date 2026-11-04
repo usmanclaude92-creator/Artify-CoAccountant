@@ -1,0 +1,91 @@
+# NOT YET RUN on GitHub at the time of writing (Phase 1 was developed in a sandbox without Actions).
+# The same commands were executed locally; see docs/development/PHASE_1_COMPLETION_REPORT.md.
+name: ci
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_PASSWORD: postgres }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7
+        ports: ["6379:6379"]
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      ARTIFY_TEST_REDIS_URL: redis://localhost:6379/0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --project services/api --frozen
+      - run: uv run --project services/api ruff check services/api
+      - run: uv run --project services/api ruff format --check services/api
+      - run: cd services/api && uv run mypy src
+      - run: uv run --project services/api python services/api/scripts/export_openapi.py --check
+      - run: uv run --project services/api pytest services/api/tests -rs
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @artify/api-client generate && git diff --exit-code packages/api-client/src/schema.d.ts
+      - run: pnpm -r --if-present typecheck
+      - run: pnpm --filter @artify/web lint
+      - run: pnpm --filter @artify/web test
+      - run: pnpm --filter @artify/web build
+
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_PASSWORD: postgres }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: uv sync --project services/api --frozen
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @artify/web exec playwright install --with-deps chromium
+      - run: infrastructure/dev/e2e.sh
+
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 tools/check_docs.py
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: gitleaks/gitleaks-action@v2
+        env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }

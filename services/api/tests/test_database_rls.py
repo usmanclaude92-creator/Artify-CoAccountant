@@ -215,3 +215,14 @@ def test_definer_functions_enforce_context(app_engine) -> None:  # type: ignore[
         _ctx(conn, org=uuid.uuid4())
         conn.execute(text("SELECT app.measure_entitlement(:o, 'limit.companies')"), {"o": other})
     assert "context mismatch" in str(exc.value)
+
+
+def test_company_scope_policy_is_planned_once_per_query(app_engine, client, mailer) -> None:  # type: ignore[no-untyped-def]
+    """Performance regression guard: the company list must be an InitPlan (evaluated once), not a
+    per-row function call (65 ms vs 1.5 ms for 300 companies in infrastructure/dev/bench_rls.py)."""
+    a = new_owner(client, mailer, org_name="Plan Shape")
+    with app_engine.connect() as conn, conn.begin():
+        _ctx(conn, org=a.org_id, scope="list", companies=",".join(str(uuid.uuid4()) for _ in range(5)))
+        plan = "\n".join(r[0] for r in conn.execute(text("EXPLAIN SELECT id FROM companies")))
+    assert "InitPlan" in plan, plan
+    assert "can_see_company" not in plan, plan

@@ -31,6 +31,15 @@ CREATE FUNCTION app.user_id() RETURNS uuid LANGUAGE sql STABLE
 CREATE FUNCTION app.company_scope() RETURNS text LANGUAGE sql STABLE
   AS $$ SELECT NULLIF(current_setting('app.company_scope', true), '') $$;
 
+-- PERFORMANCE: policies must NOT call can_see_company() on large tables. Calling a STABLE function
+-- per row re-parses the company list for every row (measured: 65 ms vs 1.5 ms for 300 assigned
+-- companies, infrastructure/dev/bench_rls.py). Policies instead inline the once-per-query pattern
+--   col = ANY (COALESCE((SELECT app.visible_company_ids()), '{}'::uuid[]))
+-- where the uncorrelated sub-select is planned as an InitPlan and evaluated once.
+CREATE FUNCTION app.visible_company_ids() RETURNS uuid[] LANGUAGE sql STABLE
+  AS $$ SELECT string_to_array(NULLIF(current_setting('app.company_ids', true), ''), ',')::uuid[] $$;
+
+-- Reference implementation of the rule (used for clarity and in tests; policies inline it).
 CREATE FUNCTION app.can_see_company(org uuid, comp uuid) RETURNS boolean LANGUAGE sql STABLE
   AS $$
     SELECT org IS NOT NULL AND comp IS NOT NULL AND org = app.org_id()
@@ -313,7 +322,7 @@ CREATE POLICY users_select ON users FOR SELECT TO artify_app USING (
   OR EXISTS (SELECT 1 FROM organization_memberships m WHERE m.user_id = users.id
              AND m.organization_id = app.org_id())
   OR EXISTS (SELECT 1 FROM company_memberships c WHERE c.user_id = users.id
-             AND app.can_see_company(c.organization_id, c.company_id)));
+             AND (c.organization_id = app.org_id() AND (app.company_scope() = 'all' OR c.company_id = ANY (COALESCE((SELECT app.visible_company_ids()), '{}'::uuid[]))))));
 CREATE POLICY users_insert ON users FOR INSERT TO artify_app WITH CHECK (id = app.user_id());
 CREATE POLICY users_update ON users FOR UPDATE TO artify_app
   USING (id = app.user_id()) WITH CHECK (id = app.user_id());
@@ -340,30 +349,30 @@ CREATE POLICY memberships_update ON organization_memberships FOR UPDATE TO artif
   USING (organization_id = app.org_id()) WITH CHECK (organization_id = app.org_id());
 
 CREATE POLICY companies_select ON companies FOR SELECT TO artify_app
-  USING (app.can_see_company(organization_id, id));
+  USING ((organization_id = app.org_id() AND (app.company_scope() = 'all' OR id = ANY (COALESCE((SELECT app.visible_company_ids()), '{}'::uuid[])))));
 CREATE POLICY companies_insert ON companies FOR INSERT TO artify_app
   WITH CHECK (organization_id = app.org_id() AND app.company_scope() = 'all');
 CREATE POLICY companies_update ON companies FOR UPDATE TO artify_app
-  USING (app.can_see_company(organization_id, id)) WITH CHECK (app.can_see_company(organization_id, id));
+  USING ((organization_id = app.org_id() AND (app.company_scope() = 'all' OR id = ANY (COALESCE((SELECT app.visible_company_ids()), '{}'::uuid[]))))) WITH CHECK ((organization_id = app.org_id() AND (app.company_scope() = 'all' OR id = ANY (COALESCE((SELECT app.visible_company_ids()), '{}'::uuid[])))));
 
 CREATE POLICY cm_select ON company_memberships FOR SELECT TO artify_app
-  USING (app.can_see_company(organization_id, company_id) OR user_id = app.user_id());
+  USING ((organization_id = app.org_id() AND (app.company_scope() = 'all' OR company_id = ANY (COALESCE((SELECT app.visible_company_ids()), '{}'::uuid[])))) OR user_id = app.user_id());
 CREATE POLICY cm_insert ON company_memberships FOR INSERT TO artify_app
-  WITH CHECK (app.can_see_company(organization_id, company_id));
+  WITH CHECK ((organization_id = app.org_id() AND (app.company_scope() = 'all' OR company_id = ANY (COALESCE((SELECT app.visible_company_ids()), '{}'::uuid[])))));
 CREATE POLICY cm_update ON company_memberships FOR UPDATE TO artify_app
-  USING (app.can_see_company(organization_id, company_id))
-  WITH CHECK (app.can_see_company(organization_id, company_id));
+  USING ((organization_id = app.org_id() AND (app.company_scope() = 'all' OR company_id = ANY (COALESCE((SELECT app.visible_company_ids()), '{}'::uuid[])))))
+  WITH CHECK ((organization_id = app.org_id() AND (app.company_scope() = 'all' OR company_id = ANY (COALESCE((SELECT app.visible_company_ids()), '{}'::uuid[])))));
 
 CREATE POLICY aa_select ON accountant_assignments FOR SELECT TO artify_app
-  USING (app.can_see_company(organization_id, company_id) OR user_id = app.user_id());
+  USING ((organization_id = app.org_id() AND (app.company_scope() = 'all' OR company_id = ANY (COALESCE((SELECT app.visible_company_ids()), '{}'::uuid[])))) OR user_id = app.user_id());
 CREATE POLICY aa_write ON accountant_assignments FOR ALL TO artify_app
-  USING (app.can_see_company(organization_id, company_id))
-  WITH CHECK (app.can_see_company(organization_id, company_id));
+  USING ((organization_id = app.org_id() AND (app.company_scope() = 'all' OR company_id = ANY (COALESCE((SELECT app.visible_company_ids()), '{}'::uuid[])))))
+  WITH CHECK ((organization_id = app.org_id() AND (app.company_scope() = 'all' OR company_id = ANY (COALESCE((SELECT app.visible_company_ids()), '{}'::uuid[])))));
 
 CREATE POLICY inv_all ON invitations FOR ALL TO artify_app
   USING (organization_id = app.org_id())
   WITH CHECK (organization_id = app.org_id()
-              AND (company_id IS NULL OR app.can_see_company(organization_id, company_id)));
+              AND (company_id IS NULL OR (organization_id = app.org_id() AND (app.company_scope() = 'all' OR company_id = ANY (COALESCE((SELECT app.visible_company_ids()), '{}'::uuid[]))))));
 -- (the select above overlaps definer_read by design; app code never reads invitations without org context)
 
 CREATE POLICY sub_select ON subscriptions FOR SELECT TO artify_app USING (organization_id = app.org_id());
@@ -389,9 +398,9 @@ CREATE POLICY plans_select ON plan_entitlements FOR SELECT TO artify_app USING (
 
 CREATE POLICY audit_insert ON audit_events FOR INSERT TO artify_app WITH CHECK (
   organization_id IS NULL
-  OR (organization_id = app.org_id() AND (company_id IS NULL OR app.can_see_company(organization_id, company_id))));
+  OR (organization_id = app.org_id() AND (company_id IS NULL OR (organization_id = app.org_id() AND (app.company_scope() = 'all' OR company_id = ANY (COALESCE((SELECT app.visible_company_ids()), '{}'::uuid[])))))));
 CREATE POLICY audit_select ON audit_events FOR SELECT TO artify_app USING (
-  organization_id = app.org_id() AND (company_id IS NULL OR app.can_see_company(organization_id, company_id)));
+  organization_id = app.org_id() AND (company_id IS NULL OR (organization_id = app.org_id() AND (app.company_scope() = 'all' OR company_id = ANY (COALESCE((SELECT app.visible_company_ids()), '{}'::uuid[]))))));
 
 CREATE POLICY outbox_insert ON outbox_events FOR INSERT TO artify_app
   WITH CHECK (organization_id IS NULL OR organization_id = app.org_id());

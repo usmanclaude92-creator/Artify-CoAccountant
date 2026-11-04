@@ -1,6 +1,6 @@
 # Technology Stack
 
-Exact versions are **not** pinned in Phase 0 (ADR-019). They are selected and locked at the start of Phase 1 after checking current releases. Baselines below are minimums.
+Exact versions were pinned at the start of Phase 1 (ADR-019): Python dependencies in `services/api/pyproject.toml` + `uv.lock`, JavaScript in `package.json` files + `pnpm-lock.yaml`. Key pins: FastAPI 0.162.0, Pydantic 2.14.2, SQLAlchemy 2.1.8, Alembic 1.20.1, psycopg 3.3.8, argon2-cffi 25.1.0, PyJWT 2.15.1, Celery 5.6.3, Next.js 16.4.5, React 19.3.1, TypeScript 5.9.3, Tailwind CSS 4.3.4, Playwright 1.64.1; PostgreSQL 16 (verified locally), Redis 7.0, Node 22, Python 3.13 locally (3.12+ supported). Versions were read from the package registries on 2026-11-04.
 
 ## 1. Stack by layer
 
@@ -12,7 +12,7 @@ Exact versions are **not** pinned in Phase 0 (ADR-019). They are selected and lo
 | Workspace builder DnD | dnd-kit or equivalent with full keyboard alternative | — | Selected in Phase 4. |
 | Data fetching (web) | Generated OpenAPI client + TanStack Query | — | |
 | API | Python, FastAPI, Pydantic v2 | Python 3.12+ | Python is also the best fit for the OCR/ML/Excel libraries. |
-| ORM / migrations | SQLAlchemy 2.x (typed), Alembic | — | Migrations mandatory for all schema change; reviewed SQL for RLS and constraints. |
+| Data access / migrations | SQLAlchemy 2.x **Core** (bound-parameter SQL), Alembic with raw-SQL revisions | pinned in `uv.lock` | See ADR-020. Migrations mandatory for all schema change; reviewed SQL for RLS and constraints. |
 | Database | PostgreSQL (central source of truth) | currently supported major | RLS, partitioning, `NUMERIC`, `ltree`/CTEs for trees, `pg_trgm` for fuzzy duplicate search. |
 | Local DB (Desktop) | SQLite | — | Cache/queue only; never authoritative. |
 | Queue / cache | Redis + Celery | — | Alternative considered: Dramatiq/Arq. Celery chosen for maturity, scheduling and monitoring. Redis is not a durable store of record; the outbox in PostgreSQL is. |

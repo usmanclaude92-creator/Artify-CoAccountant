@@ -2,7 +2,7 @@
 
 Phases 0–12 as specified in the product brief. Each phase has its own document (`PHASE_N.md`) with objectives, scope, technical implementation, database changes, API requirements, dependencies, security requirements, testing requirements, acceptance criteria, completion checklist and known risks.
 
-**Status as of Phase 0 completion: Phase 0 delivered (documentation + minimal foundation), pending review. Phase 1 has not been started and must not start until Phase 0 is approved.**
+**Status: Phase 0 approved. Phase 1 delivered for review (partially complete — see `PHASE_1_COMPLETION_REPORT.md`). Phase 2 has not started and must not start until Phase 1 is approved.**
 
 Sizing is relative (S/M/L/XL), not a schedule; calendar estimates need team size and are intentionally not invented here.
 

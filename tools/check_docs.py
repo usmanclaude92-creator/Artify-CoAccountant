@@ -51,6 +51,8 @@ REQUIRED_FILES = [
     "docs/development/TEST_SCENARIOS.md",
     "docs/development/PROJECT_SKILLS_PLAN.md",
     "docs/development/PHASE_0_COMPLETION_REPORT.md",
+    "docs/development/PHASE_1_COMPLETION_REPORT.md",
+    "docs/security/THREAT_MODEL_AUTH.md",
     ".claude/skills/README.md",
     "tools/check_docs.py",
 ] + [f"docs/development/PHASE_{n}.md" for n in range(1, 13)]
@@ -78,6 +80,7 @@ def fail(msg: str) -> None:
 
 def md_files() -> list[Path]:
     files = [ROOT / "README.md", ROOT / "CLAUDE.md", ROOT / ".claude/skills/README.md"]
+    files += sorted((ROOT / ".claude/skills").glob("*/SKILL.md"))
     files += sorted((ROOT / "docs").rglob("*.md"))
     return [f for f in files if f.exists()]
 

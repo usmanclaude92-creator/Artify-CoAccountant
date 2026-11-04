@@ -1,6 +1,6 @@
 # Phase 1 — SaaS Foundation, Database and Authentication
 
-**Status: NOT STARTED. Begins only after Phase 0 approval.** Instructions to begin are in `PHASE_0_COMPLETION_REPORT.md`.
+**Status: DELIVERED FOR REVIEW (2026-11-04) — partially complete; see [`PHASE_1_COMPLETION_REPORT.md`](PHASE_1_COMPLETION_REPORT.md) for what was implemented, what was verified and what remains.** Phase 2 must not start until this phase is reviewed and approved.
 
 ## Objectives
 

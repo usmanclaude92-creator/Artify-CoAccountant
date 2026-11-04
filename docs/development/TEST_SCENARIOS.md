@@ -1,6 +1,34 @@
 # Acceptance Test Scenarios
 
-**Status of every scenario in this file: SPECIFIED — NOT EXECUTED.** No application code exists in Phase 0. A scenario becomes "executed" only when an automated test implementing it runs and the phase completion report records the command and result.
+**Status:** scenarios are SPECIFIED unless listed in the execution table below. A scenario counts as executed only when an automated test implementing it ran and the phase completion report records the command and result.
+
+### Execution status (updated at the end of Phase 1)
+
+Run: `make test-api` → 58 passed, 1 skipped (Redis test needs `ARTIFY_TEST_REDIS_URL`; with it set: 2 passed). Browser e2e: 3 passed.
+
+| ID | Status | Implemented by (in `services/api/tests/` unless noted) | Coverage note |
+|---|---|---|---|
+| TS-ISO-01 | EXECUTED | `test_isolation_api::test_cross_tenant_access_is_denied_with_404_and_audited` | Org, company, member, audit, entitlement routes; denial audited (unattributed) |
+| TS-ISO-02 | EXECUTED | `test_isolation_api::test_accountant_sees_only_assigned_companies` | Includes assignment removal taking effect immediately |
+| TS-ISO-03 | PARTIAL | `test_isolation_api` (companies, members, assignments) | Workspace templates, Excel templates and documents do not exist yet (Phases 4, 6, 9) |
+| TS-ISO-04 | EXECUTED | `test_database_rls::test_empty_context_sees_nothing_and_cannot_write` | |
+| TS-ISO-05 | EXECUTED | `test_database_rls::test_composite_fk_blocks_cross_company_reference` | Uses `company_memberships`; `documents` arrive in Phase 6 |
+| TS-ISO-06 | PARTIAL | `test_database_rls::test_platform_role_cannot_read_tenant_business_data`, `test_auth::test_platform_admin_must_enroll_mfa_then_sees_metadata_only` | Documents/extracted data/entries do not exist yet |
+| TS-ISO-07 | NOT EXECUTED | — | Support-grant policies arrive in Phase 2 |
+| TS-ISO-08 | EXECUTED | `test_isolation_api::test_company_employee_is_confined_to_own_company` | |
+| TS-ISO-09 | EXECUTED | `test_isolation_api::test_realms_are_separate` | |
+| TS-ISO-10 | EXECUTED | `test_isolation_api::test_every_route_declares_its_authorization` | |
+| TS-ENT-01 | EXECUTED (4 of 9 keys) | `test_entitlements::test_company_limit_enforced_by_raw_api`, `test_user_accountant_and_device_limits` | companies, users, accountants, devices; the other `limit.*` keys arrive with their features |
+| TS-ENT-02 | EXECUTED | `test_entitlements::test_concurrent_creation_cannot_oversubscribe` | 8 parallel creators, 1 slot left → exactly 1 success |
+| TS-ENT-03 | PARTIAL | `test_entitlements::test_plan_change_takes_effect_without_deploy`, `test_override_precedence_expiry_and_unlimited` | Done with SQL as the owner; Super Admin UI is Phase 2 |
+| TS-ENT-07 | PARTIAL | `test_entitlements::test_suspended_subscription_blocks_creation_but_not_reads`, `test_organization_suspension_makes_it_read_only` | Uploads/AI not present yet |
+| TS-SEC-01 | EXECUTED | `test_auth::test_refresh_rotation_and_reuse_detection` | |
+| TS-SEC-02 | EXECUTED | `test_auth::test_privileged_roles_require_mfa_before_org_access`, `test_platform_admin_must_enroll_mfa_then_sees_metadata_only` | |
+| TS-SEC-04 | EXECUTED | `test_database_rls::test_audit_tables_are_append_only` | |
+| TS-SEC-06 | EXECUTED | `test_auth::test_login_is_rate_limited`; `test_ratelimit` (Redis, when configured) | Login rate limit tested; recovery/signup limits share the same mechanism but are not individually tested |
+| all others | NOT EXECUTED | — | Depend on later-phase features |
+
+Additional executed tests not tied to a scenario ID: password hashing, enumeration resistance, password reset, MFA replay/recovery codes, idempotency, commit-before-response, outbox dispatch/backoff, worker tenant context, invitation edge cases, settings safety, schema lint (no float columns, every table classified), RLS plan-shape guard, and the Playwright journeys in `apps/web/e2e/smoke.spec.ts`.
 
 Format: Given / When / Then. "Phase" is where the scenario must first become an executable automated test.
 

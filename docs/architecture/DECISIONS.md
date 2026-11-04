@@ -61,18 +61,44 @@ Jobs are enqueued from an `outbox_events` row written in the same transaction as
 ### ADR-019 — Pinned versions are chosen in Phase 1, not guessed in Phase 0
 Phase 0 states the stack and baselines (Python 3.12+, PostgreSQL current supported major, Node LTS). Exact versions are selected and locked at the start of Phase 1 after checking current releases.
 
+### ADR-020 — Phase 1 data access: raw-SQL migrations and SQLAlchemy Core
+Phase 1 schema, RLS, grants and triggers are hand-written SQL files executed by thin Alembic revisions (forward-only; no downgrade), and the application uses SQLAlchemy Core with bound-parameter SQL rather than ORM models. *Why:* RLS policies, triggers and `SECURITY DEFINER` functions are the substance of this schema and are clearest as SQL; Core keeps every statement visible to review. An ORM layer may be added later for convenience, never to replace the SQL migrations. Supersedes the "SQLAlchemy 2.x (typed) ORM" wording in `TECHNOLOGY_STACK.md`.
+
+### ADR-021 — Web sessions use a backend-for-frontend with HttpOnly cookies
+The Next.js app proxies API calls (`/bff/*`, `/session/*`) and keeps access/refresh tokens only in HttpOnly, SameSite=Strict cookies, so page scripts can never read them; mutating BFF requests require a custom header and a same-origin `Origin` (CSRF). The API itself stays pure bearer-token, which Desktop and Mobile reuse unchanged.
+
+### ADR-022 — Pre-authentication lookups use narrow SECURITY DEFINER functions
+Login, refresh, e-mail-token and invitation lookups happen before any user context exists. They are served by single-purpose functions owned by `artify_definer` (a role with explicit read policies, **not** BYPASSRLS), with a pinned `search_path`. `app.measure_entitlement` is the same pattern for counting an organization's rows that a scoped caller cannot fully see. No other code path bypasses RLS.
+
+### ADR-023 — Reference data is synchronized by `artify-api seed`, not by migrations
+Permissions, system roles, entitlement definitions and currencies are defined in code and upserted idempotently by `artify-api seed` after migrations. The development default plan is created only if absent so later plan edits are never overwritten. Seed and bootstrap commands run with the schema-owner credential (superuser or BYPASSRLS operations role), never a service role.
+
+### ADR-024 — Company-scope policies inline a once-per-query array expression
+See `docs/database/ISOLATION_AND_RLS.md` §4.1 (65 ms → 1.2 ms measured). Policies must not call `app.can_see_company()` per row.
+
+## Outcomes of decisions taken at the start of Phase 1
+
+The product owner replied "Accept the recommendations and start Phase 1" on 2026-11-04, which settles:
+
+| ID | Outcome |
+|---|---|
+| D-1 | **Decided:** in-house authentication behind an `AuthProvider`-style seam (implemented in `auth_service.py`; a formal `AuthProvider` interface is *not* yet extracted). |
+| D-3 (dev infra) | **Decided:** cloud-neutral development infrastructure (PostgreSQL, Redis, S3-compatible MinIO). Production hosting/region remains open for Phase 12. |
+| D-8 (schema) | **Decided:** retention policy *schema* only (`retention_policies`, values NULL). Values remain open for Phase 12. |
+| D-9 | **Decided:** English + Arabic with RTL from the first screen. Arabic strings are a first-pass translation needing native review. |
+
 ## Decisions requiring product-owner approval
 
 | ID | Question | Recommendation | Needed by |
 |---|---|---|---|
-| **D-1** | Authentication: build in-house on FastAPI (Argon2id, rotating refresh tokens, TOTP/WebAuthn) or adopt a managed/self-hosted IdP (Keycloak, Auth0, Cognito…)? | In-house behind an `AuthProvider` interface: device-bound sessions, offline desktop sessions, and per-request membership resolution are central to the design. Revisit if compliance requires an IdP. | Start of Phase 1 |
+| **D-1** | Authentication: build in-house on FastAPI (Argon2id, rotating refresh tokens, TOTP/WebAuthn) or adopt a managed/self-hosted IdP (Keycloak, Auth0, Cognito…)? | In-house behind an `AuthProvider` interface: device-bound sessions, offline desktop sessions, and per-request membership resolution are central to the design. Revisit if compliance requires an IdP. | **Decided 2026-11-04** (see outcomes above) |
 | **D-2** | Payment/billing provider and invoicing/tax treatment for Artify's own subscriptions. | Defer provider choice; Phase 2 records plans/subscriptions/payments behind a provider interface with manual invoicing first. Provider availability for the target markets must be verified. | Phase 2 |
-| **D-3** | Hosting provider, regions and data residency (e.g. in-country or GCC hosting for Oman customers). | Cloud-neutral Docker/S3-compatible design; pick provider and region after confirming customer residency expectations. | Phase 1 (dev infra), Phase 12 (production) |
+| **D-3** | Hosting provider, regions and data residency (e.g. in-country or GCC hosting for Oman customers). | Cloud-neutral Docker/S3-compatible design; pick provider and region after confirming customer residency expectations. | Dev infra **decided 2026-11-04**; production hosting open until Phase 12 |
 | **D-4** | Per-tenant encryption keys (envelope keys per Organization) vs platform-managed server-side encryption only. | Platform-managed KMS encryption at launch; schema keeps `encryption_key_ref` hooks so per-tenant keys can be added. | Phase 12 |
 | **D-5** | AI/OCR provider policy: which providers, whether tenant documents may leave the platform's infrastructure, and per-tenant consent/opt-out. | Provider-independent interface; per-Organization `ai_processing_policy` (local-only / approved cloud providers); cloud use off by default until a data-processing agreement exists. | Phase 7 |
 | **D-6** | Is Artify ever a general ledger of record (balances, trial balance, period close), or strictly an entry-preparation/export system? | Preparation and export only (ADR-010). Adding a ledger later is additive but large. | Phase 8 |
 | **D-7** | Behavior when a user edits the local Windows mirror directly (moves/renames/deletes in Explorer). | Local structure is derived from cloud; Explorer moves are detected and surfaced as "refile requests" needing permission; deletes never propagate to the cloud. A watched `_Inbox` subfolder is the supported drop target. | Phase 5 |
-| **D-8** | Data retention periods per jurisdiction and Artify's own policy on contract end. | Retention is configuration (policy table); defaults to be set with legal counsel, not by engineering. | Phase 1 (policy schema), Phase 12 (values) |
-| **D-9** | Languages: Arabic/RTL UI and Arabic/English bilingual OCR for the Oman market. | Treat i18n and RTL as a Phase 1 platform requirement (cheap now, expensive later); prioritize Arabic + English. Confirm launch languages. | Phase 1 |
+| **D-8** | Data retention periods per jurisdiction and Artify's own policy on contract end. | Retention is configuration (policy table); defaults to be set with legal counsel, not by engineering. | Schema **decided 2026-11-04**; values open until Phase 12 |
+| **D-9** | Languages: Arabic/RTL UI and Arabic/English bilingual OCR for the Oman market. | Treat i18n and RTL as a Phase 1 platform requirement (cheap now, expensive later); prioritize Arabic + English. Confirm launch languages. | **Decided 2026-11-04** (see outcomes above) |
 | **D-10** | Offline scope of Mobile (queue uploads offline only, or also browse cached history). | Offline capture and upload queue; history is online-only plus a small cache. | Phase 11 |
 | **D-11** | Legal/commercial: product licensing, terms, data-processing agreement, and trademark of the "Artify" name. | Outside engineering scope; needed before any external pilot. | Before pilot |

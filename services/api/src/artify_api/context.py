@@ -85,6 +85,24 @@ def record_denial(
         log.exception("failed to record denial audit")
 
 
+def record_platform_denial(
+    admin_id: uuid.UUID, meta: audit.RequestMeta, permission: str, role_key: str, path: str
+) -> None:
+    """Persist a denied platform action in its OWN transaction (the request transaction rolls back)."""
+    try:
+        with transaction(platform_engine(), DbContext(user_id=admin_id)) as conn:
+            audit.write_platform_audit(
+                conn,
+                action="authz.denied",
+                actor_id=admin_id,
+                summary={"permission": permission, "role": role_key, "path": path},
+                meta=meta,
+                outcome="denied",
+            )
+    except Exception:  # auditing must never turn a denial into a 500
+        log.exception("failed to record platform denial audit")
+
+
 # ---------------------------------------------------------------- tenant context
 @dataclass
 class RequestCtx:
@@ -279,6 +297,9 @@ class PlatformCtx:
     mfa: bool
     meta: audit.RequestMeta
 
+    def can(self, permission: str) -> bool:
+        return permission in PLATFORM_ROLES[self.role_key]
+
 
 class PlatformRequires:
     """Platform-realm equivalent. Platform admins authenticate against a different issuer and
@@ -317,6 +338,7 @@ class PlatformRequires:
             meta=meta,
         )
         if self.permission and self.permission not in PLATFORM_ROLES[row.role_key]:
+            record_platform_denial(claims.subject, meta, self.permission, row.role_key, request.url.path)
             raise Forbidden("You do not have permission to perform this action.", extra={"permission": self.permission})
         return ctx
 

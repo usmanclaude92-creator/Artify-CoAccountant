@@ -261,8 +261,10 @@ def test_platform_admin_must_enroll_mfa_then_sees_metadata_only(client, mailer, 
     h = {"Authorization": f"Bearer {ok.json()['access_token']}"}
     assert client.get("/api/v1/platform/me", headers=h).json()["role"] == "platform_owner"
     orgs = client.get("/api/v1/platform/organizations", headers=h)
-    assert orgs.status_code == 200 and any(o["display_name"] == "Visible Org" for o in orgs.json())
-    assert set(orgs.json()[0]) == {"id", "type", "display_name", "country", "status"}  # no business data
+    assert orgs.status_code == 200 and any(o["display_name"] == "Visible Org" for o in orgs.json()["items"])
+    # metadata and aggregate counts only: no document, ledger, tax or credential fields
+    forbidden = {"tax_registration", "password_hash", "documents", "balance", "ledger"}
+    assert not forbidden & set(orgs.json()["items"][0])
     # a platform token is useless on tenant routes (separate audience and key)
     assert client.get("/api/v1/me", headers=h).status_code == 401
     with owner_engine.connect() as conn:

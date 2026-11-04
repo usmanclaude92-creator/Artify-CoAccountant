@@ -1,12 +1,12 @@
-"""Platform realm (Artify Super Admin) endpoints. Phase 1 ships authentication, the admin's own
-profile and a metadata-only organization list; the full Super Admin arrives in Phase 2."""
+"""Platform realm (Artify Super Admin): authentication and the administrator's own profile.
+The management modules live in the sibling `platform_*` routers."""
 
 from __future__ import annotations
 
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, Request, Response
+from fastapi import APIRouter, Depends, Request, Response
 from pydantic import BaseModel
 from sqlalchemy import text
 
@@ -14,6 +14,7 @@ from artify_api import audit
 from artify_api.auth_provider import get_auth_provider
 from artify_api.context import PlatformCtx, PlatformRequires, Public, request_meta
 from artify_api.errors import Conflict
+from artify_api.permissions import PLATFORM_ROLES
 from artify_api.ratelimit import enforce
 from artify_api.routers.auth import to_login_response, to_token_response
 from artify_api.routers.schemas import (
@@ -36,14 +37,7 @@ class PlatformMe(BaseModel):
     display_name: str
     role: str
     mfa_verified: bool
-
-
-class OrgSummary(BaseModel):
-    id: uuid.UUID
-    type: str
-    display_name: str
-    country: str
-    status: str
+    permissions: list[str]
 
 
 @router.post(
@@ -120,20 +114,5 @@ def me(ctx: Annotated[PlatformCtx, Depends(PlatformRequires("platform.self.read"
         display_name=row.display_name,
         role=row.role_key,
         mfa_verified=ctx.mfa,
+        permissions=sorted(PLATFORM_ROLES[row.role_key]),
     )
-
-
-@router.get("/organizations", response_model=list[OrgSummary], operation_id="platform_organizations")
-def organizations(
-    ctx: Annotated[PlatformCtx, Depends(PlatformRequires("platform.organizations.read"))],
-    limit: Annotated[int, Query(ge=1, le=200)] = 50,
-) -> list[OrgSummary]:
-    rows = (
-        ctx.conn.execute(
-            text("SELECT id, type, display_name, country, status FROM organizations ORDER BY created_at DESC LIMIT :n"),
-            {"n": limit},
-        )
-        .mappings()
-        .all()
-    )
-    return [OrgSummary(**r) for r in rows]

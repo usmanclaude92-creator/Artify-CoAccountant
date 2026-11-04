@@ -1,3 +1,4 @@
+import { adminContext } from "./platform-helpers";
 import { expect, test } from "@playwright/test";
 import { PASSWORD, enrollMfa, mailedToken } from "./helpers";
 import { totp } from "./totp";
@@ -78,17 +79,16 @@ test("wrong credentials show a generic error and no session", async ({ page }) =
   await expect(page).toHaveURL(/\/login$/);
 });
 
-test("platform admin: separate sign-in, mandatory MFA, metadata-only console", async ({ page }) => {
+test("platform admin: separate sign-in, mandatory MFA, Super Admin overview", async ({ page, browser }) => {
   const email = process.env.E2E_PLATFORM_EMAIL ?? "";
   test.skip(!email, "E2E_PLATFORM_EMAIL not provided");
   await page.goto("/platform");
   await expect(page).toHaveURL(/\/platform\/login$/);
-  await page.getByLabel("Email address").fill(email);
-  await page.getByLabel("Password").fill(PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await enrollMfa(page);
-  await page.getByRole("button", { name: "Continue" }).click();
-  await expect(page).toHaveURL(/\/platform$/);
-  await expect(page.getByText("Customer documents and accounting data are not accessible")).toBeVisible();
-  await expect(page.getByRole("cell", { name: "Acme E2E Accounting" }).first()).toBeVisible();
+  // the first call performs the real sign-in + mandatory MFA enrolment through the UI and saves the session
+  const ctx = await adminContext(browser);
+  const admin = await ctx.newPage();
+  await admin.goto("/platform");
+  await expect(admin.getByRole("heading", { name: "Overview" })).toBeVisible();
+  await expect(admin.getByRole("navigation", { name: "Super Admin" }).getByRole("link", { name: "Platform Administrators" })).toBeVisible();
+  await ctx.close();
 });

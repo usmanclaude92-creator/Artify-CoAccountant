@@ -11,9 +11,25 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRoute
 
+from artify_api import metrics
 from artify_api.errors import install_error_handlers
 from artify_api.logging_config import configure_logging, correlation_id_var
-from artify_api.routers import auth, companies, health, me, orgs, platform
+from artify_api.routers import (
+    auth,
+    companies,
+    health,
+    me,
+    orgs,
+    platform,
+    platform_admins,
+    platform_billing,
+    platform_ops,
+    platform_orgs,
+    platform_plans,
+    platform_subs,
+    platform_support,
+    support_grants,
+)
 from artify_api.settings import get_settings
 
 log = logging.getLogger("artify")
@@ -53,6 +69,7 @@ def create_app() -> FastAPI:
         correlation_id_var.set(request.state.correlation_id)
         started = time.perf_counter()
         response = await call_next(request)
+        metrics.record_response(response.status_code)
         # Path only (never the query string); no bodies, headers or identities beyond the correlation id.
         log.info(
             "request",
@@ -72,7 +89,22 @@ def create_app() -> FastAPI:
             response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
         return response
 
-    for r in (health.router, auth.router, orgs.router, companies.router, me.router, platform.router):
+    for r in (
+        health.router,
+        auth.router,
+        orgs.router,
+        companies.router,
+        me.router,
+        platform.router,
+        platform_orgs.router,
+        platform_plans.router,
+        platform_subs.router,
+        platform_billing.router,
+        platform_admins.router,
+        platform_support.router,
+        platform_ops.router,
+        support_grants.router,
+    ):
         app.include_router(r, prefix=API_PREFIX)
     return app
 

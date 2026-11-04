@@ -11,10 +11,11 @@ from alembic.config import Config
 from sqlalchemy import Engine, create_engine, text
 
 from artify_api.ids import new_id
+from artify_api.permissions import PLATFORM_ROLES as _PLATFORM_ROLE_MAP
 from artify_api.security import passwords
 from artify_api.settings import get_settings
 
-PLATFORM_ROLES = ("platform_owner", "platform_admin", "platform_support", "platform_billing", "platform_auditor")
+PLATFORM_ROLES = tuple(_PLATFORM_ROLE_MAP)
 
 
 def _owner_engine() -> Engine:

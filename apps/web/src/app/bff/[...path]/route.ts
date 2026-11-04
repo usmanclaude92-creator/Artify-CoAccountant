@@ -32,4 +32,4 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ path: string[] 
   });
 }
 
-export { handle as GET, handle as POST, handle as PATCH, handle as DELETE };
+export { handle as GET, handle as POST, handle as PUT, handle as PATCH, handle as DELETE };

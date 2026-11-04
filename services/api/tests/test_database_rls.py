@@ -134,10 +134,19 @@ def test_platform_role_cannot_read_tenant_business_data(platform_engine, client,
     with platform_engine.connect() as conn, conn.begin():
         assert conn.execute(text("SELECT count(*) FROM organizations")).scalar() >= 1
         assert conn.execute(text("SELECT count(*) FROM subscriptions")).scalar() >= 1
-    for table in ("companies", "company_memberships", "organization_memberships", "users", "invitations", "devices"):
+    for table in ("companies", "company_memberships", "invitations", "devices"):
         with pytest.raises(DBAPIError) as exc, platform_engine.connect() as conn, conn.begin():
             conn.execute(text(f"SELECT count(*) FROM {table}"))
         assert "permission denied" in str(exc.value).lower(), table
+    # Phase 2: members and user rows are readable ONLY through an active, customer-approved support grant.
+    # With no grant the policies return zero rows even though rows exist (test_phase2_support.py covers the grant).
+    for table in ("organization_memberships", "users"):
+        with platform_engine.connect() as conn, conn.begin():
+            assert conn.execute(text(f"SELECT count(*) FROM {table}")).scalar() == 0, table
+    # the password hash column of platform_admins is never readable by the platform role
+    with pytest.raises(DBAPIError) as exc, platform_engine.connect() as conn, conn.begin():
+        conn.execute(text("SELECT password_hash FROM platform_admins"))
+    assert "permission denied" in str(exc.value).lower()
 
 
 def test_tenant_cannot_read_other_tenants_plan_or_write_subscriptions(app_engine, client, mailer) -> None:  # type: ignore[no-untyped-def]

@@ -62,6 +62,14 @@ _TEMPLATES: dict[str, tuple[str, str]] = {
         "You have been invited to Artify Co-Accountant",
         "You have been invited to join an organization on Artify Co-Accountant.\n\nAccept the invitation:\n{base}/accept-invitation?token={token}\n\nThe link expires in seven days.\n",
     ),
+    "platform_invitation": (
+        "You have been invited to Artify Super Admin",
+        "You have been invited to administer the Artify Co-Accountant platform.\n\nAccept the invitation and set your password:\n{base}/platform/accept-invitation?token={token}\n\nYou will be asked to set up two-factor authentication at first sign-in. The link expires in seven days.\n",
+    ),
+    "support_access_request": (
+        "Artify support is requesting access to {organization}",
+        "An Artify support administrator has asked for time-limited access to {organization}.\n\nReason given: {reason}\n\nNothing is shared unless you approve. Review the request in Support access:\n{base}/support-access\n\nYou can deny or revoke access at any time.\n",
+    ),
     "signup_existing_account": (
         "Sign-up attempt for an existing account",
         "Someone tried to create an Artify account with this email address, which already has one.\n\nSign in: {base}/login\nForgot your password: {base}/forgot-password\n\nIf this was not you, no action is needed.\n",
@@ -85,11 +93,12 @@ class SmtpMailer:
 
     def build(self, message: Message) -> EmailMessage:
         subject, body = _TEMPLATES[message.template]
+        values = {"token": "", **{k: str(v) for k, v in message.context.items()}}
         mail = EmailMessage()
         mail["From"] = self._s.mail_from
         mail["To"] = message.to
-        mail["Subject"] = subject
-        mail.set_content(body.format(base=self._s.web_base_url.rstrip("/"), token=message.context.get("token", "")))
+        mail["Subject"] = subject.format(**values)
+        mail.set_content(body.format(base=self._s.web_base_url.rstrip("/"), **values))
         return mail
 
     def send(self, message: Message) -> None:

@@ -97,16 +97,35 @@ def test_override_precedence_expiry_and_unlimited(client, mailer, owner_engine) 
 
 
 def test_plan_change_takes_effect_without_deploy(client, mailer, owner_engine) -> None:  # type: ignore[no-untyped-def]
+    """A plan version in use is immutable (Phase 2 trigger); a limit changes by publishing a NEW version and
+    moving the subscription to it - exactly what Super Admin does. The shared dev plan is restored afterwards."""
+    import uuid
+
     a = new_owner(client, mailer)
+    new_version = uuid.uuid4()
     with owner_engine.begin() as conn:
         pv = conn.execute(
             text("SELECT plan_version_id FROM subscriptions WHERE organization_id=:o"), {"o": a.org_id}
         ).scalar_one()
         conn.execute(
             text(
-                "UPDATE plan_entitlements SET int_value = 1 WHERE plan_version_id=:p AND entitlement_key='limit.companies'"
+                "INSERT INTO subscription_plan_versions (id, plan_id, version, billing_interval)"
+                " SELECT :nv, plan_id, (SELECT max(x.version) + 1 FROM subscription_plan_versions x WHERE x.plan_id = v.plan_id),"
+                " billing_interval FROM subscription_plan_versions v WHERE v.id = :p"
             ),
-            {"p": pv},
+            {"nv": new_version, "p": pv},
+        )
+        conn.execute(
+            text(
+                "INSERT INTO plan_entitlements (plan_version_id, entitlement_key, int_value, bool_value, unlimited)"
+                " SELECT :nv, entitlement_key, CASE WHEN entitlement_key = 'limit.companies' THEN 1 ELSE int_value END,"
+                " bool_value, unlimited FROM plan_entitlements WHERE plan_version_id = :p"
+            ),
+            {"nv": new_version, "p": pv},
+        )
+        conn.execute(
+            text("UPDATE subscriptions SET plan_version_id=:nv WHERE organization_id=:o"),
+            {"nv": new_version, "o": a.org_id},
         )
     try:
         make_company(a, "ONLY")
@@ -114,11 +133,10 @@ def test_plan_change_takes_effect_without_deploy(client, mailer, owner_engine) -
     finally:  # restore the shared dev plan for other tests
         with owner_engine.begin() as conn:
             conn.execute(
-                text(
-                    "UPDATE plan_entitlements SET int_value = 5 WHERE plan_version_id=:p AND entitlement_key='limit.companies'"
-                ),
-                {"p": pv},
+                text("UPDATE subscriptions SET plan_version_id=:p WHERE organization_id=:o"), {"p": pv, "o": a.org_id}
             )
+            conn.execute(text("DELETE FROM plan_entitlements WHERE plan_version_id=:nv"), {"nv": new_version})
+            conn.execute(text("DELETE FROM subscription_plan_versions WHERE id=:nv"), {"nv": new_version})
 
 
 def test_suspended_subscription_blocks_creation_but_not_reads(client, mailer, owner_engine) -> None:  # type: ignore[no-untyped-def]

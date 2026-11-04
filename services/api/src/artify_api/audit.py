@@ -77,16 +77,20 @@ def write_platform_audit(
     target_organization: uuid.UUID | None = None,
     summary: dict[str, Any] | None = None,
     meta: RequestMeta | None = None,
+    outcome: str = "success",
+    reason: str | None = None,
 ) -> None:
     m = meta or RequestMeta()
     conn.execute(
         text(
             "INSERT INTO platform_audit_events (id, actor_type, actor_id, action, target_type, target_id,"
-            " target_organization, summary, ip, user_agent, correlation_id)"
+            " target_organization, summary, ip, user_agent, correlation_id, outcome, reason)"
             " VALUES (:id, 'platform_admin', :aid, :action, :tt, :tid, :torg, CAST(:summary AS jsonb),"
-            " CAST(:ip AS inet), :ua, :cid)"
+            " CAST(:ip AS inet), :ua, :cid, :outcome, :reason)"
         ),
         {
+            "outcome": outcome,
+            "reason": reason,
             "id": new_id(),
             "aid": actor_id,
             "action": action,

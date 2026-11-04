@@ -246,3 +246,92 @@ def set_plan_limit(
             ),
             {"o": org_id, "s": sub, "k": key, "v": None if unlimited else value, "u": unlimited, "e": expires},
         )
+
+
+# ------------------------------------------------------------------ platform realm (Super Admin) helpers
+class PAdmin:
+    """A signed-in platform administrator (MFA enrolled and verified)."""
+
+    def __init__(self, client: TestClient, email: str, access: str, role: str, admin_id: str, secret: str) -> None:
+        self.client, self.email, self.access, self.role, self.id, self.secret = (
+            client,
+            email,
+            access,
+            role,
+            admin_id,
+            secret,
+        )
+
+    def headers(self) -> dict[str, str]:
+        return {"Authorization": f"Bearer {self.access}"}
+
+    def get(self, path: str, **params):  # type: ignore[no-untyped-def]
+        return self.client.get(f"/api/v1/platform{path}", headers=self.headers(), params=params or None)
+
+    def post(self, path: str, json: dict | None = None):  # type: ignore[no-untyped-def]
+        return self.client.post(f"/api/v1/platform{path}", json=json, headers=self.headers())
+
+    def patch(self, path: str, json: dict):  # type: ignore[no-untyped-def]
+        return self.client.patch(f"/api/v1/platform{path}", json=json, headers=self.headers())
+
+    def put(self, path: str, json: dict):  # type: ignore[no-untyped-def]
+        return self.client.put(f"/api/v1/platform{path}", json=json, headers=self.headers())
+
+    def delete(self, path: str):  # type: ignore[no-untyped-def]
+        return self.client.delete(f"/api/v1/platform{path}", headers=self.headers())
+
+
+def new_platform_admin(
+    client: TestClient, owner_engine, role: str = "platform_owner", email: str | None = None
+) -> PAdmin:  # type: ignore[no-untyped-def]
+    from artify_api.security import passwords
+
+    email = email or uniq("padmin")
+    with owner_engine.begin() as conn:
+        admin_id = conn.execute(
+            text(
+                "INSERT INTO platform_admins (id, email, display_name, role_key, password_hash)"
+                " VALUES (gen_random_uuid(), :e, :n, :r, :h) RETURNING id"
+            ),
+            {"e": email, "n": f"Admin {role}", "r": role, "h": passwords.hash_password(PASSWORD)},
+        ).scalar_one()
+    return login_platform_admin(client, email, str(admin_id), role)
+
+
+def login_platform_admin(client: TestClient, email: str, admin_id: str, role: str, password: str = PASSWORD) -> PAdmin:
+    r = client.post("/api/v1/platform/auth/login", json={"email": email, "password": password})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    h = {"Authorization": f"Bearer {body['tokens']['access_token']}"}
+    secret = client.post("/api/v1/platform/auth/mfa/enroll", headers=h).json()["secret"]
+    ok = client.post("/api/v1/platform/auth/mfa/confirm", json={"code": totp_now(secret)}, headers=h)
+    assert ok.status_code == 200, ok.text
+    return PAdmin(client, email, ok.json()["access_token"], role, admin_id, secret)
+
+
+@pytest.fixture
+def platform_db() -> Iterator:  # type: ignore[type-arg]
+    """Connection factory using the artify_platform login role (to test RLS/grants at the database level)."""
+    eng = create_engine(_url("artify_platform_login", "dev-only-platform"))
+    yield eng
+    eng.dispose()
+
+
+@pytest.fixture
+def tenant_db() -> Iterator:  # type: ignore[type-arg]
+    eng = create_engine(_url("artify_app_login", "dev-only-app"))
+    yield eng
+    eng.dispose()
+
+
+def relogin_platform_admin(client: TestClient, admin: PAdmin) -> PAdmin:
+    """Sign in again as an already MFA-enrolled administrator (password, then TOTP challenge)."""
+    r = client.post("/api/v1/platform/auth/login", json={"email": admin.email, "password": PASSWORD})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["status"] == "mfa_required", body
+    v = client.post(
+        "/api/v1/platform/auth/mfa/verify", json={"mfa_token": body["mfa_token"], "code": totp_now(admin.secret, 1)}
+    )
+    assert v.status_code == 200, v.text
+    return PAdmin(client, admin.email, v.json()["access_token"], admin.role, admin.id, admin.secret)

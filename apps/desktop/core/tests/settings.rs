@@ -11,6 +11,7 @@ fn only_known_settings_with_valid_values_are_accepted() {
         ("default_company_id", ""),
         ("default_company_id", "01a1b2c3-d4e5"),
         ("storage_root", "D:\\Artify"),
+        ("mirror_policy", "recent"),
     ] {
         assert!(validate(k, v).is_ok(), "{k}={v}");
     }
@@ -22,6 +23,7 @@ fn only_known_settings_with_valid_values_are_accepted() {
         ("default_company_id", "../../etc"),
         ("default_company_id", "'; DROP TABLE x;--"),
         ("storage_root", "a\0b"),
+        ("mirror_policy", "everything"),
     ] {
         assert_eq!(validate(k, v).unwrap_err().code, "invalid_setting", "{k}={v}");
     }

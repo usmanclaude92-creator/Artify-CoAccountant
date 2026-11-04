@@ -26,7 +26,12 @@ export interface WsNode {
   position: number; depth: number; is_active: boolean; archived_at: string | null; label?: string; can?: Record<string, boolean>;
 }
 export interface WsCategory { id: string; name: string; document_kind: string; node_id: string | null; is_active: boolean; archived_at: string | null }
-export interface WorkspaceData { company_id: string; version: number; workspace_state: string; access_mode?: string; nodes: WsNode[]; categories: WsCategory[] }
+export interface WsFieldOption { id: string; value: string; label: string; position: number; archived_at: string | null }
+export interface WsField {
+  id: string; key: string; label: string; data_type: string; required: boolean; is_active: boolean; archived_at: string | null;
+  options: WsFieldOption[]; category_ids: string[]; node_ids: string[]; default_value?: unknown; reference_target?: string | null;
+}
+export interface WorkspaceData { company_id: string; version: number; workspace_state: string; access_mode?: string; nodes: WsNode[]; categories: WsCategory[]; fields?: WsField[] }
 export interface WorkspaceView { company_id: string; version: number; fetched_at: string; data: WorkspaceData; stale: boolean; last_success_at: string | null; last_error: string | null }
 export type WsChange = { kind: "added" | "moved" | "archived" | "restored" | "removed"; id: string; name: string } | { kind: "renamed"; id: string; from: string; to: string };
 export interface RefreshOutcome { changed: boolean; version: number; summary: string | null; changes: WsChange[] }
@@ -41,7 +46,40 @@ export interface SyncStatus {
 }
 export interface EventRow { id: number; ts: string; level: string; kind: string; message: string; read: boolean }
 export interface UpdateStatus { configured: boolean; available: boolean; version: string | null; message: string }
-export type Settings = Record<"theme" | "language" | "start_on_login" | "default_company_id" | "notifications" | "update_channel", string>;
+export type Settings = Record<"theme" | "language" | "start_on_login" | "default_company_id" | "notifications" | "update_channel" | "mirror_policy", string>;
+
+// ---------------------------------------------------------------- documents (Phase 6)
+export interface Staged { token: string; name: string; size: number }
+export interface QueueItem {
+  token: string; node_id: string; category_id?: string | null; display_name?: string | null; field_values?: Record<string, unknown> | null;
+  duplicate_policy?: string | null; document_id?: string | null; change_reason?: string | null; filing_rule_id?: string | null;
+}
+export type ImportStatus = "waiting" | "preparing" | "uploading" | "verifying" | "completed" | "failed" | "cancelled" | "quarantined";
+export interface ImportRow {
+  id: string; org_id: string; company_id: string; batch_id: string | null; file_name: string; display_name: string | null; size: number; sha256: string | null;
+  node_id: string; category_id: string | null; document_id: string | null; duplicate_policy: string; status: ImportStatus; bytes_sent: number; attempts: number;
+  next_retry_at: string | null; error_code: string | null; error_message: string | null; error_detail: unknown; result_document_id: string | null; created_at: string; updated_at: string;
+}
+export interface Rejected { name: string; code: string; message: string }
+export interface QueueResult { queued: ImportRow[]; rejected: Rejected[] }
+export interface DocCan { view: boolean; download: boolean; edit: boolean; move: boolean; archive: boolean; delete: boolean; purge: boolean }
+export interface DocumentRow {
+  id: string; node_id: string; category_id: string | null; display_name: string; original_filename: string; extension: string; status: "active" | "archived" | "deleted";
+  current_version_number: number; latest_version_number?: number; source: string; filed_path_snapshot?: string | null; legal_hold: boolean;
+  created_by_name: string | null; created_at: string; updated_at: string; archived_at: string | null; row_version: number;
+  mime_type: string; size_bytes: number; sha256: string; scan_status: string; can: DocCan; field_values?: Record<string, unknown>; path?: string[]; versions?: DocVersion[];
+}
+export interface DocVersion { id: string; version_number: number; original_filename: string; extension: string; mime_type: string; size_bytes: number; sha256: string; scan_status: string; change_reason: string | null; uploaded_by_name: string | null; created_at: string; is_current: boolean; purged_at: string | null }
+export interface DocEvent { id: string; event_type: string; created_at: string; actor_name: string | null; detail: Record<string, unknown> | null }
+export interface DocPage<T> { items: T[]; total: number; limit: number; offset: number }
+export interface DocLimits { max_file_size: number; batch_max_files: number; allowed_extensions: string[]; chunk_max_bytes?: number; max_concurrent?: number }
+export interface DocCounts { by_node: Record<string, { active: number; archived: number }>; totals: { active: number; archived: number } }
+export interface Suggestion { filing: { rule: { id: string; name: string } | null; target_node_id: string | null; category_id: string | null; path: string[] | null; matches: { rule_id: string; name: string }[] }; naming: { suggested_name: string | null; pattern: string | null; missing: string[] }; [k: string]: unknown }
+export interface DuplicateCheck { exists: boolean; document: { id: string; display_name: string; status: string; node_id: string; path: string[] } | null }
+export interface Preview { mime: string; size: number; sha256: string; data_base64: string }
+export interface LocalCopy { path: string; rel_path: string; size: number; already_present: boolean }
+export interface MirrorStatus { files: number; missing?: number; root_configured?: boolean; [k: string]: unknown }
+export type DocOpName = "limits" | "counts" | "storage" | "list" | "get" | "versions" | "events" | "patch" | "move" | "archive" | "restore" | "delete" | "undelete" | "restore_version" | "suggest" | "check_duplicate";
 
 export type Unlisten = () => void;
 export interface Bridge {
@@ -71,6 +109,21 @@ export interface Bridge {
   notificationsRead(): Promise<void>;
   diagnosticsExport(): Promise<string>;
   updateCheck(): Promise<UpdateStatus>;
-  /** Backend events: workspace-updated (RefreshOutcome), session-expired, sync-error (AppError). */
-  on(event: "workspace-updated" | "session-expired" | "sync-error", handler: (payload: unknown) => void): Promise<Unlisten>;
+  /** Native file picker: the UI gets opaque tokens, never paths. */
+  filesPick(): Promise<Staged[]>;
+  importsQueue(org: string, company: string, items: QueueItem[]): Promise<QueueResult>;
+  importsList(company: string | null): Promise<ImportRow[]>;
+  importsProcess(): Promise<number>;
+  importCancel(org: string, id: string): Promise<void>;
+  importRetry(id: string, opts?: { duplicatePolicy?: string; nodeId?: string; categoryId?: string | null }): Promise<boolean>;
+  importRemove(id: string): Promise<boolean>;
+  documentsOp<T = unknown>(org: string, company: string, op: DocOpName, args?: Record<string, unknown>): Promise<T>;
+  documentPreview(org: string, company: string, doc: string, version?: number | null): Promise<Preview>;
+  documentDownload(org: string, company: string, doc: string, version?: number | null): Promise<LocalCopy>;
+  documentOpen(org: string, company: string, doc: string, version?: number | null): Promise<void>;
+  mirrorStatus(company: string): Promise<MirrorStatus>;
+  mirrorReconcile(org: string, company: string): Promise<unknown>;
+  mirrorSync(org: string, company: string): Promise<unknown>;
+  /** Backend events: workspace-updated (RefreshOutcome), session-expired, sync-error (AppError), files-dropped (Staged[]), imports-updated. */
+  on(event: "workspace-updated" | "session-expired" | "sync-error" | "files-dropped" | "imports-updated", handler: (payload: unknown) => void): Promise<Unlisten>;
 }

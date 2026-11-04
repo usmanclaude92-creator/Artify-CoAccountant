@@ -22,13 +22,12 @@ export function Dashboard() {
         <Button onClick={() => go("companies")}>My Companies</Button>
         <Button variant="secondary" disabled={!company} onClick={() => go("workspace")}>Open workspace</Button>
       </Panel>
-      <Alert tone="info">Document management, processing and accounting arrive in later releases. Nothing on this screen is sample data.</Alert>
+      <Alert tone="info">Document import and storage are available. Processing, accounting and reports arrive in later releases. Nothing on this screen is sample data.</Alert>
     </section>
   );
 }
 
-const FUTURE: Record<Exclude<Page, "dashboard" | "companies" | "workspace" | "sync" | "notifications" | "settings">, { title: string; text: string; phase: string }> = {
-  documents: { title: "Documents", text: "Browse, upload and review the documents filed in each workspace folder.", phase: "Document management (next release)" },
+const FUTURE: Record<Exclude<Page, "dashboard" | "companies" | "workspace" | "documents" | "import" | "queue" | "archived" | "sync" | "notifications" | "settings">, { title: string; text: string; phase: string }> = {
   processing: { title: "Processing Queue", text: "Follow documents through scanning, text recognition and review.", phase: "Document processing (a later release)" },
   accounting: { title: "Accounting", text: "Reviewed documents become accounting entries here, always approved by a person.", phase: "Accounting (a later release)" },
   reports: { title: "Reports", text: "Management reports and Excel exports built from approved entries.", phase: "Reports and Excel (a later release)" },
@@ -87,7 +86,7 @@ export function Sync() {
           <div className="d-actions"><Button onClick={() => void refresh()} disabled={busy || !company}>{busy ? "Synchronizing…" : "Synchronize now"}</Button></div>
           {!company ? <p className="a-hint">Open a company to synchronize its workspace.</p> : null}
           {msg ? <Alert tone="info">{msg}</Alert> : null}
-          <p className="a-hint">While a company is open, the app checks every minute for a newer workspace configuration. Document upload and offline capture queues arrive with document management.</p>
+          <p className="a-hint">While a company is open, the app checks every minute for a newer workspace configuration. Uploads have their own queue under Upload Queue and continue by themselves when the connection returns.</p>
         </Panel>
       ) : <p role="status">Loading…</p>}
     </section>

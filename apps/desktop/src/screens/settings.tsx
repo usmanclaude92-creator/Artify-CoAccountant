@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Alert, Button, Panel, StatusChip } from "@artify/ui";
-import type { AppInfo, CompanyView, RootReport, ServerDevice, UpdateStatus } from "../bridge/types";
+import type { AppInfo, CompanyView, MirrorStatus, RootReport, ServerDevice, UpdateStatus } from "../bridge/types";
 import { fmtBytes, fmtDateTime, ROLE_LABEL } from "../lib/format";
 import { describe } from "../lib/errors";
 import { useApp } from "../state/app";
@@ -78,8 +78,43 @@ function Storage() {
         <Button variant="secondary" disabled={!root || root.status !== "ok" || !company} onClick={() => void prepare()}>Prepare folder for {company?.name ?? "the open company"}</Button>
       </div>
       {msg ? <Alert tone={msg.tone}>{msg.text}</Alert> : null}
-      <p className="a-hint">Changing the location never moves or deletes existing files. Document folders will mirror each company’s own workspace when document management is available.</p>
+      <p className="a-hint">Changing the location never moves or deletes existing files. Local document folders mirror each company’s own workspace; the cloud copy stays the official one.</p>
+      <Mirror ready={root?.status === "ok" || root?.status === "low_space"} />
     </Panel>
+  );
+}
+
+const POLICY_LABEL: Record<string, string> = { on_demand: "Only documents I open or save", recent: "Documents from the last 30 days", all: "All documents I can see" };
+
+/** Local copies of cloud documents. Files are placed by workspace folder id, never overwritten, and checked against the cloud fingerprint. */
+function Mirror({ ready }: { ready: boolean }) {
+  const { bridge, company, org, settings, setSetting, fail } = useApp();
+  const [st, setSt] = useState<MirrorStatus | null>(null);
+  const [msg, setMsg] = useState<{ tone: "success" | "danger" | "info"; text: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const companyId = company?.id;
+  const load = useCallback(() => { if (companyId) bridge.mirrorStatus(companyId).then(setSt).catch(fail); }, [bridge, companyId, fail]);
+  useEffect(load, [load]);
+  if (!company || !org) return <p className="a-hint">Open a company to manage its local copies.</p>;
+  const run = async (label: string, fn: () => Promise<unknown>) => {
+    setBusy(true);
+    setMsg(null);
+    try { await fn(); setMsg({ tone: "success", text: label }); } catch (e) { setMsg({ tone: "danger", text: describe(e) }); } finally { setBusy(false); load(); }
+  };
+  return (
+    <div className="d-form">
+      <h3>Local copies of documents</h3>
+      <div className="a-field"><label htmlFor="mp">Keep local copies of</label>
+        <select id="mp" value={settings?.mirror_policy ?? "on_demand"} onChange={(e) => void setSetting("mirror_policy", e.target.value).catch((err) => setMsg({ tone: "danger", text: describe(err) }))}>
+          {Object.entries(POLICY_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></div>
+      <p>{st ? `${st.files} local cop${st.files === 1 ? "y" : "ies"} of ${company.name}${st.missing ? ` · ${st.missing} missing from the folder` : ""}` : "Checking…"}</p>
+      <div className="d-actions">
+        <Button variant="secondary" disabled={busy || !ready} onClick={() => void run("Local folders now match the cloud folder structure. Nothing was deleted.", () => bridge.mirrorReconcile(org.id, company.id))}>Match folders to the cloud</Button>
+        <Button variant="secondary" disabled={busy || !ready || settings?.mirror_policy === "on_demand"} onClick={() => void run("Local copies updated.", () => bridge.mirrorSync(org.id, company.id))}>Download now</Button>
+      </div>
+      {!ready ? <p className="a-hint">Choose a storage location first.</p> : null}
+      {msg ? <Alert tone={msg.tone}>{msg.text}</Alert> : null}
+    </div>
   );
 }
 

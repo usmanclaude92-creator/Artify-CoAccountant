@@ -21,6 +21,8 @@ pub fn validate(key: &str, value: &str) -> Result<()> {
         "language" => matches!(value, "en" | "ar"),
         "start_on_login" | "notifications" => matches!(value, "true" | "false"),
         "update_channel" => matches!(value, "stable" | "beta"),
+        // which cloud documents are kept as local copies: only those opened (on_demand), the last 30 days, or all
+        "mirror_policy" => matches!(value, "on_demand" | "recent" | "all"),
         "default_company_id" | "last_org_id" | "last_company_id" => {
             value.is_empty() || (value.len() <= 64 && value.chars().all(|c| c.is_ascii_hexdigit() || c == '-'))
         }

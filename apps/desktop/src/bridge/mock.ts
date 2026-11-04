@@ -2,7 +2,7 @@
  * In-memory bridge for unit tests and for `VITE_BRIDGE=mock pnpm dev` (browser preview without Rust). It is NEVER selected
  * in a production build, and the dev preview shows a permanent "demo data" banner.
  */
-import type { AppError, Assignment, Bridge, CompanyDetail, CompanyView, EventRow, Identity, LocalDevice, Organization, RefreshOutcome, RootReport, ServerDevice, Settings, SyncStatus, WorkspaceData, WorkspaceView, WsNode } from "./types";
+import type { AppError, Assignment, DocCounts, DocEvent, DocOpName, DocPage, DocVersion, DocumentRow, ImportRow, QueueItem, Staged, Bridge, CompanyDetail, CompanyView, EventRow, Identity, LocalDevice, Organization, RefreshOutcome, RootReport, ServerDevice, Settings, SyncStatus, WorkspaceData, WorkspaceView, WsNode } from "./types";
 
 export function node(id: string, parent: string | null, name: string, extra: Partial<WsNode> = {}): WsNode {
   return { id, parent_id: parent, node_type: parent ? "folder" : "section", key: id, name, display_name: null, description: "", position: 0, depth: 1, is_active: true, archived_at: null, ...extra };
@@ -35,10 +35,15 @@ export interface MockOptions {
   restore?: boolean;
   storageRoot?: string | null;
   notifications?: EventRow[];
+  /** files the native picker would return */
+  pick?: Staged[];
+  documents?: DocumentRow[];
+  /** a quota the mock enforces when uploads are processed */
+  maxDocuments?: number;
 }
 export type MockBridge = Bridge & {
   calls: string[];
-  state: { opts: MockOptions; settings: Settings; workspaces: Record<string, WorkspaceData>; companies: Record<string, CompanyView[]>; signedIn: boolean; devices: ServerDevice[]; root: string | null };
+  state: { opts: MockOptions; settings: Settings; workspaces: Record<string, WorkspaceData>; companies: Record<string, CompanyView[]>; signedIn: boolean; devices: ServerDevice[]; root: string | null; documents: DocumentRow[]; imports: ImportRow[]; opened: string[] };
   emit(event: string, payload?: unknown): void;
 };
 
@@ -51,12 +56,18 @@ export function createMockBridge(opts: MockOptions = {}): MockBridge {
   const calls: string[] = [];
   const state = {
     opts, signedIn: false, root: opts.storageRoot ?? null,
-    settings: { theme: "system", language: "en", start_on_login: "false", default_company_id: "", notifications: "true", update_channel: "stable" } as Settings,
+    settings: { theme: "system", language: "en", start_on_login: "false", default_company_id: "", notifications: "true", update_channel: "stable", mirror_policy: "on_demand" } as Settings,
     workspaces: structuredClone(opts.workspaces ?? DEMO_WORKSPACES) as Record<string, WorkspaceData>,
     companies: structuredClone(opts.companies ?? { [orgs[0]?.id ?? "org-1"]: DEMO_COMPANIES }) as Record<string, CompanyView[]>,
     devices: [] as ServerDevice[],
+    documents: structuredClone(opts.documents ?? []) as DocumentRow[],
+    imports: [] as ImportRow[],
+    opened: [] as string[],
   };
+  const staged = new Map<string, Staged>();
+  const company0 = Object.values(state.workspaces)[0]?.company_id ?? "c-alpha";
   const rec = (n: string) => calls.push(n);
+  void company0;
   const needAuth = () => { if (!state.signedIn) throw err("session_expired", "Your session has ended. Please sign in again.", 401); };
   const down = () => { if (opts.offline) throw err("network_unavailable", "The server cannot be reached.", undefined, true); };
   const report = (path: string): RootReport => ({ path, exists: true, is_dir: true, writable: true, free_bytes: 120 * 1024 ** 3, status: "ok", warnings: [] });
@@ -107,6 +118,80 @@ export function createMockBridge(opts: MockOptions = {}): MockBridge {
     notificationsRead: async () => undefined,
     diagnosticsExport: async () => "C:\\Users\\demo\\AppData\\Roaming\\com.artify.coaccountant\\diagnostics\\artify-diagnostics.json",
     updateCheck: async () => ({ configured: false, available: false, version: null, message: "Automatic updates are not configured in this build (no signing key or update server)." }),
+    filesPick: async () => { rec("filesPick"); needAuth(); const out = (opts.pick ?? []).map((f, i) => ({ ...f, token: `${f.token}-${state.imports.length}-${i}-${staged.size}` })); out.forEach((f) => staged.set(f.token, f)); return out; },
+    importsQueue: async (org, company, items: QueueItem[]) => {
+      rec("importsQueue"); needAuth();
+      const queued: ImportRow[] = [];
+      const rejected: { name: string; code: string; message: string }[] = [];
+      for (const it of items) {
+        const f = staged.get(it.token);
+        if (!f) { rejected.push({ name: "?", code: "unknown_file", message: "That file is no longer available. Choose it again." }); continue; }
+        staged.delete(it.token);
+        if (!/\.(pdf|png|jpe?g|xlsx?|docx?|csv|txt)$/i.test(f.name)) { rejected.push({ name: f.name, code: "unsupported_type", message: "This file type is not allowed." }); continue; }
+        const row: ImportRow = { id: `imp-${state.imports.length + 1}`, org_id: org, company_id: company, batch_id: "batch-1", file_name: f.name, display_name: it.display_name ?? null, size: f.size, sha256: null, node_id: it.node_id, category_id: it.category_id ?? null, document_id: it.document_id ?? null, duplicate_policy: it.duplicate_policy ?? "ask", status: "waiting", bytes_sent: 0, attempts: 0, next_retry_at: null, error_code: null, error_message: null, error_detail: null, result_document_id: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+        state.imports.push(row); queued.push(structuredClone(row));
+      }
+      return { queued, rejected };
+    },
+    importsList: async (company) => structuredClone(state.imports.filter((i) => !company || i.company_id === company)),
+    importsProcess: async () => {
+      rec("importsProcess"); needAuth();
+      let n = 0;
+      for (const r of state.imports.filter((i) => i.status === "waiting")) {
+        n++;
+        if (opts.offline) { r.error_code = "network_unavailable"; r.error_message = "The cloud could not be reached."; r.attempts++; continue; }
+        const hash = `${r.file_name}:${r.size}`;
+        const dup = state.documents.find((d) => d.sha256 === hash && d.status !== "deleted");
+        if (dup && r.duplicate_policy === "ask") { r.status = "failed"; r.error_code = "duplicate_detected"; r.error_message = "Identical content already exists."; continue; }
+        if (dup && r.duplicate_policy === "skip") { r.status = "cancelled"; continue; }
+        if (opts.maxDocuments !== undefined && state.documents.filter((d) => d.status !== "deleted").length >= opts.maxDocuments) { r.status = "failed"; r.error_code = "storage_quota"; r.error_message = "Limit reached."; continue; }
+        const id = `doc-${state.documents.length + 1}`;
+        state.documents.push({ id, node_id: r.node_id, category_id: r.category_id, display_name: r.display_name ?? r.file_name, original_filename: r.file_name, extension: r.file_name.split(".").pop() ?? "", status: "active", current_version_number: 1, source: "desktop", legal_hold: false, created_by_name: "Test Accountant", created_at: new Date().toISOString(), updated_at: new Date().toISOString(), archived_at: null, row_version: 1, mime_type: r.file_name.endsWith(".pdf") ? "application/pdf" : r.file_name.endsWith(".png") ? "image/png" : "application/octet-stream", size_bytes: r.size, sha256: hash, scan_status: "not_scanned", can: { view: true, download: true, edit: true, move: true, archive: true, delete: true, purge: false } });
+        r.status = "completed"; r.bytes_sent = r.size; r.result_document_id = id; r.error_code = null; r.error_message = null;
+      }
+      return n;
+    },
+    importCancel: async (_o, id) => { rec("importCancel"); const r = state.imports.find((i) => i.id === id); if (r && r.status !== "completed") r.status = "cancelled"; },
+    importRetry: async (id, o) => { rec("importRetry"); const r = state.imports.find((i) => i.id === id); if (!r || r.status === "completed") return false; r.status = "waiting"; r.error_code = null; r.error_message = null; if (o?.duplicatePolicy) r.duplicate_policy = o.duplicatePolicy; if (o?.nodeId) r.node_id = o.nodeId; return true; },
+    importRemove: async (id) => { rec("importRemove"); const n = state.imports.length; state.imports = state.imports.filter((i) => i.id !== id); return state.imports.length < n; },
+    documentsOp: async <T,>(_org: string, company: string, op: DocOpName, args: Record<string, unknown> = {}): Promise<T> => {
+      rec(`documentsOp:${op}`); needAuth(); down();
+      const docs = state.documents;
+      const find = () => { const d = docs.find((x) => x.id === args.id); if (!d) throw err("not_found", "Document not found.", 404); return d; };
+      const out = ((): unknown => {
+        switch (op) {
+          case "limits": return { max_file_size: 25 * 1024 ** 2, batch_max_files: 20, allowed_extensions: ["pdf", "png", "jpg", "xlsx", "csv"] };
+          case "counts": { const c: DocCounts = { by_node: {}, totals: { active: 0, archived: 0 } }; for (const d of docs) { if (d.status === "deleted") continue; const e = (c.by_node[d.node_id] ??= { active: 0, archived: 0 }); e[d.status as "active" | "archived"]++; c.totals[d.status as "active" | "archived"]++; } return c; }
+          case "storage": return { stored_bytes: docs.reduce((a, d) => a + d.size_bytes, 0) };
+          case "list": {
+            const q = (args.query ?? {}) as Record<string, string>;
+            let items = docs.filter((d) => d.status === (q.status ?? "active"));
+            if (q.node_id) items = items.filter((d) => d.node_id === q.node_id);
+            if (q.q) items = items.filter((d) => d.display_name.toLowerCase().includes(q.q!.toLowerCase()));
+            const page: DocPage<DocumentRow> = { items: structuredClone(items), total: items.length, limit: 50, offset: 0 };
+            return page;
+          }
+          case "get": return { ...structuredClone(find()), field_values: {}, path: ["Mock"], versions: [{ id: "v1", version_number: 1, original_filename: find().original_filename, extension: find().extension, mime_type: find().mime_type, size_bytes: find().size_bytes, sha256: find().sha256, scan_status: "not_scanned", change_reason: null, uploaded_by_name: "Test Accountant", created_at: find().created_at, is_current: true, purged_at: null } satisfies DocVersion] };
+          case "versions": return [];
+          case "events": return { items: [{ id: "e1", event_type: "created", created_at: find().created_at, actor_name: "Test Accountant", detail: null } satisfies DocEvent], total: 1, limit: 50, offset: 0 };
+          case "patch": { const d = find(); if (args.display_name) d.display_name = String(args.display_name); d.row_version++; return structuredClone(d); }
+          case "archive": { const d = find(); d.status = "archived"; return structuredClone(d); }
+          case "restore": { const d = find(); d.status = "active"; return structuredClone(d); }
+          case "delete": { const d = find(); d.status = "deleted"; return structuredClone(d); }
+          case "check_duplicate": { const d = docs.find((x) => x.sha256 === args.sha256 && x.status !== "deleted"); return d ? { exists: true, document: { id: d.id, display_name: d.display_name, status: d.status, node_id: d.node_id, path: ["Mock"] } } : { exists: false, document: null }; }
+          case "suggest": return { filing: { rule: null, target_node_id: null, category_id: null, path: null, matches: [] }, naming: { suggested_name: null, pattern: null, missing: [] } };
+          default: throw err("not_supported", `The mock bridge does not implement ${op}.`);
+        }
+      })();
+      void company;
+      return out as T;
+    },
+    documentPreview: async (_o, _c, doc) => { rec("documentPreview"); needAuth(); const d = state.documents.find((x) => x.id === doc); if (!d) throw err("not_found", "Document not found.", 404); return { mime: d.mime_type, size: d.size_bytes, sha256: d.sha256, data_base64: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==" }; },
+    documentDownload: async (_o, _c, doc) => { rec("documentDownload"); return { path: `${state.root ?? "C:\\Temp"}\\${doc}`, rel_path: doc, size: 1, already_present: false }; },
+    documentOpen: async (_o, _c, doc) => { rec("documentOpen"); state.opened.push(doc); },
+    mirrorStatus: async () => ({ files: 0, missing: 0, available: !!state.root, policy: "on_demand", root: null }),
+    mirrorReconcile: async () => ({ moved: 0 }),
+    mirrorSync: async () => ({ downloaded: 0 }),
     on: async (event, handler) => { handlers.set(event, [...(handlers.get(event) ?? []), handler]); return () => handlers.set(event, (handlers.get(event) ?? []).filter((h) => h !== handler)); },
   };
   return b;

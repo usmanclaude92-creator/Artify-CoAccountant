@@ -1,8 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { Bridge, CompanyDetail, Identity, Organization, Settings } from "../bridge/types";
+import type { Bridge, CompanyDetail, Identity, Organization, Settings, Staged } from "../bridge/types";
 import { describe, isSessionExpired } from "../lib/errors";
 
-export type Page = "dashboard" | "companies" | "workspace" | "documents" | "processing" | "accounting" | "reports" | "sync" | "notifications" | "settings";
+export type Page = "dashboard" | "companies" | "workspace" | "documents" | "import" | "queue" | "archived" | "processing" | "accounting" | "reports" | "sync" | "notifications" | "settings";
 
 export interface AppCtx {
   bridge: Bridge;
@@ -25,6 +25,11 @@ export interface AppCtx {
   fail: (e: unknown) => string;
   dismissNotice: () => void;
   showNotice: (m: string) => void;
+  /** files chosen or dropped but not queued yet (opaque tokens from the Rust side) */
+  pendingFiles: Staged[];
+  addPendingFiles: (f: Staged[]) => void;
+  removePendingFile: (token: string) => void;
+  clearPendingFiles: () => void;
 }
 const Ctx = createContext<AppCtx | null>(null);
 export function useApp(): AppCtx {
@@ -40,6 +45,7 @@ export function Session({ bridge, identity, onSignedOut, children }: { bridge: B
   const [page, setPage] = useState<Page>("companies");
   const [settings, setSettings] = useState<Settings | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [pendingFiles, setPendingFiles] = useState<Staged[]>([]);
   const ended = useRef(false);
 
   const signOut = useCallback(async (message?: string) => {
@@ -78,6 +84,17 @@ export function Session({ bridge, identity, onSignedOut, children }: { bridge: B
     return () => { offs.forEach((p) => p.then((f) => f()).catch(() => undefined)); };
   }, [bridge, fail]);
 
+  // files dropped on the window are staged by the Rust side; the user then chooses where they go
+  useEffect(() => {
+    const off = bridge.on("files-dropped", (p) => {
+      const files = (p as Staged[]) ?? [];
+      if (files.length === 0) return;
+      setPendingFiles((cur) => [...cur, ...files]);
+      setPage("import");
+    });
+    return () => { void off.then((f) => f()).catch(() => undefined); };
+  }, [bridge]);
+
   // keep this installation registered/active for the chosen organization (heartbeat); a revoked device ends the session
   useEffect(() => {
     if (!org) return;
@@ -91,7 +108,7 @@ export function Session({ bridge, identity, onSignedOut, children }: { bridge: B
   const ctx = useMemo<AppCtx>(() => ({
     bridge, identity, org, orgs: orgs ?? [], company, page, settings, notice, ready: orgs !== null && settings !== null,
     go: (p) => { setNotice(null); setPage(p); },
-    chooseOrg: (o) => { setOrg(o); setCompany(null); setPage("companies"); },
+    chooseOrg: (o) => { setOrg(o); setCompany(null); setPendingFiles([]); setPage("companies"); },
     openCompany: async (id) => {
       if (!org) return false;
       try {
@@ -103,13 +120,17 @@ export function Session({ bridge, identity, onSignedOut, children }: { bridge: B
         return false;
       }
     },
-    closeCompany: () => setCompany(null),
+    closeCompany: () => { setCompany(null); setPendingFiles([]); },
     setSetting: async (k, v) => {
       await bridge.settingsSet(k, v);
       setSettings((s) => (s ? { ...s, [k]: v } : s));
     },
     signOut, fail, dismissNotice: () => setNotice(null), showNotice: setNotice,
-  }), [bridge, identity, org, orgs, company, page, settings, notice, signOut, fail]);
+    pendingFiles,
+    addPendingFiles: (f) => setPendingFiles((cur) => [...cur, ...f]),
+    removePendingFile: (t) => setPendingFiles((cur) => cur.filter((x) => x.token !== t)),
+    clearPendingFiles: () => setPendingFiles([]),
+  }), [bridge, identity, org, orgs, company, page, settings, notice, signOut, fail, pendingFiles]);
 
   return <Ctx.Provider value={ctx}>{children}</Ctx.Provider>;
 }

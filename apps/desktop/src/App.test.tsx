@@ -311,7 +311,7 @@ describe("dynamic workspace", () => {
 });
 
 describe("honest placeholders", () => {
-  it.each([["Documents"], ["Processing Queue"], ["Accounting"], ["Reports"]])("%s says it is not available and shows no sample data", async (label) => {
+  it.each([["Processing Queue"], ["Accounting"], ["Reports"]])("%s says it is not available and shows no sample data", async (label) => {
     const { user } = await boot();
     await user.click(await screen.findByRole("button", { name: new RegExp(label) }));
     expect(screen.getByRole("heading", { name: label, level: 1 })).toBeInTheDocument();

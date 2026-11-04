@@ -173,6 +173,7 @@ const DEFAULTS: &[(&str, &str)] = &[
     ("default_company_id", ""),
     ("notifications", "true"),
     ("update_channel", "stable"),
+    ("mirror_policy", "on_demand"),
 ];
 
 #[tauri::command]

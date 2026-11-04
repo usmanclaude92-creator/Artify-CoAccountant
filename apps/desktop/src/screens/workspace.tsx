@@ -152,7 +152,7 @@ function Details({ t, view, onPrepare, localDir }: { t: TreeNode; view: Workspac
         <dt>Identifier</dt><dd className="a-mono">{n.id}</dd>
       </dl>
       <div className="d-actions"><Button variant="secondary" onClick={onPrepare}>Prepare local company folder</Button></div>
-      {localDir?.path ? <Alert tone="success">Local folder ready: <span className="a-mono">{localDir.path}</span>. Document folders are created here once document management is available.</Alert> : null}
+      {localDir?.path ? <Alert tone="success">Local folder ready: <span className="a-mono">{localDir.path}</span>. Documents you save a local copy of are placed in folders that mirror this workspace.</Alert> : null}
       {localDir?.error ? <Alert tone="danger">{localDir.error}</Alert> : null}
     </div>
   );

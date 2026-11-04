@@ -12,7 +12,7 @@ Every item that was open at the end of the first pass, with what was done and th
 
 | # | Open item | Outcome | Evidence |
 |---|---|---|---|
-| 1 | Run CI on GitHub | **Done**, and it earned its keep: run 1 all green; run 2 caught a gitleaks false positive (fixed); run 14 caught a lockfile mismatch that broke `web` and `e2e` (fixed, `make lockfiles` added). Final result: last line of this report | GitHub Actions runs 41816747468, 41819604051, 41821033425 |
+| 1 | Run CI on GitHub | **Done**, and it earned its keep: run 1 all green; run 2 caught a gitleaks false positive (fixed); run 14 caught a lockfile mismatch that broke `web` and `e2e` (fixed, `make lockfiles` added). Final result: run 15, all 7 jobs green | GitHub Actions runs 41816747468, 41819604051, 41821033425 |
 | 1b | Dependency-scan step in CI | **Done** (`audit` job: `pip-audit`, `pnpm audit --prod`, `pnpm audit --audit-level high`) | job green in run 2 |
 | 2 | Verify `docker-compose.yml`, write Dockerfiles | **Done.** `services/api/Dockerfile` (non-root, no dev dependencies, 234 MB); compose now has migrate → api, worker, dispatcher. Running the worker for real exposed a **missing `celery[redis]`/`packaging` dependency** (would have crashed in production) — fixed. `compose_smoke.py` proves sign-up → MFA → company → outbox → dispatcher → Redis → Celery worker, the Redis-backed rate limiter, JSON logs, and that no password reaches any log. **MinIO service remains unverified** (no reachable registry image here); it sits behind the `storage` profile | local run, and CI `docker` job green in run 2 |
 | 3a | Pre-commit hooks | **Done** (6 local hooks; a planted private key is rejected) | `uvx pre-commit run --all-files` |
@@ -69,7 +69,7 @@ Local runs are from the sandbox (PostgreSQL 16, Redis 7, Docker 29 with registry
 | CI, run 1 (first push) | GitHub Actions | 5/5 jobs green |
 | CI, run 2 (follow-up A) | GitHub Actions | 6/7 green; **gitleaks failed** (false positive in a test, fixed) |
 | CI, run 14 (follow-up B) | GitHub Actions | 5/7 green; **`web` and `e2e` failed at `pnpm install --frozen-lockfile`** (manifest/lockfile mismatch I introduced; fixed). gitleaks, API, Docker, audit, docs green |
-| CI after the lockfile fix | GitHub Actions | see the last line of this report |
+| CI, run 15 (lockfile fix, commit `eb9ca57`) | GitHub Actions | **success: all 7 jobs green** (api, web, e2e, docker, audit, docs, secrets) |
 
 **Mutation checks (to prove tests can fail):** (1) widened the `companies` RLS policy → 2 API isolation tests failed; (2) opened the `organizations` policy to everyone → 4 database tests failed; (3) planted import violations → both import-linter contracts broke; (4) planted a private key → the pre-commit hook rejected it. All reverted.
 
@@ -128,7 +128,7 @@ Implemented and tested: realm-separated tokens, MFA enforcement for privileged r
 | 3 | Isolation suite passes and fails closed on empty context | **Met** (TS-ISO-01, 02, 04, 05, 08, 09, 10 executed; see `TEST_SCENARIOS.md`) |
 | 4 | Company beyond `limit.companies` fails via the raw API; concurrency test passes | **Met** (8 parallel creators, one slot left → exactly 1 success) |
 | 5 | OpenAPI → TS client generation in CI; breaking-change check active | **Met:** generation, drift check and breaking-change check run in CI |
-| 6 | CI is green; report lists every command | **Met once the final run is green** (see the last line); commands are in §2. CI has failed twice on real defects, both fixed |
+| 6 | CI is green; report lists every command | **Met:** run 15 is green on all 7 jobs; commands are in §2. CI has failed twice on real defects, both fixed |
 
 ## 4. Defects the verification found (and what was done)
 1. Schema `CHECK` on `permissions.scope` rejected the `member` scope → caught by the first seed run; schema fixed.
@@ -202,4 +202,6 @@ Python (locked in `uv.lock`): fastapi, uvicorn, pydantic, pydantic-settings, sql
 | D-7, D-5, D-6, D-10, D-4, D-11 | unchanged from `DECISIONS.md` | see roadmap |
 
 ## 12. Instructions for beginning Phase 2
-Do not begin until this report is approved. Recommended order: (1) confirm the final CI run is green (last line below); (2) decide on the Dependabot PRs and ADR-025; (3) answer D-2; (4) say "Start Phase 2". Phase 2 then builds the Super Admin on the existing platform realm: plan/version/entitlement editing, subscriptions and usage views, support-access grant workflow with tenant approval and the grant-scoped RLS policies (TS-ISO-07), platform audit viewer — see `PHASE_2.md`.
+Do not begin until this report is approved. Recommended order: (1) the final CI run (15) is green — nothing to do there; (2) decide on the Dependabot PRs and ADR-025; (3) answer D-2; (4) say "Start Phase 2". Phase 2 then builds the Super Admin on the existing platform realm: plan/version/entitlement editing, subscriptions and usage views, support-access grant workflow with tenant approval and the grant-scoped RLS policies (TS-ISO-07), platform audit viewer — see `PHASE_2.md`.
+
+**Final status (2026-11-04):** CI run 15 on commit `eb9ca57` — all 7 jobs green. Local final checks: 83 API tests passed (twice), 23 browser tests passed 12 of 12 repeated runs, lint, strict types, import boundaries, OpenAPI drift and docs checks clean. Open items: §8.

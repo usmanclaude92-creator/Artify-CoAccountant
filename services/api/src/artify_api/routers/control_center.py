@@ -18,6 +18,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
 from artify_api import audit, entitlements
+from artify_api import workspace as ws
 from artify_api.context import RequestCtx, Requires
 from artify_api.errors import Forbidden, NotFound, Unprocessable
 from artify_api.permissions import ACCOUNTANT_ROLES, SYSTEM_ROLES
@@ -813,6 +814,14 @@ def transfer_ownership(
     ctx.conn.execute(
         text("DELETE FROM accountant_assignments WHERE organization_id = :o AND user_id = :u"),
         {"o": org_id, "u": body.new_owner_user_id},
+    )
+    ws.revoke_user_grants(
+        ctx.conn,
+        org_id=org_id,
+        user_id=body.new_owner_user_id,
+        actor_id=ctx.user_id,
+        meta=ctx.meta,
+        reason="ownership transferred",
     )
     for key in ("limit.users", "limit.accountants"):
         entitlements.refresh_counter(ctx.conn, org_id, key)

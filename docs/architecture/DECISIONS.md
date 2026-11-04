@@ -157,6 +157,9 @@ All API calls are made by `artify-core` (reqwest); the access token lives in mem
 ### ADR-051 — Updates stay disabled and installers stay unsigned until signing infrastructure exists
 No updater key, update endpoint or code-signing certificate is in the repository (and none may be). `update_check` reports "not configured" truthfully; the Windows CI job builds an unsigned installer and is `continue-on-error` until a first verified run. Revisit when a certificate and an update host are available (`docs/desktop/RELEASE_AND_UPDATE_PROCESS.md`).
 
+### ADR-052 — Workspace grants follow assignments, and exporting a configuration needs `configure` on its source
+Found by reviewing Phase 4/5 against Phase 3: (1) a person's explicit workspace grants survived the removal of their assignment and silently returned on re-assignment; they are now deleted with the assignment (audited as `workspace.grants_revoked`). (2) `copy-from`, save-as-template and create-from-copy exported the source company's full configuration to anyone with `workspace.read` there, leaking nodes hidden from them; they now need `configure` on the source too. (3) Mutating workspace routes declare only `workspace.read`; an AST test now requires each to authorize inside its body or via a dependency.
+
 ## Outcomes of decisions taken at the start of Phase 1
 
 The product owner replied "Accept the recommendations and start Phase 1" on 2026-11-04, which settles:

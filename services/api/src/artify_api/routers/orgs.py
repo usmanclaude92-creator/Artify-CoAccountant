@@ -11,6 +11,7 @@ from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import text
 
 from artify_api import audit, entitlements
+from artify_api import workspace as ws
 from artify_api.context import RequestCtx, Requires
 from artify_api.errors import Conflict, Forbidden, NotFound, Unprocessable
 from artify_api.idempotency import run_idempotent
@@ -236,6 +237,9 @@ def update_member(
         ctx.conn.execute(
             text("DELETE FROM accountant_assignments WHERE organization_id = :o AND user_id = :u"),
             {"o": org_id, "u": user_id},
+        )
+        ws.revoke_user_grants(
+            ctx.conn, org_id=org_id, user_id=user_id, actor_id=ctx.user_id, meta=ctx.meta, reason="role changed"
         )
     for key in ("limit.users", "limit.accountants"):
         entitlements.refresh_counter(ctx.conn, org_id, key)

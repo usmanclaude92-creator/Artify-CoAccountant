@@ -50,14 +50,20 @@ _WS_KEYS = ("workspace.read", "workspace.manage", "workspace.permissions.manage"
 
 
 # ---------------------------------------------------------------- helpers
-def _base(ctx: RequestCtx) -> frozenset[str]:
+def _base_for(ctx: RequestCtx, company_id: uuid.UUID) -> frozenset[str]:
+    """The workspace permission keys the caller holds on ONE company through their roles."""
     p = ctx.principal
-    assert p is not None and ctx.company_id is not None
+    assert p is not None
     perms = set(SYSTEM_ROLES[p.org_role][2]) if p.org_role else set()
-    cr = p.company_roles.get(ctx.company_id)
+    cr = p.company_roles.get(company_id)
     if cr:
         perms |= SYSTEM_ROLES[cr][2]
     return frozenset(k for k in _WS_KEYS if k in perms)
+
+
+def _base(ctx: RequestCtx) -> frozenset[str]:
+    assert ctx.company_id is not None
+    return _base_for(ctx, ctx.company_id)
 
 
 def access(ctx: RequestCtx) -> ws.Access:
@@ -1063,6 +1069,11 @@ def _source_definition(ctx: RequestCtx, company_id: uuid.UUID) -> tuple[Template
     exists = ctx.conn.execute(text("SELECT 1 FROM companies WHERE id = :c"), {"c": company_id}).scalar()
     if not exists:
         raise NotFound("Company not found.")
+    # Exporting reads the WHOLE configuration: nodes the caller may not see, naming and filing rules, fields. That is
+    # exactly what `configure` on the source company means, so require it there too (not just on the target);
+    # otherwise copying would leak hidden folder names and configuration into a company the caller can read.
+    source = ws.load_access(ctx.conn, company_id, ctx.user_id, ctx.principal.org_role, _base_for(ctx, company_id))
+    source.require("configure")
     return wt.export_definition(ctx.conn, company_id)
 
 

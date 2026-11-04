@@ -14,6 +14,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
 from artify_api import audit, entitlements, outbox
+from artify_api import workspace as ws
 from artify_api.context import RequestCtx, Requires
 from artify_api.errors import Conflict, Forbidden, NotFound, Unprocessable
 from artify_api.idempotency import run_idempotent
@@ -878,6 +879,16 @@ def unassign_accountant(
     )
     if not res.rowcount:
         raise NotFound("Assignment not found.")
+    assert ctx.org_id is not None
+    ws.revoke_user_grants(
+        ctx.conn,
+        org_id=ctx.org_id,
+        user_id=user_id,
+        company_id=company_id,
+        actor_id=ctx.user_id,
+        meta=ctx.meta,
+        reason="assignment removed",
+    )
     audit.write_audit(
         ctx.conn,
         action="assignment.removed",

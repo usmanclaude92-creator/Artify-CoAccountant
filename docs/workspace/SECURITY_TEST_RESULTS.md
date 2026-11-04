@@ -24,6 +24,9 @@ Every row names the executed test (files `services/api/tests/test_p4_workspace.p
 | Optimistic concurrency; inactive/archived companies read-only | `test_version_conflicts_are_detected`, `test_inactive_and_archived_companies_are_read_only` | passed |
 | Distribution contract: permitted active targets only, ETag/304 | `test_upload_config_returns_only_permitted_active_targets_and_supports_etag` | passed |
 | Every route declares authorization | existing route-table tests (`test_p2_authz`) | passed |
+| Every mutating workspace handler checks authorization in its body (the route only declares `workspace.read`) | `test_every_mutating_workspace_handler_checks_authorization_in_its_body` (AST scan; a stripped check is caught) | passed |
+| Personal grants do not revive on re-assignment | `test_personal_grants_do_not_revive_when_an_accountant_is_reassigned`, `test_grant_cleanup_helper_only_touches_the_named_person` | passed (added after review) |
+| Copy/export needs `configure` on the source company (hidden nodes and rules do not leak) | `test_copying_configuration_needs_configure_on_the_source_company` | passed (added after review) |
 | UI accessibility (WCAG 2.0–2.2 A/AA) in light and dark on builder states | `e2e/workspace.spec.ts`, `e2e/accessibility.spec.ts` | see report |
 
 ## What was not tested

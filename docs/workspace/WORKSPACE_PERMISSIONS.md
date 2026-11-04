@@ -26,7 +26,7 @@ Explicit grants (`workspace_permissions`): allow/deny × (user | organization ro
 3. Walk **nearest node → ancestors → company level**; the first level that holds a grant for this action decides; **deny beats allow on the same level**. Grants therefore inherit **downwards only**, never up to a parent or sideways.
 4. No grant: the role default applies in `open` mode. In `restricted` mode, members without `workspace.manage` get **nothing** unless explicitly allowed.
 
-Subjects must be active members of the organization (user) or a known organization role. Grants for members not assigned to the company have no effect because stage 1 already answers 404.
+Subjects must be active members of the organization (user) or a known organization role. Grants for members not assigned to the company have no effect because stage 1 already answers 404. **Personal (user) grants are deleted when the person's assignment to that company is removed, and for every company when a role change clears their assignments or they become owner; each deletion is audited as `workspace.grants_revoked`.** Re-assigning someone therefore starts from the role defaults. Role-subject grants are not affected. Suspending or removing a *member* keeps their assignments (and so their grants) so that reactivation restores exactly what existed.
 
 ## Hidden means hidden
 
@@ -35,6 +35,10 @@ A node a caller may not `view` is omitted from `GET /workspace`, `upload-config`
 ## Endpoints
 
 `GET/POST …/workspace/permissions`, `DELETE …/permissions/{id}`, `POST …/permissions/check` (explain another member’s effective permission), `GET …/workspace/access/me`, `PATCH …/workspace/settings` (access mode). Every change creates a revision and an audit event. Grants and the access mode are deliberately **not restored** by history restore.
+
+## Copying configuration
+
+`copy-from`, saving a company as a template and creating a company from another company's configuration export the *whole* source configuration, including nodes and rules the caller may not see. They therefore require `configure` on the **source** company as well as on the target (403 otherwise).
 
 ## Not built
 

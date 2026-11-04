@@ -35,6 +35,42 @@ from artify_api.workspace_engine import (
 MAX_DEPTH_HARD = 12
 
 
+def revoke_user_grants(
+    conn: Connection,
+    *,
+    org_id: uuid.UUID,
+    user_id: uuid.UUID,
+    actor_id: uuid.UUID,
+    meta: audit.RequestMeta,
+    reason: str,
+    company_id: uuid.UUID | None = None,
+) -> int:
+    """Delete a person's personal workspace grants (one company, or every company of the organization).
+
+    Grants follow the assignment that made them meaningful: when an assignment is removed, the person's explicit
+    workspace grants on that company go with it, so a later re-assignment starts from the role defaults instead of
+    silently reviving old powers. Role-subject grants are not touched. One audit event per affected company."""
+    where = "organization_id = :o AND subject_user_id = :u" + (" AND company_id = :c" if company_id else "")
+    params: dict[str, Any] = {"o": org_id, "u": user_id, **({"c": company_id} if company_id else {})}
+    rows = conn.execute(text(f"DELETE FROM workspace_permissions WHERE {where} RETURNING company_id"), params).all()
+    per_company: dict[uuid.UUID, int] = {}
+    for r in rows:
+        per_company[r.company_id] = per_company.get(r.company_id, 0) + 1
+    for cid, n in per_company.items():
+        audit.write_audit(
+            conn,
+            action="workspace.grants_revoked",
+            actor_id=actor_id,
+            org_id=org_id,
+            company_id=cid,
+            entity_type="user",
+            entity_id=user_id,
+            summary={"count": n, "reason": reason},
+            meta=meta,
+        )
+    return len(rows)
+
+
 class VersionConflict(Conflict):
     code, title = "workspace_version_conflict", "The workspace changed since you loaded it"
 

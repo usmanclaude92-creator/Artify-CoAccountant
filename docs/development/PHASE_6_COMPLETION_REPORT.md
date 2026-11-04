@@ -148,7 +148,16 @@ artify-api reconcile-storage --org <id> [--apply]   # storage vs database drift 
 
 Windows installer (on Windows): `cd apps/desktop && pnpm tauri build --bundles nsis` (unsigned). Local storage for the API: set `ARTIFY_STORAGE_ROOT`. CI: `.github/workflows/ci.yml` (jobs api, web, e2e, desktop, desktop-windows, docs, docker, audit, secrets).
 
-__CI_STATUS__
+**GitHub Actions history for this branch (what actually happened):**
+
+| Commit | Result |
+|---|---|
+| `68c6996` backend part 1 | **failed** — only the `secrets` job (gitleaks flagged the test header value `same-key-12345`); all other jobs including `desktop-windows` passed. Fixed in `cf49f03` (value renamed, fingerprint listed in `.gitleaksignore` with a justification) |
+| `bc9ebee` Rust core + Tauri shell | **failed** — only `desktop-windows`: `download_places_the_file_by_its_cloud_folder…` compared two path strings that differed in separators on Windows (`Path::join` of a `/`-separated relative path). A real Windows-only defect, found by CI, fixed in `cf49f03` by building paths one segment at a time. The Linux `desktop` job (including `cargo check -p artify-desktop --locked`, i.e. the Tauri shell compiles, and the live test against a real API) passed |
+| `8ea09e9`, `d8c8bbd`, `cf49f03` | **all jobs passed** (api, web, e2e, desktop, desktop-windows with the unsigned NSIS installer build, docs, docker, audit, secrets) |
+| `ade0fbc` (final: docs, report, security fix, tests) | pushed; its CI result is not known at the time of writing — see the Actions tab. Locally everything in §18 passed on this commit |
+
+The Windows job proves that the Rust core tests pass on Windows and that the installer builds; it does **not** run the app.
 
 ## 23. Readiness for Phase 7 (OCR and AI document intelligence)
 

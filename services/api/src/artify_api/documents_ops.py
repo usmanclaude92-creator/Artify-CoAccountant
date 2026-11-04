@@ -501,6 +501,8 @@ def list_sessions(
 ) -> dict[str, Any]:
     from artify_api.documents import SESSION_COLS, session_out
 
+    if not mine and not env.acc.can("configure"):  # other people's file names are management information
+        raise DocumentError(403, "forbidden", "Only company managers can see other people's uploads.")
     where, params = ["company_id = :c"], {"c": env.company_id, "l": limit, "o": offset}
     if mine:
         where.append("created_by = :u")

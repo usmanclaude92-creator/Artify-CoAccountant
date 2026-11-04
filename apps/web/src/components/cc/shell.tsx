@@ -44,6 +44,7 @@ const NAV: NavItem[] = [
   { label: "Team Members", path: "/team", perm: "members.read" },
   { label: "Accountants", path: "/accountants", perm: "members.read" },
   { label: "Client Assignments", path: "/assignments", perm: "members.read" },
+  { label: "Documents & Storage", path: "/documents", perm: "entitlements.read" },
   { label: "Invitations", path: "/invitations", perm: "invitations.manage" },
   { label: "Subscription & Usage", path: "/subscription", perm: "entitlements.read" },
   { label: "Activity & Audit History", path: "/activity", perm: "audit.read" },

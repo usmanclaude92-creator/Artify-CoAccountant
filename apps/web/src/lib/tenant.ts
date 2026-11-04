@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { ApiProblem, bff } from "@/lib/client";
 import { errorText } from "@/lib/platform";
 
-export { errorText, fmtDate, fmtDateTime, fmtNumber, fmtMoney, label, useListState, STATUS_TONE } from "@/lib/platform";
+export { errorText, fmtBytes, fmtDate, fmtDateTime, fmtNumber, fmtMoney, label, useListState, STATUS_TONE } from "@/lib/platform";
 export type { Page, S } from "@/lib/platform";
 
 /** Calls the customer API through the BFF (HttpOnly cookies). `org` becomes the X-Organization-Id claim, which the

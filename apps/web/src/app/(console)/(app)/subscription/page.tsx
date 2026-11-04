@@ -3,7 +3,7 @@ import type { Schemas } from "@artify/api-client";
 import { Alert, Panel } from "@artify/ui";
 import { CcHeader, useOrg } from "@/components/cc/shell";
 import { DataTable, ErrorBox, Loading, Meter, Status } from "@/components/kit";
-import { fmtDate, fmtMoney, fmtNumber, label, useTenantApi } from "@/lib/tenant";
+import { fmtBytes, fmtDate, fmtMoney, fmtNumber, label, useTenantApi } from "@/lib/tenant";
 
 type Sub = Schemas["SubscriptionView"];
 type Row = Schemas["UsageRow"];
@@ -38,8 +38,8 @@ export default function SubscriptionPage() {
       <DataTable<Row> caption="Usage against limits" rows={counted} loading={false} error={null} rowKey={(r) => r.key} empty="No limits."
         columns={[
           { key: "k", header: "Limit", render: (r) => <>{r.description}<span className="a-hint" style={{ display: "block" }}>{r.enforced_now ? "Enforced now" : "Not enforced yet"}</span></> },
-          { key: "c", header: "Current", numeric: true, render: (r) => (r.current === null ? "Not metered" : fmtNumber(r.current)) },
-          { key: "l", header: "Limit", numeric: true, render: (r) => (r.unlimited ? "Unlimited" : r.limit === null ? "Not set" : fmtNumber(r.limit)) },
+          { key: "c", header: "Current", numeric: true, render: (r) => (r.current === null ? "Not metered" : r.unit === "bytes" ? fmtBytes(r.current) : fmtNumber(r.current)) },
+          { key: "l", header: "Limit", numeric: true, render: (r) => (r.unlimited ? "Unlimited" : r.limit === null ? "Not set" : r.unit === "bytes" ? fmtBytes(r.limit) : fmtNumber(r.limit)) },
           { key: "u", header: "Used", render: (r) => <Meter percent={r.percent} status={r.status} /> },
           { key: "s", header: "Status", render: (r) => <Status value={r.status} text={r.status === "not_metered" ? "Not metered" : undefined} /> },
         ]} />

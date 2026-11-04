@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Alert, Button, Panel } from "@artify/ui";
 import { CcHeader, useOrg } from "@/components/cc/shell";
 import { ActionDialog, DataTable, Empty, ErrorBox, Field, Loading, Status, Tabs, useToast } from "@/components/kit";
-import { ORG_ROLE_LABEL, errorText, fmtDate, fmtDateTime, label, tapi, useTenantApi, type Page } from "@/lib/tenant";
+import { ORG_ROLE_LABEL, errorText, fmtBytes, fmtDate, fmtDateTime, fmtNumber, label, tapi, useTenantApi, type Page } from "@/lib/tenant";
 
 type Company = Schemas["CompanyOut"];
 type Assignment = Schemas["AssignmentOut"];
@@ -16,7 +16,7 @@ type Accountant = Schemas["AccountantRow"];
 
 const TABS = [
   { id: "overview", label: "Overview" }, { id: "accounting", label: "Accounting settings" }, { id: "accountants", label: "Assigned accountants" },
-  { id: "users", label: "Client users" }, { id: "config", label: "Configuration" }, { id: "history", label: "History" },
+  { id: "users", label: "Client users" }, { id: "config", label: "Configuration" }, { id: "documents", label: "Documents" }, { id: "history", label: "History" },
 ];
 type Verb = "activate" | "deactivate" | "archive" | "restore";
 const ACTION_TEXT: Record<Verb, { title: string; submit: string; danger?: boolean; help: string }> = {
@@ -51,6 +51,7 @@ export default function CompanyPage({ params }: { params: Promise<{ id: string }
         {tab === "accountants" ? <Accountants co={co} /> : null}
         {tab === "users" ? <ClientUsers co={co} /> : null}
         {tab === "config" ? <Configuration co={co} /> : null}
+        {tab === "documents" ? <DocumentsTab co={co} /> : null}
         {tab === "history" ? <HistoryTab co={co} /> : null}
       </div>
       {action ? (
@@ -314,3 +315,53 @@ function HistoryTab({ co }: { co: Company }) {
   );
 }
 
+
+interface DocRow { id: string; display_name: string; extension: string; status: string; size_bytes: number; created_at: string; created_by_name: string | null; filed_path_snapshot: string | null; current_version_number: number; scan_status: string }
+interface UploadRow { id: string; original_filename: string; status: string; error_code: string | null; error_message: string | null; created_at: string; declared_size: number }
+interface CompanyStorage { documents: { active: number; archived: number; removed: number }; stored_bytes: number; stored_versions: number; by_type: { extension: string; documents: number; bytes: number }[]; uploads_last_7_days: { completed: number; failed: number } }
+
+function DocumentsTab({ co }: { co: Company }) {
+  const { orgId, can } = useOrg();
+  const [q, setQ] = useState("");
+  const [offset, setOffset] = useState(0);
+  const stats = useTenantApi<CompanyStorage>(orgId, `/companies/${co.id}/documents/storage`);
+  const list = useTenantApi<Page<DocRow>>(orgId, `/companies/${co.id}/documents?limit=25&offset=${offset}${q ? `&q=${encodeURIComponent(q)}` : ""}`);
+  const failed = useTenantApi<Page<UploadRow>>(orgId, can("workspace.manage") ? `/companies/${co.id}/uploads?mine=false&status=failed&limit=10` : null);
+  const s = stats.data;
+  return (
+    <div className="grid gap-4">
+      <p className="a-hint">Documents are imported and managed in the Windows desktop application. This view shows what is stored for this company; it never changes documents.</p>
+      {stats.error && !s ? <ErrorBox message={stats.error} onRetry={stats.reload} /> : s ? (
+        <div className="a-kpis">
+          <div className="a-kpi"><span className="a-kpi__label">Active documents</span><span className="a-kpi__value">{fmtNumber(s.documents.active)}</span></div>
+          <div className="a-kpi"><span className="a-kpi__label">Archived</span><span className="a-kpi__value">{fmtNumber(s.documents.archived)}</span></div>
+          <div className="a-kpi"><span className="a-kpi__label">Stored (all versions)</span><span className="a-kpi__value">{fmtBytes(s.stored_bytes)}</span><span className="a-hint">{fmtNumber(s.stored_versions)} files</span></div>
+          <div className="a-kpi"><span className="a-kpi__label">Uploads, last 7 days</span><span className="a-kpi__value">{fmtNumber(s.uploads_last_7_days.completed)} done</span><span className="a-hint">{fmtNumber(s.uploads_last_7_days.failed)} failed</span></div>
+        </div>
+      ) : <Loading what="storage" />}
+      {s && s.by_type.length ? <p className="a-hint">By type: {s.by_type.map((t) => `${t.extension.toUpperCase()} ${fmtNumber(t.documents)} (${fmtBytes(t.bytes)})`).join(" · ")}</p> : null}
+      <form role="search" className="a-toolbar" onSubmit={(e) => { e.preventDefault(); setOffset(0); }}>
+        <Field label="Search documents">{(id) => <input id={id} type="search" value={q} placeholder="Name or metadata value" onChange={(e) => { setQ(e.target.value); setOffset(0); }} />}</Field>
+      </form>
+      <DataTable<DocRow> caption="Company documents" rows={list.data?.items} loading={list.loading} error={list.error} onRetry={list.reload} rowKey={(r) => r.id}
+        empty={q ? "No documents match." : "No documents have been imported for this company yet."} total={list.data?.total} limit={25} offset={offset} onPage={setOffset}
+        columns={[
+          { key: "n", header: "Document", render: (r) => <>{r.display_name}<span className="a-hint" style={{ display: "block" }}>{r.filed_path_snapshot ?? "—"}</span></> },
+          { key: "t", header: "Type", render: (r) => r.extension.toUpperCase() },
+          { key: "s", header: "Size", numeric: true, render: (r) => fmtBytes(r.size_bytes) },
+          { key: "v", header: "Version", numeric: true, render: (r) => r.current_version_number },
+          { key: "u", header: "Uploaded by", render: (r) => r.created_by_name ?? "—" },
+          { key: "d", header: "Uploaded", render: (r) => fmtDateTime(r.created_at) },
+          { key: "x", header: "Scan", render: (r) => (r.scan_status === "not_scanned" ? "Not scanned" : label(r.scan_status)) },
+        ]} />
+      {failed.data && failed.data.items.length ? (
+        <Panel>
+          <h3>Failed uploads</h3>
+          <ul style={{ listStyle: "none", padding: 0 }} className="grid gap-1">
+            {failed.data.items.map((u) => <li key={u.id}><strong>{u.original_filename}</strong> <span className="a-hint">· {u.error_message ?? label(u.error_code ?? "failed")} · {fmtDateTime(u.created_at)}</span></li>)}
+          </ul>
+        </Panel>
+      ) : null}
+    </div>
+  );
+}

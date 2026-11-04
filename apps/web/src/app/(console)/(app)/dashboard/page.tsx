@@ -4,13 +4,15 @@ import type { Schemas } from "@artify/api-client";
 import { Alert, Panel } from "@artify/ui";
 import { CcHeader, useOrg } from "@/components/cc/shell";
 import { Empty, ErrorBox, Kpi, Loading, Meter, Status } from "@/components/kit";
-import { fmtDate, fmtDateTime, fmtNumber, label, useTenantApi } from "@/lib/tenant";
+import { fmtBytes, fmtDate, fmtDateTime, fmtNumber, label, useTenantApi } from "@/lib/tenant";
 
 type Dash = Schemas["DashboardOut"];
 
 const USAGE_LABEL: Record<string, string> = {
-  "limit.companies": "Client companies", "limit.users": "Team members", "limit.accountants": "Accountants", "limit.devices": "Devices",
+  "limit.companies": "Client companies", "limit.users": "Team members", "limit.accountants": "Accountants", "limit.devices": "Devices", "quota.storage_bytes": "Stored documents", "quota.documents_per_month": "New documents this month",
 };
+
+const show = (key: string, v: number | null) => (key === "quota.storage_bytes" ? fmtBytes(v) : fmtNumber(v));
 
 export default function DashboardPage() {
   const { orgId, orgName, can, href, role } = useOrg();
@@ -63,7 +65,7 @@ export default function DashboardPage() {
                   {data.usage.map((u) => (
                     <li key={u.key}>
                       <div className="a-pagehead"><span>{USAGE_LABEL[u.key] ?? label(u.key)}</span>
-                        <span>{u.unlimited ? `${fmtNumber(u.current)} (unlimited)` : `${fmtNumber(u.current)} of ${fmtNumber(u.limit)}`} <Status value={u.status} /></span></div>
+                        <span>{u.unlimited ? `${show(u.key, u.current)} (unlimited)` : `${show(u.key, u.current)} of ${show(u.key, u.limit)}`} <Status value={u.status} /></span></div>
                       <Meter percent={u.unlimited ? null : u.percent} status={u.status} />
                     </li>
                   ))}

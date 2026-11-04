@@ -1,7 +1,12 @@
 /* Artify design tokens (docs/design/DESIGN_SYSTEM.md). Components use only these variables.
    Light is the default; dark follows the system unless the user chose a theme explicitly. */
 :root {
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Noto Sans", "Noto Naskh Arabic", sans-serif;
+  /* Latin stack: real sans faces first, generic sans-serif last. Arabic faces must NOT appear here:
+     Naskh fonts carry Latin glyphs, so on devices that miss the earlier names they hijack Latin text
+     and render it in a serif style (seen on an Android phone). */
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  /* Arabic pages: a sans Arabic face first, Naskh as a fallback. */
+  --font-arabic: "Segoe UI", "Noto Sans Arabic", Tahoma, "Noto Naskh Arabic", system-ui, sans-serif;
   --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, monospace;
   --text-sm: 0.875rem; --text-base: 1rem; --text-lg: 1.25rem; --text-xl: 1.625rem;
   --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem; --space-6: 1.5rem; --space-8: 2rem;
@@ -45,6 +50,7 @@
 }
 
 body { background: var(--color-bg); color: var(--color-text); font-family: var(--font-sans); font-size: var(--text-base); line-height: 1.5; }
+html[lang="ar"] body { font-family: var(--font-arabic); }
 .num { font-variant-numeric: tabular-nums; }   /* financial figures */
 
 /* Logical properties only (inline-start/end): layouts mirror automatically in RTL. */

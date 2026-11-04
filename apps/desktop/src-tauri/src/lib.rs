@@ -35,6 +35,7 @@ fn is_secure_enough(url: &str) -> bool {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .on_window_event(state::on_window_event)
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&data_dir)?;
@@ -53,7 +54,8 @@ pub fn run() {
             log.info("startup", &format!("version {APP_VERSION}, api configured: {configured}"));
             let desk = Arc::new(Desktop::new(api, db, report, log, &data_dir, APP_VERSION));
             app.manage(state::AppState::new(desk.clone(), configured, base));
-            state::spawn_sync_loop(app.handle().clone(), desk);
+            state::spawn_sync_loop(app.handle().clone(), desk.clone());
+            state::spawn_import_loop(app.handle().clone(), desk);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -83,6 +85,21 @@ pub fn run() {
             commands::notifications_read,
             commands::diagnostics_export,
             commands::update_check,
+            commands::files_pick,
+            commands::imports_queue,
+            commands::imports_list,
+            commands::imports_counts,
+            commands::import_cancel,
+            commands::import_retry,
+            commands::import_remove,
+            commands::imports_process,
+            commands::documents_op,
+            commands::document_preview,
+            commands::document_download,
+            commands::document_open,
+            commands::mirror_status,
+            commands::mirror_reconcile,
+            commands::mirror_sync,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Artify Co-Accountant");

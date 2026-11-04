@@ -1,13 +1,16 @@
 //! The complete command surface of the app. Each command takes plain identifiers and returns plain data; authorization
-//! is decided by the backend on every call, and no command accepts a file path except the three storage commands, which
-//! validate it in `artify_core::storage`.
+//! is decided by the backend on every call. No command accepts a file path from the webview: the storage commands pick the
+//! folder with a native dialog and validate it in `artify_core::storage`, and documents are chosen with the native file
+//! picker or by drag-and-drop and then referred to by an opaque token (`artify_core::documents::Staging`).
 
 use std::path::PathBuf;
 
 use artify_core::api::LoginOutcome;
 use artify_core::db;
 use artify_core::desktop::{self, CompanyView, Identity, Listing, RefreshOutcome, WorkspaceView};
+use artify_core::documents::{DocOp, LocalCopy, Preview, QueueItem, QueueResult, Staged};
 use artify_core::error::{AppError, Result};
+use artify_core::imports::ImportRow;
 use artify_core::logs::redact;
 use artify_core::settings;
 use artify_core::storage::RootReport;
@@ -355,4 +358,128 @@ pub async fn update_check(app: AppHandle) -> Result<UpdateStatus> {
         Ok(None) => Ok(UpdateStatus { configured: true, available: false, version: None, message: "You have the latest version.".into() }),
         Err(_) => Err(AppError::new("update_error", "The update check failed. Try again later.").retryable()),
     }
+}
+
+// ------------------------------------------------------------------ documents (Phase 6)
+/// Native file picker. The webview receives tokens, names and sizes, never paths.
+#[tauri::command]
+pub async fn files_pick(app: AppHandle, st: St<'_>) -> Result<Vec<Staged>> {
+    st.desk.user_id()?;
+    let picked =
+        tauri::async_runtime::spawn_blocking(move || app.dialog().file().set_title("Choose documents to import").blocking_pick_files())
+            .await
+            .map_err(|_| AppError::new("dialog_error", "The file chooser could not be opened."))?;
+    let paths: Vec<PathBuf> = picked.unwrap_or_default().into_iter().filter_map(|p| p.into_path().ok()).collect();
+    Ok(st.desk.stage_paths(paths))
+}
+
+#[tauri::command]
+pub async fn imports_queue(st: St<'_>, org: String, company: String, items: Vec<QueueItem>) -> Result<QueueResult> {
+    need_api(&st)?;
+    st.desk.queue_imports(&org, &company, items).await
+}
+
+#[tauri::command]
+pub fn imports_list(st: St, company: Option<String>) -> Result<Vec<ImportRow>> {
+    st.desk.list_imports(company.as_deref())
+}
+
+#[tauri::command]
+pub fn imports_counts(st: St) -> Result<Value> {
+    st.desk.import_counts()
+}
+
+#[tauri::command]
+pub async fn import_cancel(st: St<'_>, org: String, id: String) -> Result<()> {
+    st.desk.cancel_import(&org, &id).await
+}
+
+#[tauri::command]
+pub fn import_retry(
+    st: St,
+    id: String,
+    duplicate_policy: Option<String>,
+    node_id: Option<String>,
+    category_id: Option<String>,
+) -> Result<bool> {
+    let node = node_id.as_deref().map(|n| (n, category_id.as_deref()));
+    st.desk.retry_import(&id, duplicate_policy.as_deref(), node)
+}
+
+#[tauri::command]
+pub fn import_remove(st: St, id: String) -> Result<bool> {
+    st.desk.remove_import(&id)
+}
+
+/// Run due uploads now (the background loop does the same every few seconds).
+#[tauri::command]
+pub async fn imports_process(st: St<'_>) -> Result<usize> {
+    need_api(&st)?;
+    st.desk.process_due(3).await
+}
+
+/// One backend document route per operation; the operation name and arguments are validated in `DocOp::parse`.
+#[tauri::command]
+pub async fn documents_op(st: St<'_>, org: String, company: String, op: String, args: Option<Value>) -> Result<Value> {
+    need_api(&st)?;
+    let op = DocOp::parse(&op, &args.unwrap_or(Value::Null))?;
+    let r = st.desk.doc_op(&org, &company, op).await;
+    if r.is_ok() {
+        st.set_connectivity(true);
+    }
+    r
+}
+
+#[tauri::command]
+pub async fn document_preview(st: St<'_>, org: String, company: String, doc: String, version: Option<i64>) -> Result<Preview> {
+    need_api(&st)?;
+    st.desk.preview_document(&org, &company, &doc, version).await
+}
+
+#[tauri::command]
+pub async fn document_download(st: St<'_>, org: String, company: String, doc: String, version: Option<i64>) -> Result<LocalCopy> {
+    need_api(&st)?;
+    st.desk.download_document(&org, &company, &doc, version).await
+}
+
+/// Download (when needed) and open with the operating system's default application. The path is produced by the core,
+/// never supplied by the webview, and is handed to the OS without a shell.
+#[tauri::command]
+pub async fn document_open(st: St<'_>, org: String, company: String, doc: String, version: Option<i64>) -> Result<()> {
+    need_api(&st)?;
+    let path = st.desk.open_document_path(&org, &company, &doc, version).await?;
+    open_with_default_app(&path)
+}
+
+fn open_with_default_app(path: &str) -> Result<()> {
+    let (program, args): (&str, Vec<&str>) = if cfg!(target_os = "windows") {
+        ("explorer.exe", vec![path])
+    } else if cfg!(target_os = "macos") {
+        ("open", vec![path])
+    } else {
+        ("xdg-open", vec![path])
+    };
+    std::process::Command::new(program)
+        .args(args)
+        .spawn()
+        .map(|_| ())
+        .map_err(|_| AppError::new("open_failed", "The document could not be opened with the default application."))
+}
+
+#[tauri::command]
+pub fn mirror_status(st: St, company: String) -> Result<Value> {
+    st.desk.mirror_status(&company)
+}
+
+#[tauri::command]
+pub async fn mirror_reconcile(st: St<'_>, org: String, company: String) -> Result<Value> {
+    need_api(&st)?;
+    let report = st.desk.mirror_reconcile(&org, &company).await?;
+    serde_json::to_value(report).map_err(|_| AppError::new("internal", "Could not build the report."))
+}
+
+#[tauri::command]
+pub async fn mirror_sync(st: St<'_>, org: String, company: String) -> Result<Value> {
+    need_api(&st)?;
+    st.desk.mirror_sync(&org, &company, 25).await
 }

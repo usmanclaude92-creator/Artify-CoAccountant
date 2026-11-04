@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use artify_core::desktop::Desktop;
 use serde::Serialize;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, DragDropEvent, Emitter, Manager, Window, WindowEvent};
 
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct Connectivity {
@@ -62,6 +62,46 @@ pub fn spawn_sync_loop(app: AppHandle, desk: Arc<Desktop>) {
                 }
                 Err(e) => {
                     state.set_connectivity(!e.retryable || e.status.is_some());
+                    let _ = app.emit("sync-error", &e);
+                }
+            }
+        }
+    });
+}
+
+/// Files dropped on the window are staged here (the core remembers the path behind an opaque token) and the UI is told
+/// the tokens, names and sizes. Nothing is queued until the user chooses a destination in the UI.
+pub fn on_window_event(window: &Window, event: &WindowEvent) {
+    if let WindowEvent::DragDrop(DragDropEvent::Drop { paths, .. }) = event {
+        let Some(state) = window.try_state::<AppState>() else { return };
+        if state.desk.user_id().is_err() {
+            return;
+        }
+        let staged = state.desk.stage_paths(paths.clone());
+        let _ = window.emit("files-dropped", &staged);
+    }
+}
+
+/// Every 10 s run the uploads that are due (queued, or waiting for a retry) with up to three in parallel, and tell the UI
+/// when something changed. Uploads that were interrupted by closing the app are put back in the queue at sign-in.
+pub fn spawn_import_loop(app: AppHandle, desk: Arc<Desktop>) {
+    tauri::async_runtime::spawn(async move {
+        loop {
+            tokio::time::sleep(Duration::from_secs(10)).await;
+            let Some(state) = app.try_state::<AppState>() else { continue };
+            if !state.api_configured || desk.user_id().is_err() {
+                continue;
+            }
+            match desk.process_due(3).await {
+                Ok(0) => {}
+                Ok(_) => {
+                    state.set_connectivity(true);
+                    let _ = app.emit("imports-updated", ());
+                }
+                Err(e) if e.is_session_expired() => {
+                    let _ = app.emit("session-expired", ());
+                }
+                Err(e) => {
                     let _ = app.emit("sync-error", &e);
                 }
             }

@@ -638,7 +638,7 @@ def append_chunk(env: Env, session_id: uuid.UUID, offset: int, data: bytes) -> d
             text("UPDATE document_upload_sessions SET status = 'expired', updated_at = now() WHERE id = :i"),
             {"i": session_id},
         )
-        raise DocumentError(410, "session_expired", "This upload expired; start it again.")
+        raise DocumentError(410, "upload_expired", "This upload expired; start it again.")
     if s["status"] not in OPEN:
         raise DocumentError(409, "session_closed", "This upload is not accepting data.", {"status": s["status"]})
     limits = effective_limits(env.conn, env.org_id)
@@ -738,7 +738,7 @@ def complete_upload(env: Env, session_id: uuid.UUID) -> tuple[dict[str, Any], Se
             text("UPDATE document_upload_sessions SET status = 'expired', updated_at = now() WHERE id = :i"),
             {"i": session_id},
         )
-        raise DocumentError(410, "session_expired", "This upload expired; start it again.")
+        raise DocumentError(410, "upload_expired", "This upload expired; start it again.")
     storage = get_storage()
     received = storage.stage_size(s["staging_ref"])
     if received != s["declared_size"]:  # not finished: report it, change nothing, let the client continue

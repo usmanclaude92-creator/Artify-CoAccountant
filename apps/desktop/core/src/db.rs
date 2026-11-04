@@ -12,9 +12,10 @@ use crate::error::{AppError, Result};
 use crate::seal::Sealer;
 
 /// Forward-only migrations. Never edit a shipped entry; append a new one.
-pub const MIGRATIONS: &[(i64, &str)] = &[(
-    1,
-    "CREATE TABLE settings (
+pub const MIGRATIONS: &[(i64, &str)] = &[
+    (
+        1,
+        "CREATE TABLE settings (
             user_id TEXT NOT NULL DEFAULT '', key TEXT NOT NULL, value TEXT NOT NULL, updated_at TEXT NOT NULL,
             PRIMARY KEY (user_id, key));
          CREATE TABLE accounts (user_id TEXT PRIMARY KEY, payload BLOB NOT NULL, updated_at TEXT NOT NULL);
@@ -49,7 +50,24 @@ pub const MIGRATIONS: &[(i64, &str)] = &[(
             id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL DEFAULT '', ts TEXT NOT NULL, level TEXT NOT NULL,
             kind TEXT NOT NULL, message TEXT NOT NULL, read INTEGER NOT NULL DEFAULT 0);
          CREATE INDEX events_recent ON events (user_id, id);",
-)];
+    ),
+    (
+        2,
+        "CREATE TABLE imports (
+            id TEXT PRIMARY KEY, user_id TEXT NOT NULL, org_id TEXT NOT NULL, company_id TEXT NOT NULL, batch_id TEXT,
+            node_id TEXT NOT NULL, category_id TEXT, document_id TEXT, size INTEGER NOT NULL, sha256 TEXT,
+            duplicate_policy TEXT NOT NULL DEFAULT 'block', status TEXT NOT NULL, session_id TEXT, idem_key TEXT NOT NULL,
+            bytes_sent INTEGER NOT NULL DEFAULT 0, attempts INTEGER NOT NULL DEFAULT 0, next_retry_at TEXT,
+            error_code TEXT, error_message TEXT, error_detail BLOB, result_document_id TEXT, meta BLOB NOT NULL,
+            created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+         CREATE INDEX imports_user ON imports (user_id, company_id, status, created_at);
+         CREATE TABLE local_files (
+            user_id TEXT NOT NULL, document_id TEXT NOT NULL, version_id TEXT NOT NULL, company_id TEXT NOT NULL,
+            node_id TEXT NOT NULL, rel_path BLOB NOT NULL, sha256 TEXT NOT NULL, size INTEGER NOT NULL, placed_at TEXT NOT NULL,
+            PRIMARY KEY (user_id, document_id));
+         CREATE INDEX local_files_company ON local_files (user_id, company_id);",
+    ),
+];
 
 pub fn latest_version() -> i64 {
     MIGRATIONS.last().map(|m| m.0).unwrap_or(0)
@@ -68,8 +86,8 @@ pub struct OpenReport {
 }
 
 pub struct Db {
-    conn: Connection,
-    sealer: Sealer,
+    pub(crate) conn: Connection,
+    pub(crate) sealer: Sealer,
     pub path: PathBuf,
 }
 
@@ -457,6 +475,10 @@ impl Db {
         tx.execute("DELETE FROM events WHERE user_id = ?1", params![user])?;
         if include_pending {
             tx.execute("DELETE FROM pending_ops WHERE user_id = ?1", params![user])?;
+            tx.execute("DELETE FROM imports WHERE user_id = ?1", params![user])?;
+            // local copies are files on the user's disk; their bookkeeping only goes with a full wipe, otherwise signing in
+            // again would not recognise them and would save a second copy
+            tx.execute("DELETE FROM local_files WHERE user_id = ?1", params![user])?;
         }
         tx.commit()?;
         Ok(())

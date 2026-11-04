@@ -23,6 +23,7 @@ pub struct Desktop {
     pub open_report: OpenReport,
     user: Mutex<Option<String>>,
     pub data_dir: PathBuf,
+    pub staging: crate::documents::Staging,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -81,10 +82,11 @@ impl Desktop {
             open_report,
             user: Mutex::new(None),
             data_dir: data_dir.to_path_buf(),
+            staging: crate::documents::Staging::default(),
         }
     }
 
-    fn db(&self) -> Result<MutexGuard<'_, Db>> {
+    pub(crate) fn db(&self) -> Result<MutexGuard<'_, Db>> {
         self.db.lock().map_err(|_| AppError::database("The local database is busy."))
     }
     pub fn user_id(&self) -> Result<String> {
@@ -125,6 +127,8 @@ impl Desktop {
             &json!({ "user_id": id.user_id, "email": id.email, "display_name": id.display_name, "memberships": id.memberships }),
         )?;
         self.log.info("signed_in", "session established");
+        self.clean_temp();
+        let _ = self.recover_imports(); // uploads that were running when the app closed continue from the server's state
         Ok(id)
     }
     fn identity(me: &Value) -> Result<Identity> {

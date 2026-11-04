@@ -23,6 +23,7 @@ from artify_api.routers.schemas import (
     InvitationOut,
     MemberOut,
     OrganizationOut,
+    OrganizationUpdate,
 )
 from artify_api.security.tokens import new_opaque_token
 from artify_api.settings import get_settings
@@ -58,6 +59,55 @@ def get_organization(
     if row is None:
         raise NotFound("Organization not found.")
     return OrganizationOut(**row)
+
+
+@router.get("/orgs", response_model=list[OrganizationOut], operation_id="organizations_list")
+def list_organizations(
+    ctx: Annotated[
+        RequestCtx, Depends(Requires(reason="lists only organizations the caller holds an active membership in"))
+    ],
+) -> list[OrganizationOut]:
+    # RLS (org_select) limits the rows to organizations where the caller has an active membership.
+    rows = (
+        ctx.conn.execute(
+            text(
+                "SELECT id, type, display_name, slug, country, default_currency, locale, status"
+                " FROM organizations WHERE status <> 'closed' ORDER BY display_name"
+            )
+        )
+        .mappings()
+        .all()
+    )
+    return [OrganizationOut(**r) for r in rows]
+
+
+@router.patch("/orgs/{org_id}", response_model=OrganizationOut, operation_id="organizations_update")
+def update_organization(
+    org_id: uuid.UUID,
+    body: OrganizationUpdate,
+    ctx: Annotated[RequestCtx, Depends(Requires("organization.update"))],
+) -> OrganizationOut:
+    """Edit the basic profile (display name, locale). Legal identity, type, country, currency and
+    status are not editable here: they change through Super Admin / support processes."""
+    changes = body.model_dump(exclude_unset=True, exclude_none=True)
+    if not changes:
+        raise Unprocessable("Provide display_name and/or locale.")
+    sets = ", ".join(f"{k} = :{k}" for k in changes)  # keys come from the fixed pydantic model
+    ctx.conn.execute(
+        text(f"UPDATE organizations SET {sets}, updated_at = now(), row_version = row_version + 1 WHERE id = :id"),
+        {**changes, "id": org_id},
+    )
+    audit.write_audit(
+        ctx.conn,
+        action="organization.updated",
+        actor_id=ctx.user_id,
+        org_id=org_id,
+        entity_type="organization",
+        entity_id=org_id,
+        summary={"fields": sorted(changes)},
+        meta=ctx.meta,
+    )
+    return get_organization(org_id, ctx)
 
 
 @router.get("/orgs/{org_id}/members", response_model=list[MemberOut], operation_id="organizations_list_members")

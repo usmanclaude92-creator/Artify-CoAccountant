@@ -234,6 +234,7 @@
           "role": {
             "enum": [
               "company_owner",
+              "company_admin",
               "company_employee"
             ],
             "title": "Role",
@@ -245,6 +246,44 @@
           "role"
         ],
         "title": "CompanyInvite",
+        "type": "object"
+      },
+      "CompanyMemberUpdate": {
+        "properties": {
+          "role": {
+            "anyOf": [
+              {
+                "enum": [
+                  "company_owner",
+                  "company_admin",
+                  "company_employee"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "active",
+                  "suspended",
+                  "removed"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "title": "CompanyMemberUpdate",
         "type": "object"
       },
       "CompanyOut": {
@@ -1074,6 +1113,40 @@
         "title": "OrganizationOut",
         "type": "object"
       },
+      "OrganizationUpdate": {
+        "properties": {
+          "display_name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "locale": {
+            "anyOf": [
+              {
+                "enum": [
+                  "en",
+                  "ar"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locale"
+          }
+        },
+        "title": "OrganizationUpdate",
+        "type": "object"
+      },
       "PasswordResetConfirm": {
         "properties": {
           "new_password": {
@@ -1107,6 +1180,29 @@
           "email"
         ],
         "title": "PasswordResetRequest",
+        "type": "object"
+      },
+      "PermissionOut": {
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "scope": {
+            "title": "Scope",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "scope",
+          "description"
+        ],
+        "title": "PermissionOut",
         "type": "object"
       },
       "PlatformMe": {
@@ -1154,6 +1250,41 @@
           "refresh_token"
         ],
         "title": "RefreshRequest",
+        "type": "object"
+      },
+      "RoleOut": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "permissions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Permissions",
+            "type": "array"
+          },
+          "scope": {
+            "enum": [
+              "organization",
+              "company"
+            ],
+            "title": "Scope",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "scope",
+          "name",
+          "permissions"
+        ],
+        "title": "RoleOut",
         "type": "object"
       },
       "SessionOut": {
@@ -2171,6 +2302,70 @@
         ]
       }
     },
+    "/api/v1/companies/{company_id}/members/{user_id}": {
+      "patch": {
+        "description": "Change a client-side member's role/status. Nobody changes their own membership; the last\nactive company_owner cannot be demoted or deactivated by a company-side caller's mistake;\nreactivation counts against limit.users (a user is counted once across memberships).",
+        "operationId": "companies_update_member",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompanyMemberUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Company Member",
+        "tags": [
+          "companies"
+        ]
+      }
+    },
     "/api/v1/devices": {
       "get": {
         "operationId": "devices_list",
@@ -2389,6 +2584,31 @@
         ]
       }
     },
+    "/api/v1/orgs": {
+      "get": {
+        "operationId": "organizations_list",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/OrganizationOut"
+                  },
+                  "title": "Response Organizations List",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Organizations",
+        "tags": [
+          "organizations"
+        ]
+      }
+    },
     "/api/v1/orgs/{org_id}": {
       "get": {
         "operationId": "organizations_get",
@@ -2427,6 +2647,58 @@
           }
         },
         "summary": "Get Organization",
+        "tags": [
+          "organizations"
+        ]
+      },
+      "patch": {
+        "description": "Edit the basic profile (display name, locale). Legal identity, type, country, currency and\nstatus are not editable here: they change through Super Admin / support processes.",
+        "operationId": "organizations_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrganizationUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Organization",
         "tags": [
           "organizations"
         ]
@@ -2923,6 +3195,31 @@
         ]
       }
     },
+    "/api/v1/permissions": {
+      "get": {
+        "operationId": "permissions_list",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PermissionOut"
+                  },
+                  "title": "Response Permissions List",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Permissions",
+        "tags": [
+          "me"
+        ]
+      }
+    },
     "/api/v1/platform/auth/login": {
       "post": {
         "operationId": "platform_login",
@@ -3189,6 +3486,31 @@
         "summary": "Organizations",
         "tags": [
           "platform"
+        ]
+      }
+    },
+    "/api/v1/roles": {
+      "get": {
+        "operationId": "roles_list",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RoleOut"
+                  },
+                  "title": "Response Roles List",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Roles",
+        "tags": [
+          "me"
         ]
       }
     }

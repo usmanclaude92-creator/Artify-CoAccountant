@@ -13,9 +13,10 @@ from sqlalchemy.exc import IntegrityError
 
 from artify_api import audit, entitlements, outbox
 from artify_api.context import RequestCtx, Requires
-from artify_api.errors import Conflict, NotFound
+from artify_api.errors import Conflict, Forbidden, NotFound, Unprocessable
 from artify_api.idempotency import run_idempotent
 from artify_api.ids import new_id
+from artify_api.permissions import COMPANY_ADMIN_MANAGEABLE_ROLES
 from artify_api.routers.orgs import _create_invitation
 from artify_api.routers.schemas import CompanyOut, InvitationOut, MemberOut
 
@@ -51,7 +52,27 @@ class AssignmentOut(BaseModel):
 
 class CompanyInvite(BaseModel):
     email: EmailStr
-    role: Literal["company_owner", "company_employee"]
+    role: Literal["company_owner", "company_admin", "company_employee"]
+
+
+class CompanyMemberUpdate(BaseModel):
+    status: Literal["active", "suspended", "removed"] | None = None
+    role: Literal["company_owner", "company_admin", "company_employee"] | None = None
+
+
+def _guard_company_role_grant(ctx: RequestCtx, company_id: uuid.UUID, *roles: str | None) -> None:
+    """Callers reaching the company through an organization role (owner / practice admin /
+    assigned accountant with the permission) or as company_owner may manage every company role.
+    A company_admin may only manage company_employee members (no lateral or upward escalation)."""
+    assert ctx.principal is not None
+    if ctx.principal.org_role is not None:
+        return
+    own_role = ctx.principal.company_roles.get(company_id)
+    if own_role == "company_owner":
+        return
+    for role in roles:
+        if role is not None and role not in COMPANY_ADMIN_MANAGEABLE_ROLES:
+            raise Forbidden("Your role cannot grant, change or remove this company role.")
 
 
 @router.post("/orgs/{org_id}/companies", response_model=CompanyOut, status_code=201, operation_id="companies_create")
@@ -203,6 +224,7 @@ def invite_company_member(
 ) -> JSONResponse:
     assert ctx.org_id is not None
     org_id = ctx.org_id
+    _guard_company_role_grant(ctx, company_id, body.role)
 
     def work() -> tuple[int, dict[str, object]]:
         inv = _create_invitation(ctx, org_id=org_id, email=body.email, role_key=body.role, company_id=company_id)
@@ -210,6 +232,101 @@ def invite_company_member(
 
     status, payload = run_idempotent(ctx, idempotency_key, {**body.model_dump(), "company": str(company_id)}, work)
     return JSONResponse(payload, status_code=status)
+
+
+@router.patch(
+    "/companies/{company_id}/members/{user_id}", response_model=MemberOut, operation_id="companies_update_member"
+)
+def update_company_member(
+    company_id: uuid.UUID,
+    user_id: uuid.UUID,
+    body: CompanyMemberUpdate,
+    ctx: Annotated[RequestCtx, Depends(Requires("company_members.manage", company=True))],
+) -> MemberOut:
+    """Change a client-side member's role/status. Nobody changes their own membership; the last
+    active company_owner cannot be demoted or deactivated by a company-side caller's mistake;
+    reactivation counts against limit.users (a user is counted once across memberships)."""
+    if body.status is None and body.role is None:
+        raise Unprocessable("Provide status and/or role.")
+    assert ctx.org_id is not None
+    org_id = ctx.org_id
+    if user_id == ctx.user_id:
+        raise Unprocessable("You cannot change your own company membership.")
+    target = ctx.conn.execute(
+        text(
+            "SELECT r.key AS role, cm.status FROM company_memberships cm JOIN roles r ON r.id = cm.role_id"
+            " WHERE cm.company_id = :c AND cm.user_id = :u"
+        ),
+        {"c": company_id, "u": user_id},
+    ).first()
+    if target is None:
+        raise NotFound("Member not found.")
+    new_role = body.role or target.role
+    new_status = body.status or target.status
+    _guard_company_role_grant(ctx, company_id, target.role, new_role)
+    if (
+        target.role == "company_owner"
+        and target.status == "active"
+        and (new_role != "company_owner" or new_status != "active")
+    ):
+        owners = ctx.conn.execute(
+            text(
+                "SELECT count(*) FROM company_memberships cm JOIN roles r ON r.id = cm.role_id"
+                " WHERE cm.company_id = :c AND cm.status = 'active' AND r.key = 'company_owner'"
+            ),
+            {"c": company_id},
+        ).scalar_one()
+        if owners <= 1 and ctx.principal is not None and ctx.principal.org_role is None:
+            raise Conflict("The last company owner cannot be demoted or deactivated by company staff.")
+    if new_status == "active" and target.status != "active":
+        has_seat = ctx.conn.execute(
+            text(
+                "SELECT 1 FROM organization_memberships WHERE organization_id = :o AND user_id = :u AND status = 'active'"
+                " UNION ALL SELECT 1 FROM company_memberships WHERE organization_id = :o AND user_id = :u"
+                " AND status = 'active'"
+            ),
+            {"o": org_id, "u": user_id},
+        ).first()
+        if has_seat is None:
+            entitlements.guard(ctx.conn, org_id, "limit.users")
+    ctx.conn.execute(
+        text(
+            "UPDATE company_memberships SET status = :s,"
+            " role_id = (SELECT id FROM roles WHERE key = :r AND organization_id IS NULL)"
+            " WHERE company_id = :c AND user_id = :u"
+        ),
+        {"s": new_status, "r": new_role, "c": company_id, "u": user_id},
+    )
+    entitlements.refresh_counter(ctx.conn, org_id, "limit.users")
+    for action, before, after in (
+        ("company_member.status_changed", target.status, new_status),
+        ("company_member.role_changed", target.role, new_role),
+    ):
+        if before != after:
+            audit.write_audit(
+                ctx.conn,
+                action=action,
+                actor_id=ctx.user_id,
+                org_id=org_id,
+                company_id=company_id,
+                entity_type="user",
+                entity_id=user_id,
+                summary={"from": before, "to": after},
+                meta=ctx.meta,
+            )
+    row = (
+        ctx.conn.execute(
+            text(
+                "SELECT u.id AS user_id, u.email, u.display_name, r.key AS role, cm.status"
+                " FROM company_memberships cm JOIN users u ON u.id = cm.user_id JOIN roles r ON r.id = cm.role_id"
+                " WHERE cm.company_id = :c AND cm.user_id = :u"
+            ),
+            {"c": company_id, "u": user_id},
+        )
+        .mappings()
+        .one()
+    )
+    return MemberOut(**row)
 
 
 @router.get(

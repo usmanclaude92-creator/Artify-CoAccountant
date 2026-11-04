@@ -64,3 +64,22 @@ test("one person, two organizations: switcher, company selection, accept-invitat
   await expect(page).not.toHaveURL(/company=/);
   await expect(page.getByTestId("company-details")).toHaveCount(0);
 });
+
+test("profile is shown, and a revoked session sends the user back to sign-in", async ({ page }) => {
+  const { email } = await signedInOwner(page, "Expiry Test Firm");
+  const profile = page.getByTestId("profile");
+  await expect(profile).toContainText(email);
+  await expect(profile).toContainText("Enabled");
+
+  // revoke the browser's own session server-side (what an admin sign-out-everywhere or expiry does)
+  const sessions = await (await page.request.get("/bff/auth/sessions")).json();
+  const current = (sessions as { id: string; current: boolean }[]).find((s) => s.current);
+  expect(current).toBeTruthy();
+  const revoked = await page.request.delete(`/bff/auth/sessions/${current!.id}`, { headers: { "x-artify-csrf": "1" } });
+  expect(revoked.status()).toBe(204);
+
+  await page.goto("/dashboard");
+  await expect(page).toHaveURL(/\/login/);
+  // and protected data is not reachable with the stale cookies
+  expect((await page.request.get("/bff/me")).status()).toBe(401);
+});

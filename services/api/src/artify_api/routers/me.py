@@ -15,7 +15,8 @@ from artify_api.context import RequestCtx, Requires, resolve_principal
 from artify_api.errors import NotFound
 from artify_api.idempotency import run_idempotent
 from artify_api.ids import new_id
-from artify_api.permissions import SYSTEM_ROLES
+from artify_api.permissions import PERMISSIONS, SYSTEM_ROLES
+from artify_api.routers.schemas import PermissionOut, RoleOut
 
 router = APIRouter(tags=["me"])
 
@@ -216,3 +217,22 @@ def revoke_device(
         meta=ctx.meta,
     )
     return Response(status_code=204)
+
+
+@router.get("/roles", response_model=list[RoleOut], operation_id="roles_list")
+def list_roles(
+    ctx: Annotated[RequestCtx, Depends(Requires(reason="static catalog of system roles; contains no tenant data"))],
+) -> list[RoleOut]:
+    return [
+        RoleOut(key=key, scope=scope, name=name, permissions=sorted(perms))
+        for key, (scope, name, perms) in SYSTEM_ROLES.items()
+    ]
+
+
+@router.get("/permissions", response_model=list[PermissionOut], operation_id="permissions_list")
+def list_permissions(
+    ctx: Annotated[RequestCtx, Depends(Requires(reason="static permission catalog; contains no tenant data"))],
+) -> list[PermissionOut]:
+    return [
+        PermissionOut(key=p.key, scope=p.scope, description=p.description) for p in PERMISSIONS if p.scope != "platform"
+    ]

@@ -87,6 +87,13 @@ SYSTEM_ROLES: dict[str, tuple[str, str, frozenset[str]]] = {
             {"companies.list", "companies.read", "company_members.read", "company_members.manage", "devices.manage_own"}
         ),
     ),
+    "company_admin": (
+        "company",
+        "Company administrator",
+        frozenset(
+            {"companies.list", "companies.read", "company_members.read", "company_members.manage", "devices.manage_own"}
+        ),
+    ),
     "company_employee": (
         "company",
         "Company employee",
@@ -100,7 +107,9 @@ ALL_COMPANY_ROLES = frozenset({"firm_owner", "practice_admin"})
 MFA_REQUIRED_ROLES = frozenset({"firm_owner", "practice_admin"})
 # Roles that may be assigned through invitations (firm_owner is created only at signup).
 INVITABLE_ORG_ROLES = frozenset({"practice_admin", "accountant", "staff"})
-INVITABLE_COMPANY_ROLES = frozenset({"company_owner", "company_employee"})
+INVITABLE_COMPANY_ROLES = frozenset({"company_owner", "company_admin", "company_employee"})
+# Company roles a company_admin may grant/change/remove (never owner or admin: no lateral escalation).
+COMPANY_ADMIN_MANAGEABLE_ROLES = frozenset({"company_employee"})
 
 PLATFORM_ROLES: dict[str, frozenset[str]] = {
     "platform_owner": frozenset({"platform.self.read", "platform.organizations.read", "platform.audit.read"}),

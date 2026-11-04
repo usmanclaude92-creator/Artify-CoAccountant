@@ -129,3 +129,21 @@ class AuditEventOut(BaseModel):
     entity_id: str | None
     company_id: uuid.UUID | None
     summary: dict[str, object]
+
+
+class OrganizationUpdate(BaseModel):
+    display_name: str | None = Field(default=None, min_length=1, max_length=200)
+    locale: Literal["en", "ar"] | None = None
+
+
+class RoleOut(BaseModel):
+    key: str
+    scope: Literal["organization", "company"]
+    name: str
+    permissions: list[str]
+
+
+class PermissionOut(BaseModel):
+    key: str
+    scope: str
+    description: str

@@ -137,6 +137,18 @@ function Dashboard() {
       ) : null}
       {!me ? <p>{t.loading}</p> : null}
 
+      {me ? (
+        <Panel>
+          <h2 className="mb-2 font-semibold">{t.profile}</h2>
+          <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1 text-sm" data-testid="profile">
+            <dt className="a-hint">{me.display_name}</dt>
+            <dd dir="ltr" className="text-start">{me.email}</dd>
+            <dt className="a-hint">{t.twoFactor}</dt>
+            <dd>{me.mfa_enabled ? t.mfaOn : t.mfaOff}</dd>
+          </dl>
+        </Panel>
+      ) : null}
+
       {membership ? (
         <Panel>
           <h2 className="mb-2 font-semibold">{membership.organization_name}</h2>

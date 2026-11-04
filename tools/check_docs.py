@@ -53,6 +53,12 @@ REQUIRED_FILES = [
     "docs/development/PHASE_0_COMPLETION_REPORT.md",
     "docs/development/PHASE_1_COMPLETION_REPORT.md",
     "docs/security/THREAT_MODEL_AUTH.md",
+    "docs/security/AUTHENTICATION_AND_SESSION_DESIGN.md",
+    "docs/security/ROLE_AND_PERMISSION_MATRIX.md",
+    "docs/database/INITIAL_DATABASE_IMPLEMENTATION.md",
+    "docs/development/PHASE_1_IMPLEMENTATION.md",
+    "docs/development/PHASE_1_TEST_REPORT.md",
+    "docs/development/LOCAL_SETUP_GUIDE.md",
     ".claude/skills/README.md",
     "tools/check_docs.py",
 ] + [f"docs/development/PHASE_{n}.md" for n in range(1, 13)]

@@ -312,6 +312,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/companies/{company_id}/members/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Company Member
+         * @description Change a client-side member's role/status. Nobody changes their own membership; the last
+         *     active company_owner cannot be demoted or deactivated by a company-side caller's mistake;
+         *     reactivation counts against limit.users (a user is counted once across memberships).
+         */
+        patch: operations["companies_update_member"];
+        trace?: never;
+    };
     "/api/v1/devices": {
         parameters: {
             query?: never;
@@ -398,6 +420,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/orgs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Organizations */
+        get: operations["organizations_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/orgs/{org_id}": {
         parameters: {
             query?: never;
@@ -412,7 +451,12 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Update Organization
+         * @description Edit the basic profile (display name, locale). Legal identity, type, country, currency and
+         *     status are not editable here: they change through Super Admin / support processes.
+         */
+        patch: operations["organizations_update"];
         trace?: never;
     };
     "/api/v1/orgs/{org_id}/audit-events": {
@@ -540,6 +584,23 @@ export interface paths {
          *     member stops being an accountant/staff member.
          */
         patch: operations["organizations_update_member"];
+        trace?: never;
+    };
+    "/api/v1/permissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Permissions */
+        get: operations["permissions_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/platform/auth/login": {
@@ -678,6 +739,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Roles */
+        get: operations["roles_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -772,7 +850,14 @@ export interface components {
              * Role
              * @enum {string}
              */
-            role: "company_owner" | "company_employee";
+            role: "company_owner" | "company_admin" | "company_employee";
+        };
+        /** CompanyMemberUpdate */
+        CompanyMemberUpdate: {
+            /** Role */
+            role?: ("company_owner" | "company_admin" | "company_employee") | null;
+            /** Status */
+            status?: ("active" | "suspended" | "removed") | null;
         };
         /** CompanyOut */
         CompanyOut: {
@@ -1077,6 +1162,13 @@ export interface components {
              */
             type: "accounting_firm" | "independent_accountant";
         };
+        /** OrganizationUpdate */
+        OrganizationUpdate: {
+            /** Display Name */
+            display_name?: string | null;
+            /** Locale */
+            locale?: ("en" | "ar") | null;
+        };
         /** PasswordResetConfirm */
         PasswordResetConfirm: {
             /** New Password */
@@ -1091,6 +1183,15 @@ export interface components {
              * Format: email
              */
             email: string;
+        };
+        /** PermissionOut */
+        PermissionOut: {
+            /** Description */
+            description: string;
+            /** Key */
+            key: string;
+            /** Scope */
+            scope: string;
         };
         /** PlatformMe */
         PlatformMe: {
@@ -1112,6 +1213,20 @@ export interface components {
         RefreshRequest: {
             /** Refresh Token */
             refresh_token: string;
+        };
+        /** RoleOut */
+        RoleOut: {
+            /** Key */
+            key: string;
+            /** Name */
+            name: string;
+            /** Permissions */
+            permissions: string[];
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "organization" | "company";
         };
         /** SessionOut */
         SessionOut: {
@@ -1821,6 +1936,42 @@ export interface operations {
             };
         };
     };
+    companies_update_member: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompanyMemberUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     devices_list: {
         parameters: {
             query?: never;
@@ -1980,6 +2131,26 @@ export interface operations {
             };
         };
     };
+    organizations_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationOut"][];
+                };
+            };
+        };
+    };
     organizations_get: {
         parameters: {
             query?: never;
@@ -1990,6 +2161,41 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    organizations_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrganizationUpdate"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -2308,6 +2514,26 @@ export interface operations {
             };
         };
     };
+    permissions_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PermissionOut"][];
+                };
+            };
+        };
+    };
     platform_login: {
         parameters: {
             query?: never;
@@ -2525,6 +2751,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    roles_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleOut"][];
                 };
             };
         };

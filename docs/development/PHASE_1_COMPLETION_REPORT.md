@@ -6,6 +6,26 @@ Date: 2026-11-04 · Branch: `ccr-f7e172c5-lwnudw` · Decisions applied: D-1, D-3
 
 Classification: **IMPLEMENTED** (exists and was verified by something that ran) · **IMPLEMENTED, NOT VERIFIED** (exists, nothing ran it) · **NOT IMPLEMENTED** · **DEFERRED** · **REQUIRES DECISION**.
 
+## Gap pass against the full Phase 1 brief (second submission of the brief)
+
+The Phase 1 brief was submitted again. I did not rebuild anything: I compared each requirement with the repository and closed the gaps found. Companion documents (new): [`PHASE_1_IMPLEMENTATION.md`](PHASE_1_IMPLEMENTATION.md), [`PHASE_1_TEST_REPORT.md`](PHASE_1_TEST_REPORT.md), [`LOCAL_SETUP_GUIDE.md`](LOCAL_SETUP_GUIDE.md), [`AUTHENTICATION_AND_SESSION_DESIGN.md`](../security/AUTHENTICATION_AND_SESSION_DESIGN.md), [`ROLE_AND_PERMISSION_MATRIX.md`](../security/ROLE_AND_PERMISSION_MATRIX.md), [`INITIAL_DATABASE_IMPLEMENTATION.md`](../database/INITIAL_DATABASE_IMPLEMENTATION.md).
+
+| Gap found | Outcome | Classification |
+|---|---|---|
+| No organization profile update | `PATCH /orgs/{id}` (display name, locale; owner only; audited) | IMPLEMENTED AND TESTED |
+| No list of organizations available to the user | `GET /orgs` (own memberships only) | IMPLEMENTED AND TESTED |
+| Company members could be invited but not changed or removed | `PATCH /companies/{id}/members/{user}` with escalation guards, last-owner and limit checks, audit | IMPLEMENTED AND TESTED |
+| No "Company Administrator" role | `company_admin` (manages employees only; cannot touch owners/admins) | IMPLEMENTED AND TESTED |
+| No endpoint to read roles/permissions | `GET /roles`, `GET /permissions` (platform permissions never listed) | IMPLEMENTED AND TESTED |
+| No basic user profile in the UI | profile panel on the dashboard (name, e-mail, two-factor state) | IMPLEMENTED AND TESTED (e2e) |
+| No test for expired sessions / self-escalation / revoked-session UX | 2 API tests + 1 e2e test | IMPLEMENTED AND TESTED |
+| Six requested documents missing | written and checked against the code; several claims were corrected while verifying (ADR numbers, the platform-admin CLI command, which tables have immutability triggers) | DOCUMENTED |
+| Migration rollback | still **not implemented** — forward-only by ADR-020 | NOT IMPLEMENTED (deliberate deviation) |
+| Permissions for documents, workspaces, templates, exports, subscription management | not in the catalog; added with the resources in Phases 2–9 | DEFERRED |
+| Creating an additional organization for an existing user; direct add of an existing user to a company without invitation; dedicated archive endpoint (archive is `PATCH status`) | not built | NOT IMPLEMENTED |
+
+Evidence from this pass: `make check` (with Redis): **92 API tests passed, 0 skipped**; mypy strict, ruff, import-linter, OpenAPI drift, web unit (6) and production build clean; `make e2e`: **24 passed**. Two mistakes of mine were caught by verification rather than shipped: a test that passed because of the MFA gate instead of the rule it claimed to test, and several wrong details in the first draft of the new documents. Docs check: see §10.
+
 ## Follow-up pass (closing the §8 list from the first report)
 
 Every item that was open at the end of the first pass, with what was done and the evidence. "Evidence" means something that ran.
@@ -191,7 +211,7 @@ Python (locked in `uv.lock`): fastapi, uvicorn, pydantic, pydantic-settings, sql
 - **Policy performance** was measured for the `companies` table only; every future company-scoped table must follow ADR-024 and be re-benchmarked at realistic row counts (documents will be orders of magnitude larger).
 
 ## 10. Docs check
-`python3 tools/check_docs.py` was re-run after this report was written: `OK: 44 required files present; 48 markdown files checked.` (exit 0). It checks structure, links, anchors and ID references only.
+`python3 tools/check_docs.py` was re-run after the gap pass: `OK: 50 required files present; 54 markdown files checked.` (exit 0); the six new documents are now required files. It checks structure, links, anchors and ID references only.
 
 ## 11. Decisions requiring approval
 | ID | Question | Needed by |
@@ -204,4 +224,6 @@ Python (locked in `uv.lock`): fastapi, uvicorn, pydantic, pydantic-settings, sql
 ## 12. Instructions for beginning Phase 2
 Do not begin until this report is approved. Recommended order: (1) the final CI run (15) is green — nothing to do there; (2) decide on the Dependabot PRs and ADR-025; (3) answer D-2; (4) say "Start Phase 2". Phase 2 then builds the Super Admin on the existing platform realm: plan/version/entitlement editing, subscriptions and usage views, support-access grant workflow with tenant approval and the grant-scoped RLS policies (TS-ISO-07), platform audit viewer — see `PHASE_2.md`.
 
-**Final status (2026-11-04):** CI run 15 on commit `eb9ca57` — all 7 jobs green. Local final checks: 83 API tests passed (twice), 23 browser tests passed 12 of 12 repeated runs, lint, strict types, import boundaries, OpenAPI drift and docs checks clean. Open items: §8.
+**Status before the gap pass (2026-11-04):** CI run 15 on commit `eb9ca57` — all 7 jobs green. Local final checks: 83 API tests passed (twice), 23 browser tests passed 12 of 12 repeated runs, lint, strict types, import boundaries, OpenAPI drift and docs checks clean. Open items: §8.
+
+**Status after the gap pass (2026-11-04):** local `make check` with Redis — 92 API tests passed, 0 skipped; `make e2e` — 24 passed; lint, strict types, import boundaries, OpenAPI drift and docs checks clean. GitHub CI for the gap-pass commit: see the next line once it has run. Open items: §8 (unchanged).

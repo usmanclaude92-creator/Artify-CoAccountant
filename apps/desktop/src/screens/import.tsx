@@ -30,7 +30,7 @@ export function ImportScreen() {
   const targets = useMemo(() => uploadTargets(ws?.nodes ?? []), [ws]);
   const categories = useMemo(() => (ws?.categories ?? []).filter((c) => c.is_active && !c.archived_at), [ws]);
 
-  const entryFor = (f: Staged): Entry => entries[f.token] ?? { file: f, nodeId: targets.length === 1 ? (targets[0]?.id ?? "") : "", categoryId: "", name: "", raw: {}, policy: "ask" };
+  const entryFor = (f: Staged): Entry => entries[f.token] ?? { file: f, nodeId: targets.length === 1 ? (targets[0]?.id ?? "") : "", categoryId: "", name: "", raw: {}, policy: "block" };
   const patch = (f: Staged, p: Partial<Entry>) => setEntries((cur) => ({ ...cur, [f.token]: { ...entryFor(f), ...p } }));
 
   const choose = async () => {
@@ -114,7 +114,7 @@ export function ImportScreen() {
               <div className="a-field"><label htmlFor={`d-${f.token}`}>Document name</label>
                 <input id={`d-${f.token}`} value={e.name} placeholder="Leave blank to keep the file name" maxLength={255} onChange={(ev) => patch(f, { name: ev.target.value })} /></div>
               <div className="a-field"><label htmlFor={`p-${f.token}`}>If identical content already exists</label>
-                <select id={`p-${f.token}`} value={e.policy} onChange={(ev) => patch(f, { policy: ev.target.value })}><option value="ask">Ask me</option><option value="skip">Skip this file</option><option value="keep_both">Keep both</option></select></div>
+                <select id={`p-${f.token}`} value={e.policy} onChange={(ev) => patch(f, { policy: ev.target.value })}><option value="block">Do not add it again (I decide in the queue)</option><option value="allow_copy">Add it anyway</option></select></div>
             </div>
             {fields.length ? (
               <fieldset className="d-fieldset"><legend>Details for this folder and category</legend>
@@ -224,8 +224,8 @@ export function QueueScreen() {
                 {r.error_code === "duplicate_detected" ? (
                   <>
                     <Button variant="secondary" className="a-btn--sm" onClick={() => void dupInfo(r)}>Show the existing document</Button>
-                    <Button variant="secondary" className="a-btn--sm" onClick={() => void act(() => bridge.importRetry(r.id, { duplicatePolicy: "keep_both" }))}>Keep both</Button>
-                    <Button variant="secondary" className="a-btn--sm" onClick={() => void act(() => bridge.importRetry(r.id, { duplicatePolicy: "skip" }))}>Skip this file</Button>
+                    <Button variant="secondary" className="a-btn--sm" onClick={() => void act(() => bridge.importRetry(r.id, { duplicatePolicy: "allow_copy" }))}>Add it anyway</Button>
+                    <Button variant="secondary" className="a-btn--sm" onClick={() => void act(() => bridge.importRemove(r.id))}>Do not add it</Button>
                   </>
                 ) : null}
                 {(r.status === "failed") && !needsDecision(r) ? <Button variant="secondary" className="a-btn--sm" onClick={() => void act(() => bridge.importRetry(r.id))}>Retry</Button> : null}

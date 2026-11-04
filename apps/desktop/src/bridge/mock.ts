@@ -128,7 +128,7 @@ export function createMockBridge(opts: MockOptions = {}): MockBridge {
         if (!f) { rejected.push({ name: "?", code: "unknown_file", message: "That file is no longer available. Choose it again." }); continue; }
         staged.delete(it.token);
         if (!/\.(pdf|png|jpe?g|xlsx?|docx?|csv|txt)$/i.test(f.name)) { rejected.push({ name: f.name, code: "unsupported_type", message: "This file type is not allowed." }); continue; }
-        const row: ImportRow = { id: `imp-${state.imports.length + 1}`, org_id: org, company_id: company, batch_id: "batch-1", file_name: f.name, display_name: it.display_name ?? null, size: f.size, sha256: null, node_id: it.node_id, category_id: it.category_id ?? null, document_id: it.document_id ?? null, duplicate_policy: it.duplicate_policy ?? "ask", status: "waiting", bytes_sent: 0, attempts: 0, next_retry_at: null, error_code: null, error_message: null, error_detail: null, result_document_id: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+        const row: ImportRow = { id: `imp-${state.imports.length + 1}`, org_id: org, company_id: company, batch_id: "batch-1", file_name: f.name, display_name: it.display_name ?? null, size: f.size, sha256: null, node_id: it.node_id, category_id: it.category_id ?? null, document_id: it.document_id ?? null, duplicate_policy: it.duplicate_policy ?? "block", status: "waiting", bytes_sent: 0, attempts: 0, next_retry_at: null, error_code: null, error_message: null, error_detail: null, result_document_id: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
         state.imports.push(row); queued.push(structuredClone(row));
       }
       return { queued, rejected };
@@ -142,8 +142,7 @@ export function createMockBridge(opts: MockOptions = {}): MockBridge {
         if (opts.offline) { r.error_code = "network_unavailable"; r.error_message = "The cloud could not be reached."; r.attempts++; continue; }
         const hash = `${r.file_name}:${r.size}`;
         const dup = state.documents.find((d) => d.sha256 === hash && d.status !== "deleted");
-        if (dup && r.duplicate_policy === "ask") { r.status = "failed"; r.error_code = "duplicate_detected"; r.error_message = "Identical content already exists."; continue; }
-        if (dup && r.duplicate_policy === "skip") { r.status = "cancelled"; continue; }
+        if (dup && r.duplicate_policy === "block") { r.status = "failed"; r.error_code = "duplicate_detected"; r.error_message = "Identical content already exists."; continue; }
         if (opts.maxDocuments !== undefined && state.documents.filter((d) => d.status !== "deleted").length >= opts.maxDocuments) { r.status = "failed"; r.error_code = "storage_quota"; r.error_message = "Limit reached."; continue; }
         const id = `doc-${state.documents.length + 1}`;
         state.documents.push({ id, node_id: r.node_id, category_id: r.category_id, display_name: r.display_name ?? r.file_name, original_filename: r.file_name, extension: r.file_name.split(".").pop() ?? "", status: "active", current_version_number: 1, source: "desktop", legal_hold: false, created_by_name: "Test Accountant", created_at: new Date().toISOString(), updated_at: new Date().toISOString(), archived_at: null, row_version: 1, mime_type: r.file_name.endsWith(".pdf") ? "application/pdf" : r.file_name.endsWith(".png") ? "image/png" : "application/octet-stream", size_bytes: r.size, sha256: hash, scan_status: "not_scanned", can: { view: true, download: true, edit: true, move: true, archive: true, delete: true, purge: false } });

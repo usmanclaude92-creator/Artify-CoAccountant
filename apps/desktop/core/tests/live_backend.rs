@@ -39,16 +39,16 @@ fn totp(secret: &str, step_offset: i64) -> String {
 }
 
 struct Live {
-    desk: Desktop,
+    desk: Arc<Desktop>,
     store: Arc<MemoryStore>,
-    _dir: tempfile::TempDir,
+    dir: tempfile::TempDir,
 }
 fn rig(fx: &Fx, store: Arc<MemoryStore>) -> Live {
     let dir = tempfile::tempdir().unwrap();
     let api = Arc::new(ApiClient::new(ApiConfig::new(&fx.s(&["api_base"]), "0.1.0-live"), store.clone()).unwrap());
     let (db, rep) = Db::open(&dir.path().join("app.db"), Sealer::from_vault(store.as_ref()).unwrap()).unwrap();
-    let desk = Desktop::new(api, db, rep, Logger::new(&dir.path().join("logs")).unwrap(), dir.path(), "0.1.0-live");
-    Live { desk, store, _dir: dir }
+    let desk = Arc::new(Desktop::new(api, db, rep, Logger::new(&dir.path().join("logs")).unwrap(), dir.path(), "0.1.0-live"));
+    Live { desk, store, dir }
 }
 async fn sign_in(l: &Live, who: &Fx, key: &str) {
     match l.desk.login(&who.s(&[key, "email"]), &who.s(&[key, "password"])).await.unwrap() {
@@ -213,4 +213,153 @@ async fn revoking_the_device_ends_that_installations_session_and_wipes_its_cache
     // a restore attempt with the old vault content fails (the refresh token was revoked with the device)
     let pc1_restart = rig(&fx, pc1.store.clone());
     assert!(pc1_restart.desk.restore().await.unwrap().is_none());
+}
+
+// ------------------------------------------------------------------------------------------------ Phase 6: documents
+use artify_core::documents::{DocOp, QueueItem};
+use sha2::{Digest, Sha256};
+
+fn first_node(w: &Value) -> String {
+    w["nodes"].as_array().unwrap().iter().find(|n| n["parent_id"].is_null() && n["archived_at"].is_null()).unwrap()["id"]
+        .as_str()
+        .unwrap()
+        .to_string()
+}
+fn sha(b: &[u8]) -> String {
+    Sha256::digest(b).iter().map(|x| format!("{x:02x}")).collect()
+}
+/// A minimal but genuine PDF (the server inspects content, so the bytes must really be a PDF).
+fn pdf(marker: &str, pad: usize) -> Vec<u8> {
+    let mut v = format!("%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]>>endobj\n% {marker}\n").into_bytes();
+    v.extend(std::iter::repeat_n(b'x', pad));
+    v.extend_from_slice(b"\ntrailer<</Root 1 0 R/Size 4>>\n%%EOF\n");
+    v
+}
+async fn drain(l: &Live) {
+    for _ in 0..20 {
+        if l.desk.process_due(3).await.unwrap() == 0 {
+            return;
+        }
+    }
+}
+
+#[tokio::test]
+#[ignore = "needs a running API"]
+async fn a_file_goes_to_the_real_cloud_store_is_verified_and_comes_back_identical() {
+    let fx = Fx::load();
+    let org = fx.s(&["org"]);
+    let a = fx.s(&["companies", "alpha"]);
+    let l = rig(&fx, Arc::new(MemoryStore::new()));
+    // an accountant assigned to Alpha (a separate user keeps the sign-in rate limit of the other tests untouched)
+    sign_in(&l, &fx, "doc_accountant").await;
+    l.desk.companies(&org).await.unwrap();
+    let node = first_node(&l.desk.workspace(&org, &a).await.unwrap().data);
+    let work = tempfile::tempdir().unwrap();
+    let root = tempfile::tempdir().unwrap();
+    l.desk.set_storage_root(root.path()).unwrap();
+
+    // more than one chunk, so the resumable protocol is really exercised
+    let bytes = pdf("live-1", 5 * 1024 * 1024);
+    let f = work.path().join("statement.pdf");
+    std::fs::write(&f, &bytes).unwrap();
+    let staged = l.desk.stage_paths(vec![f.clone()]);
+    let q = l
+        .desk
+        .queue_imports(&org, &a, vec![QueueItem { token: staged[0].token.clone(), node_id: node.clone(), ..Default::default() }])
+        .await
+        .unwrap();
+    assert!(q.rejected.is_empty(), "{:?}", q.rejected);
+    drain(&l).await;
+    let row = l.desk.list_imports(Some(&a)).unwrap().into_iter().next().unwrap();
+    assert_eq!(row.status, "completed", "{row:?}");
+    let doc = row.result_document_id.clone().expect("the cloud confirmed a document id");
+    assert!(f.is_file(), "the original on this computer is untouched");
+
+    // what the cloud holds is byte-identical (the core verifies the SHA-256 while downloading)
+    let d = l.desk.doc_op(&org, &a, DocOp::Get(doc.clone())).await.unwrap();
+    assert_eq!(d["sha256"], sha(&bytes).as_str());
+    assert_eq!(d["size_bytes"], bytes.len() as i64);
+    assert_eq!(d["status"], "active");
+    let copy = l.desk.download_document(&org, &a, &doc, None).await.unwrap();
+    assert_eq!(sha(&std::fs::read(&copy.path).unwrap()), sha(&bytes));
+    assert!(copy.path.starts_with(&root.path().display().to_string()), "placed under the chosen storage root");
+    let again = l.desk.download_document(&org, &a, &doc, None).await.unwrap();
+    assert!(again.already_present && again.path == copy.path, "never downloaded or overwritten twice");
+    let pv = l.desk.preview_document(&org, &a, &doc, None).await.unwrap();
+    assert_eq!(pv.sha256, sha(&bytes));
+
+    // the same bytes again: the real server detects the duplicate and the user decides
+    let staged = l.desk.stage_paths(vec![f.clone()]);
+    l.desk
+        .queue_imports(&org, &a, vec![QueueItem { token: staged[0].token.clone(), node_id: node.clone(), ..Default::default() }])
+        .await
+        .unwrap();
+    drain(&l).await;
+    let dup = l.desk.list_imports(Some(&a)).unwrap().into_iter().find(|r| r.id != row.id).unwrap();
+    assert_eq!(dup.status, "failed");
+    assert_eq!(dup.error_code.as_deref(), Some("duplicate_detected"), "{dup:?}");
+    assert!(l.desk.retry_import(&dup.id, Some("allow_copy"), None).expect("retry"));
+    drain(&l).await;
+    let dup = l.desk.list_imports(Some(&a)).unwrap().into_iter().find(|r| r.id == dup.id).unwrap();
+    assert_eq!(dup.status, "completed", "{dup:?}");
+    assert_ne!(dup.result_document_id, row.result_document_id);
+
+    // a fake file is refused by the real server's content inspection and nothing is stored
+    let fake = work.path().join("report.pdf");
+    std::fs::write(&fake, b"MZ this is really an executable, not a pdf").unwrap();
+    let staged = l.desk.stage_paths(vec![fake]);
+    let q = l
+        .desk
+        .queue_imports(&org, &a, vec![QueueItem { token: staged[0].token.clone(), node_id: node.clone(), ..Default::default() }])
+        .await
+        .unwrap();
+    drain(&l).await;
+    let listed = l.desk.list_imports(Some(&a)).unwrap();
+    let bad = listed.iter().find(|r| q.queued.iter().any(|x| x.id == r.id)).map(|r| r.status.clone());
+    assert!(bad.as_deref() != Some("completed"), "a mislabelled file must never be stored: {listed:?}");
+    let all = l.desk.doc_op(&org, &a, DocOp::List(vec![("limit".into(), "50".into())])).await.unwrap();
+    assert_eq!(all["total"], 2);
+}
+
+#[tokio::test]
+#[ignore = "needs a running API"]
+async fn an_accountant_reaches_only_the_documents_of_the_assigned_company() {
+    let fx = Fx::load();
+    let org = fx.s(&["org"]);
+    let (a, b) = (fx.s(&["companies", "alpha"]), fx.s(&["companies", "beta"]));
+    // the seed stored a document in Beta through the real upload protocol
+    let beta_doc = fx.s(&["beta_document_id"]);
+    let bnode = fx.s(&["beta_node_id"]);
+    let acc = rig(&fx, Arc::new(MemoryStore::new()));
+    sign_in(&acc, &fx, "doc_accountant").await;
+    acc.desk.companies(&org).await.unwrap();
+    // typing Beta's id, or Beta's document id under Alpha, reveals nothing
+    for (company, op) in [(&b, DocOp::List(vec![])), (&a, DocOp::Get(beta_doc.clone())), (&a, DocOp::Versions(beta_doc.clone()))] {
+        let e = acc.desk.doc_op(&org, company, op).await.unwrap_err();
+        assert!(e.status == Some(404) || e.status == Some(403), "{e:?}");
+    }
+    assert!(acc.desk.preview_document(&org, &a, &beta_doc, None).await.is_err());
+    assert!(acc.desk.download_document(&org, &a, &beta_doc, None).await.is_err());
+    // uploading into Beta's folder is refused too, and nothing of Beta is in the local cache
+    let g = acc.dir.path().join("x.pdf");
+    std::fs::write(&g, pdf("acc", 100)).unwrap();
+    let staged = acc.desk.stage_paths(vec![g]);
+    let res =
+        acc.desk.queue_imports(&org, &b, vec![QueueItem { token: staged[0].token.clone(), node_id: bnode, ..Default::default() }]).await;
+    if let Ok(q) = res {
+        drain(&acc).await;
+        assert!(acc.desk.list_imports(Some(&b)).unwrap().iter().all(|r| r.status != "completed"), "{q:?}");
+    }
+    // within Alpha the accountant can add documents
+    let anode = first_node(&acc.desk.workspace(&org, &a).await.unwrap().data);
+    let h = acc.dir.path().join("alpha.pdf");
+    std::fs::write(&h, pdf("alpha", 100)).unwrap();
+    let staged = acc.desk.stage_paths(vec![h]);
+    acc.desk
+        .queue_imports(&org, &a, vec![QueueItem { token: staged[0].token.clone(), node_id: anode, ..Default::default() }])
+        .await
+        .unwrap();
+    drain(&acc).await;
+    let mine = acc.desk.list_imports(Some(&a)).unwrap();
+    assert_eq!(mine.iter().filter(|r| r.status == "completed").count(), 1, "{mine:?}");
 }

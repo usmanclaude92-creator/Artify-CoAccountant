@@ -63,15 +63,37 @@ node(b, "Bank of Muscat", banking)
 archived = node(b, "Old Folder", sections[1])
 post(f"/companies/{b}/workspace/nodes/{archived}/archive", {"confirm_impact": True}, expect=200)
 
-# an accountant who is assigned to company A only
-acc_email = f"live-acc-{tag}@example.com"
-post(f"/orgs/{org}/invitations", {"email": acc_email, "role": "accountant"})
-r = c.post("/auth/invitations/accept", json={"token": mailed_token(acc_email, "invitation"), "display_name": "Live Accountant", "password": PASSWORD})
-assert r.status_code == 200, r.text
-members = c.get(f"/orgs/{org}/members", headers=h).json()
-acc_id = next(m["user_id"] for m in members if m["email"] == acc_email)
-post(f"/companies/{a}/assignments", {"user_id": acc_id, "assignment_type": "primary"}, expect=201)
+def pdf(marker: str) -> bytes:
+    return (f"%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]>>endobj\n% {marker}\ntrailer<</Root 1 0 R/Size 4>>\n%%EOF\n").encode()
 
-json.dump({"api_base": BASE, "org": org, "owner": {"email": owner_email, "password": PASSWORD, "totp_secret": secret}, "accountant": {"email": acc_email, "password": PASSWORD, "user_id": acc_id},
-           "companies": {"alpha": a, "beta": b, "gamma": cc}, "beta_section_ids": sections, "alpha_section_names": ["Bank Statements", "Receivables", "Payables", "Expenses"]}, open(OUT, "w"), indent=2)
+
+# a document that already exists in company B (uploaded through the real protocol), so tests can prove it stays invisible elsewhere
+beta_bytes = pdf("beta-secret")
+beta_node = sections[2]
+init = c.post(f"/companies/{b}/uploads", json={"filename": "beta-only.pdf", "size": len(beta_bytes), "node_id": beta_node, "source": "desktop"}, headers={**h, "Idempotency-Key": f"seed-{tag}-beta-doc"})
+assert init.status_code == 201, init.text
+sid = init.json()["id"]
+put = c.put(f"/companies/{b}/uploads/{sid}/content?offset=0", content=beta_bytes, headers={**h, "Content-Type": "application/octet-stream"})
+assert put.status_code in (200, 204), put.text
+done = c.post(f"/companies/{b}/uploads/{sid}/complete", headers=h)
+assert done.status_code in (200, 201), done.text
+beta_doc = done.json().get("result_document_id") or done.json()["document"]["id"]
+
+# accountants who are assigned to company A only (the second one is used by the document tests, so the sign-in
+# rate limit of the first is not shared)
+def accountant(label: str, name: str) -> tuple[str, str]:
+    email = f"live-{label}-{tag}@example.com"
+    post(f"/orgs/{org}/invitations", {"email": email, "role": "accountant"})
+    r = c.post("/auth/invitations/accept", json={"token": mailed_token(email, "invitation"), "display_name": name, "password": PASSWORD})
+    assert r.status_code == 200, r.text
+    uid = next(m["user_id"] for m in c.get(f"/orgs/{org}/members", headers=h).json() if m["email"] == email)
+    post(f"/companies/{a}/assignments", {"user_id": uid, "assignment_type": "primary"}, expect=201)
+    return email, uid
+
+
+acc_email, acc_id = accountant("acc", "Live Accountant")
+doc_email, doc_id = accountant("docs", "Live Document Accountant")
+
+json.dump({"api_base": BASE, "org": org, "owner": {"email": owner_email, "password": PASSWORD, "totp_secret": secret}, "accountant": {"email": acc_email, "password": PASSWORD, "user_id": acc_id}, "doc_accountant": {"email": doc_email, "password": PASSWORD, "user_id": doc_id},
+           "companies": {"alpha": a, "beta": b, "gamma": cc}, "beta_document_id": beta_doc, "beta_node_id": beta_node, "beta_section_ids": sections, "alpha_section_names": ["Bank Statements", "Receivables", "Payables", "Expenses"]}, open(OUT, "w"), indent=2)
 print("seeded", OUT)

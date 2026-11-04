@@ -110,7 +110,7 @@ describe("upload queue", () => {
     await user.click(await screen.findByRole("button", { name: "Process now" }));
     expect(await screen.findByText(/identical content already exists/)).toBeInTheDocument();
     expect(bridge.state.documents).toHaveLength(1);
-    await user.click(screen.getByRole("button", { name: "Show the existing document" }).closest("li")!.querySelector("button:nth-of-type(2)") as HTMLElement);
+    await user.click(screen.getByRole("button", { name: "Add it anyway" }));
     await user.click(await screen.findByRole("button", { name: "Process now" }));
     await user.click(await screen.findByRole("checkbox", { name: "Show finished" }));
     await waitFor(() => expect(bridge.state.documents).toHaveLength(2));

@@ -8,6 +8,7 @@ DB=artify_desktop_live; API_PORT=8200
 LOG="${LIVE_LOG_DIR:-$(mktemp -d)}"; mkdir -p "$LOG"
 url() { if [[ "$PGHOST" == /* ]]; then echo "postgresql+psycopg://$1:$2@/$DB?host=$PGHOST&port=$PGPORT"; else echo "postgresql+psycopg://$1:$2@$PGHOST:$PGPORT/$DB"; fi; }
 "$ROOT/infrastructure/database/reset_dev_db.sh" "$DB" >/dev/null
+export ARTIFY_STORAGE_ROOT="$LOG/storage"
 export ARTIFY_ENVIRONMENT=local ARTIFY_MAILER_BACKEND=console ARTIFY_RATE_LIMIT_BACKEND=memory
 export ARTIFY_DATABASE_URL_APP="$(url artify_app_login dev-only-app)"
 export ARTIFY_DATABASE_URL_PLATFORM="$(url artify_platform_login dev-only-platform)"

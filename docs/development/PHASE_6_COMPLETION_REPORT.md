@@ -97,7 +97,7 @@ All executed in this session unless marked *CI*; nothing was estimated.
 | Mutation review of the new controls | 18 controls disabled one by one: 16 caught at once, 2 initially survived and were fixed (tests corrected/added), 1 equivalent mutant explained (§19) |
 | `python3 tools/check_docs.py` | OK — 82 required files, 116 Markdown files |
 | `pip-audit`, `pnpm audit --prod` | no known vulnerabilities |
-| *CI* — Tauri shell compiles (`cargo check -p artify-desktop --locked`) | passed on the Linux CI job for the desktop-shell commit; see §22 for the latest state |
+| *CI* — Tauri shell compiles (`cargo check -p artify-desktop --locked`), Windows core tests, unsigned NSIS installer build | passed on the final code commit `ade0fbc` (GitHub Actions run 36); see §22 |
 
 **Not executed at all:** the Tauri app itself (no window was ever opened; no Windows machine), Windows runtime behaviour, a real ClamAV, a real object store, load/performance tests, large files (largest test file ≈ 5 MiB).
 
@@ -155,7 +155,7 @@ Windows installer (on Windows): `cd apps/desktop && pnpm tauri build --bundles n
 | `68c6996` backend part 1 | **failed** — only the `secrets` job (gitleaks flagged the test header value `same-key-12345`); all other jobs including `desktop-windows` passed. Fixed in `cf49f03` (value renamed, fingerprint listed in `.gitleaksignore` with a justification) |
 | `bc9ebee` Rust core + Tauri shell | **failed** — only `desktop-windows`: `download_places_the_file_by_its_cloud_folder…` compared two path strings that differed in separators on Windows (`Path::join` of a `/`-separated relative path). A real Windows-only defect, found by CI, fixed in `cf49f03` by building paths one segment at a time. The Linux `desktop` job (including `cargo check -p artify-desktop --locked`, i.e. the Tauri shell compiles, and the live test against a real API) passed |
 | `8ea09e9`, `d8c8bbd`, `cf49f03` | **all jobs passed** (api, web, e2e, desktop, desktop-windows with the unsigned NSIS installer build, docs, docker, audit, secrets) |
-| `ade0fbc` (final: docs, report, security fix, tests) | pushed; its CI result is not known at the time of writing — see the Actions tab. Locally everything in §18 passed on this commit |
+| `ade0fbc` (docs, report, security fix, mutation-review tests) | **all jobs passed**, including `api` (full backend suite), `e2e`, `desktop` (with the real-API test), `desktop-windows`, `secrets`. Two later commits only change this report |
 
 The Windows job proves that the Rust core tests pass on Windows and that the installer builds; it does **not** run the app.
 

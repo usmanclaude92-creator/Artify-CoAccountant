@@ -4,3 +4,7 @@
 # (it decodes to "fake-key-for-tests..."; it protects nothing). The literal was removed from the
 # code in the next commit; this entry keeps full-history scans quiet.
 f0a581eea84098657a400bedf558087bee33f553:services/api/tests/test_followups.py:generic-api-key:237
+
+# An idempotency header value ("same-key-12345") in a Phase 6 upload-retry test; flagged by the generic rule because of the
+# word "key". It is a throwaway request header in a test, not a credential. The literal was renamed in the next commit.
+68c6996fd74d71e68e2077ab3cea4714eef2ad44:services/api/tests/test_p6_documents.py:generic-api-key:234

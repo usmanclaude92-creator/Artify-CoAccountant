@@ -231,7 +231,7 @@ def test_init_is_idempotent_and_completion_cannot_create_two_documents(firm) -> 
     owner, c, node = firm
     data = samples.pdf()
     body = {"filename": "i.pdf", "size": len(data), "sha256": hashlib.sha256(data).hexdigest(), "node_id": node}
-    h = {"Idempotency-Key": "same-key-12345"}
+    h = {"Idempotency-Key": "retry-token-0001"}
     first = owner.post(f"/companies/{c}/uploads", body, **h)
     second = owner.post(f"/companies/{c}/uploads", body, **h)
     assert first.status_code == 201 and second.status_code == 200 and first.json()["id"] == second.json()["id"]

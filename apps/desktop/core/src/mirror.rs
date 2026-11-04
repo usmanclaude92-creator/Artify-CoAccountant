@@ -97,7 +97,12 @@ pub fn resolve_under(root: &Path, rel: &str) -> Result<PathBuf> {
     if rel.is_empty() || p.is_absolute() || rel.split('/').any(bad_segment) || p.components().any(|c| !matches!(c, Component::Normal(_))) {
         return Err(AppError::new("invalid_path", "That local path is not inside the storage folder."));
     }
-    Ok(root.join(p))
+    // push one segment at a time so the separators are the platform's own (joining "a/b" on Windows would mix `\\` and `/`)
+    let mut out = root.to_path_buf();
+    for seg in rel.split('/') {
+        out.push(seg);
+    }
+    Ok(out)
 }
 
 fn rel_string(parts: &[String]) -> String {

@@ -10,7 +10,8 @@ from fastapi import APIRouter, Depends, Query, Request, Response
 from pydantic import BaseModel
 from sqlalchemy import text
 
-from artify_api import audit, auth_service
+from artify_api import audit
+from artify_api.auth_provider import get_auth_provider
 from artify_api.context import PlatformCtx, PlatformRequires, Public, request_meta
 from artify_api.errors import Conflict
 from artify_api.ratelimit import enforce
@@ -52,7 +53,7 @@ class OrgSummary(BaseModel):
     dependencies=[Depends(Public("platform credential login"))],
 )
 def login(body: LoginRequest, request: Request) -> LoginResponse:
-    return to_login_response(auth_service.login("platform", body.email, body.password, request_meta(request)))
+    return to_login_response(get_auth_provider().login("platform", body.email, body.password, request_meta(request)))
 
 
 @router.post(
@@ -62,7 +63,9 @@ def login(body: LoginRequest, request: Request) -> LoginResponse:
     dependencies=[Depends(Public("second login step; presents a signed challenge token"))],
 )
 def mfa_verify(body: MfaVerifyRequest, request: Request) -> TokenResponse:
-    return to_token_response(auth_service.verify_mfa("platform", body.mfa_token, body.code, request_meta(request)))
+    return to_token_response(
+        get_auth_provider().verify_mfa("platform", body.mfa_token, body.code, request_meta(request))
+    )
 
 
 @router.post(
@@ -73,14 +76,14 @@ def mfa_verify(body: MfaVerifyRequest, request: Request) -> TokenResponse:
 )
 def refresh(body: RefreshRequest, request: Request) -> TokenResponse:
     enforce(f"refresh:platform:ip:{request_meta(request).ip}", 60, 60)
-    return to_token_response(auth_service.refresh("platform", body.refresh_token))
+    return to_token_response(get_auth_provider().refresh("platform", body.refresh_token))
 
 
 @router.post("/auth/logout", status_code=204, operation_id="platform_logout")
 def logout(
     ctx: Annotated[PlatformCtx, Depends(PlatformRequires(allow_unenrolled=True, reason="ends own session"))],
 ) -> Response:
-    auth_service.revoke_session(ctx.conn, ctx.session_id, "logout")
+    get_auth_provider().revoke_session(ctx.conn, ctx.session_id, "logout")
     audit.write_platform_audit(ctx.conn, action="auth.logout", actor_id=ctx.admin_id, meta=ctx.meta)
     return Response(status_code=204)
 
@@ -90,7 +93,7 @@ def mfa_enroll(
     ctx: Annotated[PlatformCtx, Depends(PlatformRequires(allow_unenrolled=True, reason="MFA enrollment"))],
 ) -> MfaEnrollResponse:
     email = ctx.conn.execute(text("SELECT email FROM platform_admins WHERE id = :a"), {"a": ctx.admin_id}).scalar_one()
-    secret, uri = auth_service.mfa_enroll(ctx.conn, "platform", ctx.admin_id, str(email))
+    secret, uri = get_auth_provider().mfa_enroll(ctx.conn, "platform", ctx.admin_id, str(email))
     return MfaEnrollResponse(secret=secret, otpauth_uri=uri)
 
 
@@ -101,7 +104,7 @@ def mfa_confirm(
 ) -> MfaConfirmResponse:
     if ctx.mfa:
         raise Conflict("Multi-factor authentication is already verified for this session.")
-    codes, pair = auth_service.mfa_confirm(ctx.conn, "platform", ctx.admin_id, ctx.session_id, body.code)
+    codes, pair = get_auth_provider().mfa_confirm(ctx.conn, "platform", ctx.admin_id, ctx.session_id, body.code)
     audit.write_platform_audit(ctx.conn, action="auth.mfa_enabled", actor_id=ctx.admin_id, meta=ctx.meta)
     return MfaConfirmResponse(recovery_codes=codes, access_token=pair.access_token, expires_in=pair.expires_in)
 

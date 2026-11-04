@@ -1,0 +1,5 @@
+# Accepted breaking API changes (one exact issue key per line; '#' starts a comment).
+# While the API is 0.x, a breaking change is allowed ONLY when listed here with a reason, so it is
+# a conscious, reviewed decision. Keys are printed by services/api/scripts/check_openapi_breaking.py.
+# Example:
+#   OP_REMOVED GET /api/v1/example      # replaced by /api/v1/examples in PR #123

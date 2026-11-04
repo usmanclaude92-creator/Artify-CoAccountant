@@ -5,13 +5,15 @@ from __future__ import annotations
 import uuid
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Query, Response
+from fastapi import APIRouter, Depends, Header, Query, Response
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import text
 
 from artify_api import audit, entitlements
 from artify_api.context import RequestCtx, Requires
-from artify_api.errors import Conflict, NotFound, Unprocessable
+from artify_api.errors import Conflict, Forbidden, NotFound, Unprocessable
+from artify_api.idempotency import run_idempotent
 from artify_api.ids import new_id
 from artify_api.mailer import Message, get_mailer
 from artify_api.permissions import INVITABLE_COMPANY_ROLES, INVITABLE_ORG_ROLES
@@ -34,7 +36,8 @@ class OrgInvite(BaseModel):
 
 
 class MemberUpdate(BaseModel):
-    status: Literal["active", "suspended", "removed"]
+    status: Literal["active", "suspended", "removed"] | None = None
+    role: Literal["firm_owner", "practice_admin", "accountant", "staff"] | None = None
 
 
 @router.get("/orgs/{org_id}", response_model=OrganizationOut, operation_id="organizations_get")
@@ -81,16 +84,36 @@ def update_member(
     body: MemberUpdate,
     ctx: Annotated[RequestCtx, Depends(Requires("members.manage"))],
 ) -> MemberOut:
+    """Change a member's status and/or role. Safety rules: only a firm owner may grant or remove
+    the firm-owner role; the last firm owner can neither be demoted nor deactivated; nobody changes
+    their own role; roles that count against limit.accountants are guarded; assignments end when a
+    member stops being an accountant/staff member."""
+    if body.status is None and body.role is None:
+        raise Unprocessable("Provide status and/or role.")
+    assert ctx.principal is not None
     target = ctx.conn.execute(
         text(
-            "SELECT r.key AS role FROM organization_memberships m JOIN roles r ON r.id = m.role_id"
+            "SELECT r.key AS role, m.status FROM organization_memberships m JOIN roles r ON r.id = m.role_id"
             " WHERE m.organization_id = :o AND m.user_id = :u"
         ),
         {"o": org_id, "u": user_id},
     ).first()
     if target is None:
         raise NotFound("Member not found.")
-    if target.role == "firm_owner" and body.status != "active":
+    new_role = body.role or target.role
+    new_status = body.status or target.status
+    caller_is_owner = ctx.principal.org_role == "firm_owner"
+
+    if body.role is not None and user_id == ctx.user_id:
+        raise Unprocessable("You cannot change your own role.")
+    if (target.role == "firm_owner" or new_role == "firm_owner") and not caller_is_owner:
+        raise Forbidden("Only a firm owner can grant, change or remove the firm-owner role.")
+    losing_owner = (
+        target.role == "firm_owner"
+        and target.status == "active"
+        and (new_role != "firm_owner" or new_status != "active")
+    )
+    if losing_owner:
         owners = ctx.conn.execute(
             text(
                 "SELECT count(*) FROM organization_memberships m JOIN roles r ON r.id = m.role_id"
@@ -99,30 +122,60 @@ def update_member(
             {"o": org_id},
         ).scalar_one()
         if owners <= 1:
-            raise Conflict("The last firm owner cannot be deactivated.")
-    if target.role == "firm_owner" and ctx.principal and ctx.principal.org_role != "firm_owner":
-        raise Unprocessable("Only a firm owner can change a firm owner.")
-    if body.status == "active":
-        entitlements.guard(ctx.conn, org_id, "limit.users", 0)
+            raise Conflict("The last firm owner cannot be demoted or deactivated.")
+
+    counted_before = target.status == "active"
+    counted_after = new_status == "active"
+    if counted_after and not counted_before:
+        has_company_seat = ctx.conn.execute(
+            text("SELECT 1 FROM company_memberships WHERE organization_id = :o AND user_id = :u AND status = 'active'"),
+            {"o": org_id, "u": user_id},
+        ).first()
+        if has_company_seat is None:  # a user is counted once, however many memberships they hold
+            entitlements.guard(ctx.conn, org_id, "limit.users")
+    acct_roles = ("accountant", "staff")
+    was_acct = counted_before and target.role in acct_roles
+    will_acct = counted_after and new_role in acct_roles
+    if will_acct and not was_acct:
+        entitlements.guard(ctx.conn, org_id, "limit.accountants")
+
     ctx.conn.execute(
         text(
-            "UPDATE organization_memberships SET status = :s, updated_at = now()"
+            "UPDATE organization_memberships SET status = :s, updated_at = now(),"
+            " role_id = (SELECT id FROM roles WHERE key = :r AND organization_id IS NULL)"
             " WHERE organization_id = :o AND user_id = :u"
         ),
-        {"s": body.status, "o": org_id, "u": user_id},
+        {"s": new_status, "r": new_role, "o": org_id, "u": user_id},
     )
+    if new_role not in acct_roles and target.role in acct_roles:
+        ctx.conn.execute(
+            text("DELETE FROM accountant_assignments WHERE organization_id = :o AND user_id = :u"),
+            {"o": org_id, "u": user_id},
+        )
     for key in ("limit.users", "limit.accountants"):
         entitlements.refresh_counter(ctx.conn, org_id, key)
-    audit.write_audit(
-        ctx.conn,
-        action="member.status_changed",
-        actor_id=ctx.user_id,
-        org_id=org_id,
-        entity_type="user",
-        entity_id=user_id,
-        summary={"status": body.status},
-        meta=ctx.meta,
-    )
+    if new_status != target.status:
+        audit.write_audit(
+            ctx.conn,
+            action="member.status_changed",
+            actor_id=ctx.user_id,
+            org_id=org_id,
+            entity_type="user",
+            entity_id=user_id,
+            summary={"from": target.status, "to": new_status},
+            meta=ctx.meta,
+        )
+    if new_role != target.role:
+        audit.write_audit(
+            ctx.conn,
+            action="member.role_changed",
+            actor_id=ctx.user_id,
+            org_id=org_id,
+            entity_type="user",
+            entity_id=user_id,
+            summary={"from": target.role, "to": new_role},
+            meta=ctx.meta,
+        )
     row = (
         ctx.conn.execute(
             text(
@@ -196,10 +249,19 @@ def _create_invitation(
     operation_id="organizations_invite_member",
 )
 def invite_member(
-    org_id: uuid.UUID, body: OrgInvite, ctx: Annotated[RequestCtx, Depends(Requires("invitations.manage"))]
-) -> InvitationOut:
+    org_id: uuid.UUID,
+    body: OrgInvite,
+    ctx: Annotated[RequestCtx, Depends(Requires("invitations.manage"))],
+    idempotency_key: Annotated[str | None, Header()] = None,
+) -> JSONResponse:
     assert body.role in INVITABLE_ORG_ROLES
-    return _create_invitation(ctx, org_id=org_id, email=body.email, role_key=body.role, company_id=None)
+
+    def work() -> tuple[int, dict[str, object]]:
+        inv = _create_invitation(ctx, org_id=org_id, email=body.email, role_key=body.role, company_id=None)
+        return 201, inv.model_dump(mode="json")
+
+    status, payload = run_idempotent(ctx, idempotency_key, body.model_dump(), work)
+    return JSONResponse(payload, status_code=status)
 
 
 @router.get(

@@ -1,29 +1,79 @@
-# Local infrastructure for development. NOT VERIFIED in Phase 1: the build environment had no Docker
-# daemon, so this file has been written but never started. Use `make db-reset` after `docker compose up -d`
-# (set PGHOST=localhost PGPORT=5432 PGPASSWORD=postgres).
+# Local development stack: PostgreSQL, Redis, the API,
+# a Celery worker and an outbox dispatcher built from services/api/Dockerfile. MinIO (S3-compatible,
+# needed from Phase 6) is available under the `storage` profile.
+#
+#   docker compose up --build            # then: http://localhost:8000/docs
+#   docker compose down -v               # stop and delete data
+#
+# Image names can be overridden (e.g. to a registry mirror) with POSTGRES_IMAGE, REDIS_IMAGE,
+# MINIO_IMAGE and PYTHON_IMAGE. All credentials below are development-only throwaways.
+x-api-env: &api-env
+  ARTIFY_ENVIRONMENT: local
+  ARTIFY_DATABASE_URL_APP: postgresql+psycopg://artify_app_login:dev-only-app@postgres:5432/artify
+  ARTIFY_DATABASE_URL_PLATFORM: postgresql+psycopg://artify_platform_login:dev-only-platform@postgres:5432/artify
+  ARTIFY_DATABASE_URL_DISPATCHER: postgresql+psycopg://artify_dispatcher_login:dev-only-dispatcher@postgres:5432/artify
+  ARTIFY_DATABASE_URL_MIGRATE: postgresql+psycopg://postgres:postgres@postgres:5432/artify
+  ARTIFY_REDIS_URL: redis://redis:6379/0
+  ARTIFY_RATE_LIMIT_BACKEND: redis
+  ARTIFY_MAILER_BACKEND: console
+  ARTIFY_LOG_FORMAT: json
+
 services:
   postgres:
-    image: postgres:16
+    image: ${POSTGRES_IMAGE:-postgres:16}
     environment:
-      POSTGRES_PASSWORD: postgres        # development only
-      POSTGRES_DB: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: artify
     ports: ["5432:5432"]
     volumes: ["pgdata:/var/lib/postgresql/data"]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      retries: 10
+      test: ["CMD-SHELL", "pg_isready -U postgres -d artify"]
+      interval: 3s
+      retries: 20
   redis:
-    image: redis:7
+    image: ${REDIS_IMAGE:-redis:7}
     ports: ["6379:6379"]
-  minio:                                  # S3-compatible object storage (used from Phase 6)
-    image: minio/minio
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      retries: 20
+  minio:                                    # not started by default: `docker compose --profile storage up`
+    profiles: ["storage"]
+    image: ${MINIO_IMAGE:-minio/minio}
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: minioadmin         # development only
+      MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
     ports: ["9000:9000", "9001:9001"]
     volumes: ["miniodata:/data"]
+  migrate:                                  # one-shot: migrations + dev login roles + reference data
+    build: { context: ., dockerfile: services/api/Dockerfile, args: { PYTHON_IMAGE: "${PYTHON_IMAGE:-python:3.12-slim}" } }
+    image: artify-api:dev
+    command: ["artify-api", "bootstrap-dev"]
+    environment: *api-env
+    depends_on: { postgres: { condition: service_healthy } }
+    restart: "no"
+  api:
+    image: artify-api:dev
+    environment: *api-env
+    ports: ["8000:8000"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+  worker:
+    image: artify-api:dev
+    command: ["celery", "-A", "artify_api.worker.celery_app", "worker", "--loglevel=INFO", "--concurrency=2"]
+    environment: *api-env
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+  dispatcher:                               # moves outbox rows to Celery (ADR-018)
+    image: artify-api:dev
+    command: ["sh", "-c", "while true; do artify-api dispatch-outbox; sleep 2; done"]
+    environment: *api-env
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
 volumes:
   pgdata:
   miniodata:

@@ -124,10 +124,7 @@ def test_audit_log_records_actions_and_is_tenant_scoped(client, mailer) -> None:
     make_company(a, "AUD")
     events = a.get(f"/orgs/{a.org_id}/audit-events").json()
     actions = {e["action"] for e in events}
-    # KNOWN LIMITATION (Phase 3): user-level auth events (login, MFA) are stored with
-    # organization_id NULL and are therefore not yet visible to tenant admins.
-    assert {"org.created", "user.signed_up", "company.created"} <= actions
-    assert "auth.mfa_enabled" not in actions
+    assert {"org.created", "user.signed_up", "company.created", "auth.mfa_enabled"} <= actions
     assert all("password" not in str(e["summary"]).lower() for e in events)
     assert not any(e["action"] == "company.created" for e in b.get(f"/orgs/{b.org_id}/audit-events").json())
 

@@ -108,6 +108,11 @@ def totp_now(secret: str, offset_steps: int = 0) -> str:
     return pyotp.TOTP(secret).at(time.time() + 30 * offset_steps)
 
 
+def totp_at_step(secret: str, step: int) -> str:
+    """Code for an exact 30-second step (deterministic; independent of the wall clock)."""
+    return pyotp.TOTP(secret).at(step * 30)
+
+
 class Actor:
     """A signed-in test user."""
 

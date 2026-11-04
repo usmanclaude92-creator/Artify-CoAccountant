@@ -1,4 +1,4 @@
-"""Operations CLI:  artify-api seed | create-platform-admin | dispatch-outbox | reconcile"""
+"""Operations CLI:  artify-api migrate | seed | bootstrap-dev | create-platform-admin | dispatch-outbox | reconcile"""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import getpass
 import os
 import sys
 
+from alembic.config import Config
 from sqlalchemy import Engine, create_engine, text
 
 from artify_api.ids import new_id
@@ -44,6 +45,59 @@ def cmd_create_platform_admin(args: argparse.Namespace) -> int:
     return 0
 
 
+def _alembic_config() -> Config:
+    from pathlib import Path
+
+    ini = os.environ.get("ARTIFY_ALEMBIC_INI") or str(Path(__file__).resolve().parents[2] / "alembic.ini")
+    return Config(ini)
+
+
+def cmd_migrate(_: argparse.Namespace) -> int:
+    """Apply migrations as the schema owner (ARTIFY_DATABASE_URL_MIGRATE)."""
+    from alembic import command
+
+    command.upgrade(_alembic_config(), "head")
+    print("migrations applied")
+    return 0
+
+
+def cmd_bootstrap_dev(_: argparse.Namespace) -> int:
+    """DEVELOPMENT/CI ONLY: migrate, create dev login roles with throwaway passwords, seed reference data."""
+    from pathlib import Path
+
+    env = get_settings().environment
+    if env not in ("local", "ci"):
+        print(f"refusing to bootstrap development credentials in environment '{env}'", file=sys.stderr)
+        return 2
+    cmd_migrate(argparse.Namespace())
+    roles_sql = Path(
+        os.environ.get("ARTIFY_DEV_ROLES_SQL")
+        or Path(__file__).resolve().parents[4] / "infrastructure/database/dev_roles.sql"
+    )
+    with _owner_engine().begin() as conn:
+        conn.exec_driver_sql(roles_sql.read_text(encoding="utf-8").replace("%", "%%"))
+    return cmd_seed(argparse.Namespace())
+
+
+def cmd_reconcile(_: argparse.Namespace) -> int:
+    """Recompute entitlement counters from source tables for every organization; report drift."""
+    import uuid
+
+    from artify_api import entitlements
+
+    drifted = 0
+    with _owner_engine().begin() as conn:
+        org_ids = [r[0] for r in conn.execute(text("SELECT id FROM organizations WHERE status <> 'closed'"))]
+        for org_id in org_ids:
+            conn.execute(text("SELECT set_config('app.org_id', :o, true)"), {"o": str(org_id)})
+            drift = entitlements.reconcile(conn, uuid.UUID(str(org_id)))
+            for key, (stored, actual) in drift.items():
+                drifted += 1
+                print(f"org={org_id} {key}: stored={stored} actual={actual} (repaired)")
+    print(f"reconciled {len(org_ids)} organization(s); {drifted} counter(s) repaired")
+    return 0
+
+
 def cmd_dispatch_outbox(_: argparse.Namespace) -> int:
     from artify_api.outbox import dispatch_pending
     from artify_api.worker import process_event
@@ -68,6 +122,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--role", choices=PLATFORM_ROLES, default="platform_owner")
     p.set_defaults(fn=cmd_create_platform_admin)
     sub.add_parser("dispatch-outbox").set_defaults(fn=cmd_dispatch_outbox)
+    sub.add_parser("reconcile").set_defaults(fn=cmd_reconcile)
+    sub.add_parser("migrate").set_defaults(fn=cmd_migrate)
+    sub.add_parser("bootstrap-dev").set_defaults(fn=cmd_bootstrap_dev)
     args = parser.parse_args(argv)
     return int(args.fn(args))
 

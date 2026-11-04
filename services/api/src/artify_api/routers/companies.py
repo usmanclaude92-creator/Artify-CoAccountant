@@ -199,9 +199,17 @@ def invite_company_member(
     company_id: uuid.UUID,
     body: CompanyInvite,
     ctx: Annotated[RequestCtx, Depends(Requires("company_members.manage", company=True))],
-) -> InvitationOut:
+    idempotency_key: Annotated[str | None, Header()] = None,
+) -> JSONResponse:
     assert ctx.org_id is not None
-    return _create_invitation(ctx, org_id=ctx.org_id, email=body.email, role_key=body.role, company_id=company_id)
+    org_id = ctx.org_id
+
+    def work() -> tuple[int, dict[str, object]]:
+        inv = _create_invitation(ctx, org_id=org_id, email=body.email, role_key=body.role, company_id=company_id)
+        return 201, inv.model_dump(mode="json")
+
+    status, payload = run_idempotent(ctx, idempotency_key, {**body.model_dump(), "company": str(company_id)}, work)
+    return JSONResponse(payload, status_code=status)
 
 
 @router.get(

@@ -9,13 +9,13 @@ from __future__ import annotations
 import re
 import secrets
 import uuid
-from dataclasses import dataclass
 from typing import Any
 
 from sqlalchemy import Connection, text
 from sqlalchemy.exc import IntegrityError
 
 from artify_api import audit
+from artify_api.auth_types import LoginResult, TokenPair
 from artify_api.db import DbContext, app_engine, platform_engine, transaction
 from artify_api.errors import Conflict, Unauthenticated, Unprocessable
 from artify_api.ids import new_id
@@ -33,15 +33,6 @@ from artify_api.settings import get_settings
 
 _ENGINE = {"tenant": app_engine, "platform": platform_engine}
 _COL = {"tenant": "user_id", "platform": "platform_admin_id"}
-
-
-@dataclass(frozen=True)
-class TokenPair:
-    access_token: str
-    refresh_token: str
-    expires_in: int
-    mfa: bool
-    session_id: uuid.UUID
 
 
 def _engine(realm: Realm):  # type: ignore[no-untyped-def]
@@ -179,7 +170,7 @@ def _audit_security(
     try:
         with transaction(_engine(realm), DbContext(user_id=subject)) as conn:
             if realm == "tenant":
-                audit.write_audit(conn, action=action, actor_id=subject, summary=summary, meta=meta)
+                audit.write_user_event(conn, actor_id=subject, action=action, summary=summary, meta=meta)
             else:
                 audit.write_platform_audit(conn, action=action, actor_id=subject, summary=summary, meta=meta)
     except Exception:  # never let auditing mask the original outcome
@@ -189,14 +180,6 @@ def _audit_security(
 
 
 # ------------------------------------------------------------------ login (both realms)
-@dataclass(frozen=True)
-class LoginResult:
-    mfa_required: bool
-    mfa_token: str | None = None
-    tokens: TokenPair | None = None
-    mfa_enrollment_required: bool = False
-
-
 def login(realm: Realm, email: str, password: str, meta: audit.RequestMeta) -> LoginResult:
     ip = meta.ip or "unknown"
     enforce(f"login:{realm}:ip:{ip}", 30, 60)
@@ -225,7 +208,7 @@ def login(realm: Realm, email: str, password: str, meta: audit.RequestMeta) -> L
         tokens = issue_session(conn, realm, subject, meta, mfa_verified=False)
         enroll = True if realm == "platform" else _holds_mfa_role(conn, subject)
         if realm == "tenant":
-            audit.write_audit(conn, action="auth.login", actor_id=subject, summary={"mfa": False}, meta=meta)
+            audit.write_user_event(conn, actor_id=subject, action="auth.login", summary={"mfa": False}, meta=meta)
         else:
             audit.write_platform_audit(conn, action="auth.login", actor_id=subject, summary={"mfa": False}, meta=meta)
     return LoginResult(mfa_required=False, tokens=tokens, mfa_enrollment_required=enroll)
@@ -280,7 +263,7 @@ def verify_mfa(realm: Realm, mfa_token: str, code: str, meta: audit.RequestMeta)
         if accepted:
             tokens = issue_session(conn, realm, subject, meta, mfa_verified=True)
             if realm == "tenant":
-                audit.write_audit(conn, action="auth.login", actor_id=subject, summary={"mfa": True}, meta=meta)
+                audit.write_user_event(conn, actor_id=subject, action="auth.login", summary={"mfa": True}, meta=meta)
             else:
                 audit.write_platform_audit(
                     conn, action="auth.login", actor_id=subject, summary={"mfa": True}, meta=meta
@@ -458,7 +441,7 @@ def verify_email(token: str) -> None:
         conn.execute(
             text("UPDATE users SET email_verified_at = now(), updated_at = now() WHERE id = :u"), {"u": row.user_id}
         )
-        audit.write_audit(conn, action="user.email_verified", actor_id=row.user_id)
+        audit.write_user_event(conn, actor_id=row.user_id, action="user.email_verified")
 
 
 def request_password_reset(email: str, meta: audit.RequestMeta) -> None:
@@ -470,7 +453,7 @@ def request_password_reset(email: str, meta: audit.RequestMeta) -> None:
         return  # identical response either way
     with transaction(app_engine(), DbContext(user_id=row.id)) as conn:
         token = _issue_email_token(conn, row.id, "password_reset", 3600)
-        audit.write_audit(conn, action="auth.password_reset_requested", actor_id=row.id, meta=meta)
+        audit.write_user_event(conn, actor_id=row.id, action="auth.password_reset_requested", meta=meta)
     get_mailer().send(Message(to=email, template="password_reset", context={"token": token}))
 
 
@@ -503,4 +486,4 @@ def confirm_password_reset(token: str, new_password: str, meta: audit.RequestMet
             ),
             {"u": row.user_id},
         )
-        audit.write_audit(conn, action="auth.password_reset", actor_id=row.user_id, meta=meta)
+        audit.write_user_event(conn, actor_id=row.user_id, action="auth.password_reset", meta=meta)

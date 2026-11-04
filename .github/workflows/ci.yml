@@ -1,5 +1,5 @@
-# NOT YET RUN on GitHub at the time of writing (Phase 1 was developed in a sandbox without Actions).
-# The same commands were executed locally; see docs/development/PHASE_1_COMPLETION_REPORT.md.
+# First green run: run 1 on 2026-11-04 (5 jobs). Jobs added since are noted in
+# docs/development/PHASE_1_COMPLETION_REPORT.md ("Follow-up").
 name: ci
 on:
   push:
@@ -29,12 +29,19 @@ jobs:
       ARTIFY_TEST_REDIS_URL: redis://localhost:6379/0
     steps:
       - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }     # the breaking-change check compares against an earlier commit
       - uses: astral-sh/setup-uv@v6
       - run: uv sync --project services/api --frozen
       - run: uv run --project services/api ruff check services/api
       - run: uv run --project services/api ruff format --check services/api
       - run: cd services/api && uv run mypy src
+      - run: cd services/api && uv run lint-imports
       - run: uv run --project services/api python services/api/scripts/export_openapi.py --check
+      - name: OpenAPI breaking-change check
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then BASE="origin/${{ github.base_ref }}"; else BASE="${{ github.event.before }}"; fi
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then echo "no base commit to compare"; exit 0; fi
+          uv run --project services/api python services/api/scripts/check_openapi_breaking.py "git:$BASE" packages/api-client/openapi.json --allow packages/api-client/breaking-changes-allowed.txt
       - run: uv run --project services/api pytest services/api/tests -rs
 
   web:
@@ -75,6 +82,33 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @artify/web exec playwright install --with-deps chromium
       - run: infrastructure/dev/e2e.sh
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: pnpm/action-setup@v4
+      - run: uv export --project services/api --no-hashes --no-emit-project | grep -v '^#' > /tmp/req.txt
+      - run: uvx pip-audit -r /tmp/req.txt --no-deps --disable-pip
+      - run: pnpm audit --prod
+      - name: JavaScript dev dependencies (fail on high/critical; known moderate minimatch advisories are tolerated)
+        run: pnpm audit --audit-level high
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --project services/api --frozen
+      - run: docker compose build
+      - run: docker compose up -d --no-build
+      - run: sleep 15 && docker compose ps -a
+      - run: uv run --project services/api python infrastructure/dev/compose_smoke.py
+      - if: failure()
+        run: docker compose logs --no-color | tail -200
+      - if: always()
+        run: docker compose down -v
 
   docs:
     runs-on: ubuntu-latest

@@ -21,7 +21,7 @@ _engines: dict[str, Engine] = {}
 
 def _engine(name: str, url: str) -> Engine:
     if name not in _engines:
-        _engines[name] = create_engine(url, pool_size=10, max_overflow=10, pool_pre_ping=True)
+        _engines[name] = create_engine(url, pool_size=10, max_overflow=10, pool_pre_ping=True, hide_parameters=True)
     return _engines[name]
 
 

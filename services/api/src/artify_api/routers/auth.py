@@ -9,7 +9,9 @@ from fastapi import APIRouter, Depends, Request, Response
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import text
 
-from artify_api import audit, auth_service, entitlements
+from artify_api import audit, entitlements
+from artify_api.auth_provider import get_auth_provider
+from artify_api.auth_types import LoginResult, TokenPair
 from artify_api.context import Public, RequestCtx, Requires, request_meta
 from artify_api.db import DbContext, app_engine, transaction
 from artify_api.errors import NotFound, Unauthenticated, Unprocessable
@@ -33,11 +35,11 @@ from artify_api.security.tokens import decode_token, hash_token
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-def to_token_response(t: auth_service.TokenPair) -> TokenResponse:
+def to_token_response(t: TokenPair) -> TokenResponse:
     return TokenResponse(access_token=t.access_token, refresh_token=t.refresh_token, expires_in=t.expires_in, mfa=t.mfa)
 
 
-def to_login_response(r: auth_service.LoginResult) -> LoginResponse:
+def to_login_response(r: LoginResult) -> LoginResponse:
     if r.mfa_required:
         return LoginResponse(status="mfa_required", mfa_token=r.mfa_token)
     assert r.tokens is not None
@@ -80,7 +82,7 @@ class AcceptInvitationRequest(BaseModel):
     "/signup", status_code=202, response_model=MessageOut, dependencies=[Depends(Public("self-service signup"))]
 )
 def signup(body: SignupRequest, request: Request) -> MessageOut:
-    auth_service.signup(
+    get_auth_provider().signup(
         email=body.email,
         password=body.password,
         display_name=body.display_name,
@@ -96,13 +98,13 @@ def signup(body: SignupRequest, request: Request) -> MessageOut:
 
 @router.post("/verify-email", status_code=204, dependencies=[Depends(Public("email verification link"))])
 def verify_email(body: TokenBody) -> Response:
-    auth_service.verify_email(body.token)
+    get_auth_provider().verify_email(body.token)
     return Response(status_code=204)
 
 
 @router.post("/login", response_model=LoginResponse, dependencies=[Depends(Public("credential login"))])
 def login(body: LoginRequest, request: Request) -> LoginResponse:
-    return to_login_response(auth_service.login("tenant", body.email, body.password, request_meta(request)))
+    return to_login_response(get_auth_provider().login("tenant", body.email, body.password, request_meta(request)))
 
 
 @router.post(
@@ -111,7 +113,7 @@ def login(body: LoginRequest, request: Request) -> LoginResponse:
     dependencies=[Depends(Public("second login step; presents a signed challenge token"))],
 )
 def mfa_verify(body: MfaVerifyRequest, request: Request) -> TokenResponse:
-    return to_token_response(auth_service.verify_mfa("tenant", body.mfa_token, body.code, request_meta(request)))
+    return to_token_response(get_auth_provider().verify_mfa("tenant", body.mfa_token, body.code, request_meta(request)))
 
 
 @router.post(
@@ -121,13 +123,13 @@ def mfa_verify(body: MfaVerifyRequest, request: Request) -> TokenResponse:
 )
 def refresh(body: RefreshRequest, request: Request) -> TokenResponse:
     enforce(f"refresh:ip:{request_meta(request).ip}", 120, 60)
-    return to_token_response(auth_service.refresh("tenant", body.refresh_token))
+    return to_token_response(get_auth_provider().refresh("tenant", body.refresh_token))
 
 
 @router.post("/logout", status_code=204)
 def logout(ctx: Annotated[RequestCtx, Depends(Requires(reason="ends the caller's own session"))]) -> Response:
-    auth_service.revoke_session(ctx.conn, ctx.session_id, "logout")
-    audit.write_audit(ctx.conn, action="auth.logout", actor_id=ctx.user_id, meta=ctx.meta)
+    get_auth_provider().revoke_session(ctx.conn, ctx.session_id, "logout")
+    audit.write_user_event(ctx.conn, actor_id=ctx.user_id, action="auth.logout", meta=ctx.meta)
     return Response(status_code=204)
 
 
@@ -138,13 +140,13 @@ def logout(ctx: Annotated[RequestCtx, Depends(Requires(reason="ends the caller's
     dependencies=[Depends(Public("password reset request"))],
 )
 def password_reset_request(body: PasswordResetRequest, request: Request) -> MessageOut:
-    auth_service.request_password_reset(body.email, request_meta(request))
+    get_auth_provider().request_password_reset(body.email, request_meta(request))
     return MessageOut(status="reset_email_sent_if_account_exists")
 
 
 @router.post("/password-reset/confirm", status_code=204, dependencies=[Depends(Public("password reset link"))])
 def password_reset_confirm(body: PasswordResetConfirm, request: Request) -> Response:
-    auth_service.confirm_password_reset(body.token, body.new_password, request_meta(request))
+    get_auth_provider().confirm_password_reset(body.token, body.new_password, request_meta(request))
     return Response(status_code=204)
 
 
@@ -153,7 +155,7 @@ def mfa_enroll(
     ctx: Annotated[RequestCtx, Depends(Requires(reason="MFA enrollment for the caller"))],
 ) -> MfaEnrollResponse:
     email = ctx.conn.execute(text("SELECT email FROM users WHERE id = :u"), {"u": ctx.user_id}).scalar_one()
-    secret, uri = auth_service.mfa_enroll(ctx.conn, "tenant", ctx.user_id, str(email))
+    secret, uri = get_auth_provider().mfa_enroll(ctx.conn, "tenant", ctx.user_id, str(email))
     return MfaEnrollResponse(secret=secret, otpauth_uri=uri)
 
 
@@ -161,8 +163,8 @@ def mfa_enroll(
 def mfa_confirm(
     body: MfaConfirmRequest, ctx: Annotated[RequestCtx, Depends(Requires(reason="MFA enrollment for the caller"))]
 ) -> MfaConfirmResponse:
-    codes, pair = auth_service.mfa_confirm(ctx.conn, "tenant", ctx.user_id, ctx.session_id, body.code)
-    audit.write_audit(ctx.conn, action="auth.mfa_enabled", actor_id=ctx.user_id, meta=ctx.meta)
+    codes, pair = get_auth_provider().mfa_confirm(ctx.conn, "tenant", ctx.user_id, ctx.session_id, body.code)
+    audit.write_user_event(ctx.conn, actor_id=ctx.user_id, action="auth.mfa_enabled", meta=ctx.meta)
     return MfaConfirmResponse(recovery_codes=codes, access_token=pair.access_token, expires_in=pair.expires_in)
 
 
@@ -197,14 +199,13 @@ def revoke_session(
     session_id: uuid.UUID,
     ctx: Annotated[RequestCtx, Depends(Requires(reason="revokes one of the caller's own sessions"))],
 ) -> Response:
-    if not auth_service.revoke_session(ctx.conn, session_id, "user_revoked"):
+    if not get_auth_provider().revoke_session(ctx.conn, session_id, "user_revoked"):
         raise NotFound("Session not found.")
-    audit.write_audit(
+    audit.write_user_event(
         ctx.conn,
-        action="auth.session_revoked",
         actor_id=ctx.user_id,
-        entity_type="session",
-        entity_id=session_id,
+        action="auth.session_revoked",
+        summary={"session_id": str(session_id)},
         meta=ctx.meta,
     )
     return Response(status_code=204)

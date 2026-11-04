@@ -1,0 +1,40 @@
+# Install once:  uvx pre-commit install      Run on everything:  uvx pre-commit run --all-files
+# All hooks are local (no third-party hook repositories are fetched).
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff check
+        entry: uv run --project services/api ruff check services/api
+        language: system
+        pass_filenames: false
+        files: ^services/api/
+      - id: ruff-format
+        name: ruff format --check
+        entry: uv run --project services/api ruff format --check services/api
+        language: system
+        pass_filenames: false
+        files: ^services/api/
+      - id: import-linter
+        name: module boundaries (import-linter)
+        entry: bash -c 'cd services/api && uv run lint-imports'
+        language: system
+        pass_filenames: false
+        files: ^services/api/
+      - id: docs-check
+        name: documentation consistency
+        entry: python3 tools/check_docs.py
+        language: system
+        pass_filenames: false
+        files: ^(docs/|README\.md|CLAUDE\.md|\.claude/|tools/)
+      - id: web-lint
+        name: eslint (web)
+        entry: pnpm --filter @artify/web lint
+        language: system
+        pass_filenames: false
+        files: ^apps/web/
+      - id: no-private-keys
+        name: no private keys or obvious secrets
+        entry: '(-----BEGIN [A-Z ]*PRIVATE KEY-----|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{30,})'
+        language: pygrep
+        exclude: ^(pnpm-lock\.yaml|uv\.lock)$

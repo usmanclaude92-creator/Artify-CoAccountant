@@ -99,3 +99,30 @@ def write_platform_audit(
             "cid": m.correlation_id,
         },
     )
+
+
+def write_user_event(
+    conn: Connection,
+    *,
+    actor_id: uuid.UUID | None,
+    action: str,
+    summary: dict[str, Any] | None = None,
+    meta: RequestMeta | None = None,
+) -> None:
+    """Record a user-level security event (login, MFA, session, password reset).
+
+    Stored once in the platform security stream (organization_id NULL) and once per organization the
+    user belongs to, so tenant admins with `audit.read` can see their members' security events.
+    The connection's context must already be the acting user (enforced in the database)."""
+    m = meta or RequestMeta()
+    conn.execute(
+        text("SELECT app.audit_user_event(:actor, :action, CAST(:summary AS jsonb), CAST(:ip AS inet), :ua, :cid)"),
+        {
+            "actor": actor_id,
+            "action": action,
+            "summary": json.dumps(redact(summary or {})),
+            "ip": m.ip,
+            "ua": (m.user_agent or "")[:300],
+            "cid": m.correlation_id,
+        },
+    )

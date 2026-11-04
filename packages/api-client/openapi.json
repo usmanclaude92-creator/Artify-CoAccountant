@@ -782,19 +782,40 @@
       },
       "MemberUpdate": {
         "properties": {
-          "status": {
-            "enum": [
-              "active",
-              "suspended",
-              "removed"
+          "role": {
+            "anyOf": [
+              {
+                "enum": [
+                  "firm_owner",
+                  "practice_admin",
+                  "accountant",
+                  "staff"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ],
-            "title": "Status",
-            "type": "string"
+            "title": "Role"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "active",
+                  "suspended",
+                  "removed"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
           }
         },
-        "required": [
-          "status"
-        ],
         "title": "MemberUpdate",
         "type": "object"
       },
@@ -2047,6 +2068,22 @@
               "title": "Company Id",
               "type": "string"
             }
+          },
+          {
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
           }
         ],
         "requestBody": {
@@ -2160,6 +2197,24 @@
       },
       "post": {
         "operationId": "devices_register",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -2655,6 +2710,22 @@
               "title": "Org Id",
               "type": "string"
             }
+          },
+          {
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
           }
         ],
         "requestBody": {
@@ -2790,6 +2861,7 @@
     },
     "/api/v1/orgs/{org_id}/members/{user_id}": {
       "patch": {
+        "description": "Change a member's status and/or role. Safety rules: only a firm owner may grant or remove\nthe firm-owner role; the last firm owner can neither be demoted nor deactivated; nobody changes\ntheir own role; roles that count against limit.accountants are guarded; assignments end when a\nmember stops being an accountant/staff member.",
         "operationId": "organizations_update_member",
         "parameters": [
           {

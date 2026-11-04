@@ -532,7 +532,13 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Update Member */
+        /**
+         * Update Member
+         * @description Change a member's status and/or role. Safety rules: only a firm owner may grant or remove
+         *     the firm-owner role; the last firm owner can neither be demoted nor deactivated; nobody changes
+         *     their own role; roles that count against limit.accountants are guarded; assignments end when a
+         *     member stops being an accountant/staff member.
+         */
         patch: operations["organizations_update_member"];
         trace?: never;
     };
@@ -958,11 +964,10 @@ export interface components {
         };
         /** MemberUpdate */
         MemberUpdate: {
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "active" | "suspended" | "removed";
+            /** Role */
+            role?: ("firm_owner" | "practice_admin" | "accountant" | "staff") | null;
+            /** Status */
+            status?: ("active" | "suspended" | "removed") | null;
         };
         /** MembershipOut */
         MembershipOut: {
@@ -1751,7 +1756,9 @@ export interface operations {
     companies_invite_member: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
             path: {
                 company_id: string;
             };
@@ -1837,7 +1844,9 @@ export interface operations {
     devices_register: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2168,7 +2177,9 @@ export interface operations {
     organizations_invite_member: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
             path: {
                 org_id: string;
             };

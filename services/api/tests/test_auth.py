@@ -12,6 +12,7 @@ from conftest import (
     login,
     new_owner,
     signup_and_verify,
+    totp_at_step,
     totp_now,
     uniq,
 )
@@ -108,23 +109,26 @@ def test_privileged_roles_require_mfa_before_org_access(client, mailer) -> None:
     assert a.get(f"/orgs/{org}").status_code == 200
 
 
-def test_mfa_login_challenge_replay_and_recovery_codes(client, mailer) -> None:  # type: ignore[no-untyped-def]
+def test_mfa_login_challenge_replay_and_recovery_codes(client, mailer, owner_engine) -> None:  # type: ignore[no-untyped-def]
     a = new_owner(client, mailer)
     assert a.mfa_secret
+    with owner_engine.connect() as conn:
+        used = conn.execute(
+            text("SELECT f.last_used_step FROM mfa_factors f JOIN users u ON u.id = f.user_id WHERE u.email = :e"),
+            {"e": a.email},
+        ).scalar_one()
     first = client.post("/api/v1/auth/login", json={"email": a.email, "password": PASSWORD}).json()
     assert first["status"] == "mfa_required" and first["tokens"] is None
-    # confirm used the current step: the same code must not be accepted again (replay protection)
+    # Replay protection, deterministic: the exact step consumed at enrollment can never be used again,
+    # however much wall-clock time has passed.
     replay = client.post(
-        "/api/v1/auth/mfa/verify", json={"mfa_token": first["mfa_token"], "code": totp_now(a.mfa_secret)}
+        "/api/v1/auth/mfa/verify", json={"mfa_token": first["mfa_token"], "code": totp_at_step(a.mfa_secret, used)}
     )
     assert replay.status_code == 401
-    good = client.post(
-        "/api/v1/auth/mfa/verify", json={"mfa_token": first["mfa_token"], "code": totp_now(a.mfa_secret, 1)}
-    )
+    nxt = totp_at_step(a.mfa_secret, used + 1)  # a later step inside the server's +-1 step tolerance
+    good = client.post("/api/v1/auth/mfa/verify", json={"mfa_token": first["mfa_token"], "code": nxt})
     assert good.status_code == 200 and good.json()["mfa"] is True
-    again = client.post(
-        "/api/v1/auth/mfa/verify", json={"mfa_token": first["mfa_token"], "code": totp_now(a.mfa_secret, 1)}
-    )
+    again = client.post("/api/v1/auth/mfa/verify", json={"mfa_token": first["mfa_token"], "code": nxt})
     assert again.status_code == 401  # same step used twice
     assert (
         client.post("/api/v1/auth/mfa/verify", json={"mfa_token": first["mfa_token"], "code": "000000"}).status_code

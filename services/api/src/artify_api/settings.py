@@ -45,7 +45,22 @@ class Settings(BaseSettings):
     min_password_length: int = 12
     cors_origins: list[str] = Field(default_factory=list)
     rate_limit_backend: Literal["memory", "redis"] = "memory"
-    mailer_backend: Literal["console", "memory"] = "console"
+    mailer_backend: Literal["console", "memory", "smtp"] = "console"
+    log_format: Literal["auto", "text", "json"] = "auto"  # auto: text in local, json elsewhere
+    log_level: str = "INFO"
+
+    # E-mail (used when mailer_backend = "smtp"). Provider choice is decision D-3 (hosting).
+    web_base_url: str = "http://localhost:3000"  # origin used in e-mailed links
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_username: str | None = None
+    smtp_password: SecretStr | None = None
+    smtp_starttls: bool = True
+    mail_from: str = "Artify Co-Accountant <no-reply@localhost>"
+
+    @property
+    def effective_log_format(self) -> str:
+        return ("text" if self.environment == "local" else "json") if self.log_format == "auto" else self.log_format
 
     @model_validator(mode="after")
     def _no_dev_secrets_outside_dev(self) -> Settings:
@@ -54,11 +69,17 @@ class Settings(BaseSettings):
                 value = getattr(self, name).get_secret_value()
                 if _DEV_SECRET_MARKER in value or value.startswith("ZGV2LW9ubHktbWZh"):
                     raise ValueError(f"{name} must be set to a real secret in {self.environment}")
+            if self.mailer_backend != "smtp" or not self.smtp_host:
+                raise ValueError("mailer_backend must be 'smtp' with smtp_host set in staging/production")
+            if not self.web_base_url.startswith("https://"):
+                raise ValueError("web_base_url must be https in staging/production")
             if self.rate_limit_backend != "redis":
                 raise ValueError("rate_limit_backend must be 'redis' in staging/production")
             for name in ("database_url_app", "database_url_platform", "database_url_dispatcher"):
                 if "dev-only" in getattr(self, name):
                     raise ValueError(f"{name} contains a development password")
+        if self.mailer_backend == "smtp" and not self.smtp_host:
+            raise ValueError("smtp_host is required when mailer_backend is 'smtp'")
         from cryptography.fernet import Fernet  # fail fast on a malformed key
 
         Fernet(self.mfa_encryption_key.get_secret_value().encode())

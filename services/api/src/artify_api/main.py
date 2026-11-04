@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import time
 import uuid
 from collections.abc import Awaitable, Callable
 
@@ -11,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRoute
 
 from artify_api.errors import install_error_handlers
+from artify_api.logging_config import configure_logging, correlation_id_var
 from artify_api.routers import auth, companies, health, me, orgs, platform
 from artify_api.settings import get_settings
 
@@ -26,6 +28,7 @@ def _operation_id(route: APIRoute) -> str:
 
 def create_app() -> FastAPI:
     settings = get_settings()
+    configure_logging(settings.effective_log_format, settings.log_level)
     app = FastAPI(
         title="Artify Co-Accountant API",
         version="0.1.0",
@@ -47,7 +50,19 @@ def create_app() -> FastAPI:
     @app.middleware("http")
     async def _common(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
         request.state.correlation_id = request.headers.get("x-request-id", "")[:64] or uuid.uuid4().hex
+        correlation_id_var.set(request.state.correlation_id)
+        started = time.perf_counter()
         response = await call_next(request)
+        # Path only (never the query string); no bodies, headers or identities beyond the correlation id.
+        log.info(
+            "request",
+            extra={
+                "method": request.method,
+                "path": request.url.path,
+                "status": response.status_code,
+                "duration_ms": round((time.perf_counter() - started) * 1000, 1),
+            },
+        )
         response.headers["X-Request-ID"] = request.state.correlation_id
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "no-referrer"

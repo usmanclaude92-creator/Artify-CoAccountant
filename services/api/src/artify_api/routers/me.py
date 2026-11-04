@@ -6,12 +6,14 @@ import uuid
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Header, Response
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 
 from artify_api import audit, entitlements
 from artify_api.context import RequestCtx, Requires, resolve_principal
 from artify_api.errors import NotFound
+from artify_api.idempotency import run_idempotent
 from artify_api.ids import new_id
 from artify_api.permissions import SYSTEM_ROLES
 
@@ -119,40 +121,49 @@ def get_me(
 
 @router.post("/devices", response_model=DeviceOut, status_code=201, operation_id="devices_register")
 def register_device(
-    body: DeviceCreate, ctx: Annotated[RequestCtx, Depends(Requires("devices.manage_own", org_source="header"))]
-) -> DeviceOut:
+    body: DeviceCreate,
+    ctx: Annotated[RequestCtx, Depends(Requires("devices.manage_own", org_source="header"))],
+    idempotency_key: Annotated[str | None, Header()] = None,
+) -> JSONResponse:
     assert ctx.org_id is not None
-    entitlements.guard(ctx.conn, ctx.org_id, "limit.devices")
-    device_id = new_id()
-    ctx.conn.execute(
-        text(
-            "INSERT INTO devices (id, user_id, organization_id, platform, name, app_version, key_fingerprint,"
-            " last_seen_at) VALUES (:id, :u, :o, :p, :n, :v, :k, now())"
-        ),
-        {
-            "id": device_id,
-            "u": ctx.user_id,
-            "o": ctx.org_id,
-            "p": body.platform,
-            "n": body.name,
-            "v": body.app_version,
-            "k": body.key_fingerprint,
-        },
-    )
-    entitlements.refresh_counter(ctx.conn, ctx.org_id, "limit.devices")
-    audit.write_audit(
-        ctx.conn,
-        action="device.registered",
-        actor_id=ctx.user_id,
-        org_id=ctx.org_id,
-        entity_type="device",
-        entity_id=device_id,
-        summary={"platform": body.platform},
-        meta=ctx.meta,
-    )
-    return DeviceOut(
-        id=device_id, platform=body.platform, name=body.name, app_version=body.app_version, status="active"
-    )
+    org_id = ctx.org_id
+
+    def work() -> tuple[int, dict[str, object]]:
+        entitlements.guard(ctx.conn, org_id, "limit.devices")
+        device_id = new_id()
+        ctx.conn.execute(
+            text(
+                "INSERT INTO devices (id, user_id, organization_id, platform, name, app_version, key_fingerprint,"
+                " last_seen_at) VALUES (:id, :u, :o, :p, :n, :v, :k, now())"
+            ),
+            {
+                "id": device_id,
+                "u": ctx.user_id,
+                "o": org_id,
+                "p": body.platform,
+                "n": body.name,
+                "v": body.app_version,
+                "k": body.key_fingerprint,
+            },
+        )
+        entitlements.refresh_counter(ctx.conn, org_id, "limit.devices")
+        audit.write_audit(
+            ctx.conn,
+            action="device.registered",
+            actor_id=ctx.user_id,
+            org_id=org_id,
+            entity_type="device",
+            entity_id=device_id,
+            summary={"platform": body.platform},
+            meta=ctx.meta,
+        )
+        out = DeviceOut(
+            id=device_id, platform=body.platform, name=body.name, app_version=body.app_version, status="active"
+        )
+        return 201, out.model_dump(mode="json")
+
+    status, payload = run_idempotent(ctx, idempotency_key, body.model_dump(), work)
+    return JSONResponse(payload, status_code=status)
 
 
 @router.get("/devices", response_model=list[DeviceOut], operation_id="devices_list")

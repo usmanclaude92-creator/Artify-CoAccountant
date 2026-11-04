@@ -1,0 +1,50 @@
+[project]
+name = "artify-api"
+version = "0.1.0"
+description = "Artify Co-Accountant shared cloud backend (Phase 1 foundation)"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi==0.162.0",
+  "uvicorn==0.54.0",
+  "pydantic[email]==2.14.2",
+  "pydantic-settings==2.16.2",
+  "sqlalchemy==2.1.8",
+  "alembic==1.20.1",
+  "psycopg[binary]==3.3.8",
+  "argon2-cffi==25.1.0",
+  "pyjwt==2.15.1",
+  "pyotp==2.10.0",
+  "cryptography==50.0.2",
+  "redis==8.1.0",
+  "celery==5.6.3",
+  "uuid-utils==1.2.0",
+]
+
+[dependency-groups]
+dev = [
+  "pytest==9.2.0",
+  "httpx==0.28.1",
+  "ruff==0.17.3",
+  "mypy==2.4.1",
+]
+
+[project.scripts]
+artify-api = "artify_api.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/artify_api"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = ["error::DeprecationWarning:artify_api"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+ignore_missing_imports = true

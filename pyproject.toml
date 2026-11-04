@@ -1,0 +1,15 @@
+[tool.uv.workspace]
+members = ["services/api"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "S", "C4", "SIM", "RUF"]
+ignore = ["S101", "B008", "S608", "E501"]  # S608: SQL built only from code-defined constants; reviewed. E501: ruff format owns wrapping
+
+[tool.ruff.lint.per-file-ignores]
+"services/api/tests/**" = ["S105", "S106", "S311", "S603", "S607"]
+"services/api/src/artify_api/settings.py" = ["S105"]
+"services/api/src/artify_api/routers/schemas.py" = ["S105"]

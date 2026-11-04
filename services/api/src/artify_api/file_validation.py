@@ -5,7 +5,7 @@ Two outcomes besides "ok":
 - `problems`: the file is rejected and not stored (empty, corrupt, unsupported, executable, extension/content mismatch,
   zip bomb, unsafe archive entries);
 - `quarantine`: the file is a valid document but carries active content (PDF JavaScript/launch actions, Office macros).
-  It is stored for an administrator but is never served, previewed or counted as available.
+  The upload ends as `quarantined` and nothing is stored as a document (there is no review queue yet).
 """
 
 from __future__ import annotations

@@ -1,6 +1,8 @@
 # Phase 6 — Document Management and Storage
 
-**Status: NOT STARTED.**
+**Status: DELIVERED FOR REVIEW** (started on the owner's Phase 6 brief — *Document Management & Storage Engine*). Report: [`PHASE_6_COMPLETION_REPORT.md`](PHASE_6_COMPLETION_REPORT.md); docs: [`../documents/`](../documents/DOCUMENT_MANAGEMENT_ARCHITECTURE.md).
+
+**Where the owner's brief narrowed this plan (not built, by design):** thumbnails/page images, the document workflow engine and stage history, `document_processing_jobs`, pre-signed multipart upload and signed download URLs (replaced by backend-mediated chunked upload and authenticated streaming, ADR-053), an S3/MinIO driver (ADR-054), RLS mirroring of node grants (ADR-058), Intake Inbox and `_Inbox` watched folder, download-policy automation beyond a bounded manual run. Everything below remains the original plan text, kept for traceability.
 
 ## Objectives
 

@@ -6,7 +6,7 @@ Status: foundation implemented. Read first: [`../architecture/APPLICATION_ARCHIT
 
 1. **The cloud is the source of truth.** The app holds a cache and local metadata. The cache never decides authorization; every company open, workspace read and device action is confirmed by the backend.
 2. **Tokens never reach the webview.** The Rust side performs all HTTP, keeps the access token in memory and the rotating refresh token in the OS credential vault.
-3. **A narrow command surface.** The UI can call 26 named commands and nothing else (no file-system, shell, HTTP or opener permission is granted to the webview).
+3. **A narrow command surface.** The UI can call 41 named commands (26 from Phase 5, 15 added in Phase 6 for documents) and nothing else (no file-system, shell, HTTP or opener permission is granted to the webview).
 4. **Workspace is data.** Nothing in the app names a section, folder or category; the tree is whatever the server delivers for that user and company.
 5. **Honest scope.** Areas that are not built (Documents, Processing Queue, Accounting, Reports) say so and show no sample data.
 
@@ -24,7 +24,7 @@ apps/desktop/
     src/workspace.rs        parse/validate the Phase 4 workspace, diff by stable id
     src/settings.rs logs.rs error.rs
     tests/                  78 offline tests + 5 live tests (real API)
-  src-tauri/                Tauri 2 shell: 26 commands, background sync loop, updater hook, bundle config
+  src-tauri/                Tauri 2 shell: 41 commands, background sync and upload loops, window drag-and-drop staging, updater hook, bundle config
   src/                      React + TypeScript UI (Vite); bridge/ isolates Tauri; screens/; state/
   tests/live/seed_live.py   seeds a real API for the live test
 ```
@@ -52,7 +52,8 @@ Shared design tokens and components from `packages/ui` (`@artify/ui`), light/dar
 | Dashboard | real: identity, organization, number of authorized companies, open company |
 | My Companies | real: list, search, filters, favorites, recents, open (server-verified) |
 | Workspace | real: the company's own tree, search, details, refresh, version tracking |
-| Documents · Processing Queue · Accounting · Reports | placeholders labelled "Not available yet"; no data |
+| All Documents · Import Documents · Upload Queue · Archived Documents | real (Phase 6): folder tree with counts, search, preview, details, versions, activity; import with destination, category, configured fields and duplicate policy; resumable upload queue; archived list — [`../documents/`](../documents/DOCUMENT_MANAGEMENT_ARCHITECTURE.md) |
+| Processing Queue · Accounting · Reports | placeholders labelled "Not available yet"; no data |
 | Synchronization | real: connection, last sync, saved version, last error, queue counters, manual sync |
 | Notifications | real: local event log (workspace changes, sync problems, offline, revoked device) |
 | Settings | real: General, Storage, Synchronization, Account, Devices, About |

@@ -73,9 +73,10 @@ export function fmtPct(sent: number, size: number): number {
 
 export const docStatusLabel = (d: Pick<DocumentRow, "status">): string => (d.status === "archived" ? "Archived" : d.status === "deleted" ? "Removed" : "Active");
 
+/** Keys are the event types the API records (document_events.event_type). */
 export const EVENT_LABEL: Record<string, string> = {
-  created: "Added", version_added: "New version", renamed: "Renamed", moved: "Moved", archived: "Archived", restored: "Restored", deleted: "Removed",
-  undeleted: "Brought back", metadata_changed: "Details changed", version_restored: "Earlier version made current", legal_hold: "Legal hold changed", purged: "Permanently deleted",
-  downloaded: "Opened or downloaded", viewed: "Viewed", scan_completed: "Safety check finished",
+  uploaded: "Added", version_created: "New version added", version_restored: "Earlier version made current", renamed: "Renamed", moved: "Moved to another folder",
+  metadata_changed: "Details changed", archived: "Archived", restored: "Restored", deleted: "Removed", undeleted: "Brought back", purged: "Permanently deleted",
+  downloaded: "Downloaded or opened", previewed: "Previewed", legal_hold_changed: "Legal hold changed", duplicate_kept: "Duplicate kept as a separate document", quarantined: "Blocked by the safety checks",
 };
 export const eventLabel = (t: string): string => EVENT_LABEL[t] ?? t.replace(/_/g, " ");

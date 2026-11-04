@@ -525,6 +525,8 @@ def list_sessions(
 
 
 def company_storage(env: Env) -> dict[str, Any]:
+    # totals and the by-type breakdown cover EVERY folder of the company, including ones this caller may not view
+    env.acc.require("configure")
     r = env.conn.execute(
         text(
             "SELECT count(*) FILTER (WHERE d.status = 'active') AS active, count(*) FILTER (WHERE d.status = 'archived') AS archived,"

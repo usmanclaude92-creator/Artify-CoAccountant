@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { WsField, WsNode } from "../bridge/types";
-import { applicableFields, importProblem, nodeChain, uploadTargets, viewerKind, fmtPct } from "./documents";
+import { applicableFields, eventLabel, importProblem, nodeChain, uploadTargets, viewerKind, fmtPct } from "./documents";
 
 const f = (key: string, extra: Partial<WsField> = {}): WsField => ({ id: key, key, label: key, data_type: "text", required: false, is_active: true, archived_at: null, options: [], category_ids: [], node_ids: [], ...extra });
 const n = (id: string, parent: string | null, extra: Partial<WsNode> = {}): WsNode => ({ id, parent_id: parent, node_type: "folder", key: id, name: id, display_name: null, description: "", position: 0, depth: 1, is_active: true, archived_at: null, ...extra });
@@ -37,6 +37,12 @@ describe("document helpers", () => {
     expect(importProblem("storage_quota", null)).toMatch(/nothing was deleted/);
     expect(importProblem("something_new", "Server said this")).toBe("Server said this");
     expect(importProblem(null, null)).toMatch(/did not finish/);
+  });
+  it("labels every event type the API records and falls back readably", () => {
+    for (const t of ["uploaded", "version_created", "version_restored", "renamed", "moved", "metadata_changed", "archived", "restored", "deleted", "undeleted", "purged", "downloaded", "previewed", "legal_hold_changed", "duplicate_kept", "quarantined"]) {
+      expect(eventLabel(t)).not.toBe(t);
+    }
+    expect(eventLabel("something_new")).toBe("something new");
   });
   it("clamps progress", () => {
     expect(fmtPct(50, 100)).toBe(50);

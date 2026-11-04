@@ -46,8 +46,8 @@ Everything happens in the request transaction: an error anywhere rolls back the 
 | Fractional `sort_key` | Integer `position`, renumbered for the affected sibling list | Reordering writes one row per sibling instead of one row. Fine for realistic sizes. |
 | `workspace_sections` + `workspace_folders` tables | One adjacency table `workspace_nodes` (`node_type` section/folder) with `depth` and `path_ids` | One recursive model; sections are roots. |
 | Workflow definitions, stages, approval rules | **Not built** | Out of the brief’s Phase 4 list; belongs with the review/approval phase. |
-| Intake Inbox system node | **Not built** | Needs document intake (Phase 6). |
-| `document_field_values` + type-matching trigger | **Not built** | Needs `documents` (Phase 6). The value validators exist and are exposed through `fields/validate-values`. |
+| Intake Inbox system node | **Not built** (documents exist since Phase 6, but no inbox node or route) | The `inbox` source value is reserved. |
+| `document_field_values` + type-matching trigger | **Built in Phase 6** (table; values validated by the Phase 4 validators in the API, no database trigger on type) | See [`../documents/DOCUMENT_METADATA.md`](../documents/DOCUMENT_METADATA.md). |
 | Change-feed record for devices | **Not built**; clients poll `GET …/upload-config` (version + ETag) | There is no change-feed in the repository yet. |
 | Drag-and-drop | **Not built**; Move…, Move up/down buttons (keyboard friendly) | Brief: “if feasible”. |
 | Template role presets for permissions | Not included (permissions are user/role bound and are never copied) | Security. |

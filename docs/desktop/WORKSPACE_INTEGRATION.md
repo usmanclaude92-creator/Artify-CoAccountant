@@ -27,7 +27,7 @@ The app shows only what the server delivered. A user restricted to some sections
 
 ## Local folders
 
-"Prepare local company folder" creates only the company's folder under the configured root ([`LOCAL_STORAGE.md`](LOCAL_STORAGE.md)). The per-folder directory tree and renames-as-moves are **not** built: they belong with document management (Phase 6), which will derive the tree from this same data by node id.
+"Prepare local company folder" creates only the company's folder under the configured root ([`LOCAL_STORAGE.md`](LOCAL_STORAGE.md)). The per-folder directory tree is built by Phase 6 when a document is saved locally: it is derived from this same cached tree **by node id**, and a folder rename/move in the cloud is applied to local copies as a rename by *Match folders to the cloud* ([`../documents/LOCAL_STORAGE_INTEGRATION.md`](../documents/LOCAL_STORAGE_INTEGRATION.md)).
 
 ## Tested
 

@@ -1,6 +1,6 @@
 # Automatic Filing Rules (configuration foundation)
 
-Nothing is filed or moved in Phase 4 (no documents exist). This delivers rule storage, validation, conflict analysis and a dry-run evaluator that Phase 6/7 will call.
+This delivers rule storage, validation, conflict analysis and a dry-run evaluator. Since Phase 6 the evaluator is called by `POST /documents/suggest` to *propose* a folder and category; the user decides and nothing is filed automatically ([`../documents/DOCUMENT_NAMING_AND_FILING.md`](../documents/DOCUMENT_NAMING_AND_FILING.md)).
 
 ## Rule
 

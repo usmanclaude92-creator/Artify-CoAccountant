@@ -81,7 +81,7 @@ export function Documents({ status }: { status: "active" | "archived" }) {
           <Panel className="d-filters">
             <div className="a-field"><label htmlFor="doc-q">Search</label><input id="doc-q" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Name, file name or a detail value" /></div>
             <div className="a-field"><label htmlFor="doc-fam">Type</label>
-              <select id="doc-fam" value={family} onChange={(e) => setFamily(e.target.value)}><option value="">All types</option><option value="pdf">PDF</option><option value="image">Images</option><option value="spreadsheet">Spreadsheets</option><option value="document">Documents</option><option value="text">Text</option></select></div>
+              <select id="doc-fam" value={family} onChange={(e) => setFamily(e.target.value)}><option value="">All types</option><option value="pdf">PDF</option><option value="image">Images</option><option value="excel">Spreadsheets</option><option value="word">Word documents</option><option value="text">Text and CSV</option></select></div>
             <div className="a-field"><label htmlFor="doc-sort">Sort by</label>
               <select id="doc-sort" value={sort} onChange={(e) => setSort(e.target.value)}><option value="created">Newest</option><option value="updated">Recently changed</option><option value="name">Name</option><option value="size">Size</option></select></div>
           </Panel>
@@ -173,9 +173,9 @@ function Detail({ id, ws, onChanged, onClose }: { id: string; ws: WorkspaceData 
         </form>
       ) : null}
       {confirm === "delete" ? (
-        <form className="d-inline-form" onSubmit={(e) => { e.preventDefault(); if (reason.trim()) void act("Removed. An administrator can bring it back.", () => op("delete", { reason: reason.trim() })).then(() => { setConfirm(null); onClose(); }); }}>
-          <div className="a-field"><label htmlFor="rs">Why is this being removed?</label><input id="rs" value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} autoFocus /></div>
-          <Button type="submit" disabled={busy || !reason.trim()}>Remove document</Button><Button type="button" variant="secondary" onClick={() => setConfirm(null)}>Cancel</Button>
+        <form className="d-inline-form" onSubmit={(e) => { e.preventDefault(); if (reason.trim().length >= 3) void act("Removed. An administrator can bring it back.", () => op("delete", { reason: reason.trim() })).then(() => { setConfirm(null); onClose(); }); }}>
+          <div className="a-field"><label htmlFor="rs">Why is this being removed? (at least 3 characters)</label><input id="rs" value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} autoFocus /></div>
+          <Button type="submit" disabled={busy || reason.trim().length < 3}>Remove document</Button><Button type="button" variant="secondary" onClick={() => setConfirm(null)}>Cancel</Button>
         </form>
       ) : null}
       <div role="tablist" aria-label="Document sections" className="d-tabs">

@@ -42,4 +42,4 @@ A node a caller may not `view` is omitted from `GET /workspace`, `upload-config`
 
 ## Not built
 
-Per-document/row-level RLS mirroring of section grants (documents do not exist yet; Phase 6 must add it), custom organization-defined roles, grants for client-side (company role) users.
+Per-document/row-level RLS mirroring of section grants (documents exist since Phase 6, but node grants are enforced in the API and in the search query, not in RLS — a known gap, ADR-058), custom organization-defined roles, grants for client-side (company role) users.

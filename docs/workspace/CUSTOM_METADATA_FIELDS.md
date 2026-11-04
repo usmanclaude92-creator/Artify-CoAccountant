@@ -1,6 +1,6 @@
 # Custom Metadata Fields
 
-Definitions live in `custom_field_definitions` (+ options + applicability). **No columns are added per field.** Values are not stored yet: `document_field_values` arrives with `documents` in Phase 6, which must attach the validators documented here.
+Definitions live in `custom_field_definitions` (+ options + applicability). **No columns are added per field.** Values are stored per document in `document_field_values` (Phase 6), validated by the validators documented here ([`../documents/DOCUMENT_METADATA.md`](../documents/DOCUMENT_METADATA.md)).
 
 ## Types
 

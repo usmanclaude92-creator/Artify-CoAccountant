@@ -12,7 +12,9 @@ Offline devices: a device holds `version`; on reconnect it re-fetches. An upload
 
 `GET /companies/{id}/workspace` is the full builder view (adds management data and per-node `can` flags).
 
-## Phase 6 – documents
+## Phase 6 – documents (delivered; how each obligation was met)
+
+Status after Phase 6: restrict FKs, the impact count, `document_field_values`, naming and filing were implemented as listed below; **mirroring node grants into RLS was not** (the allow/deny engine runs in the API instead — ADR-058). Details in [`../documents/`](../documents/DOCUMENT_MANAGEMENT_ARCHITECTURE.md).
 
 - `documents.node_id → workspace_nodes(organization_id, company_id, id)` **ON DELETE RESTRICT**; `category_id` likewise; add the documents count to `workspace.impact()` and `delete_node`.
 - Attach `document_field_values` to the field definitions; validate with `workspace_engine.validate_values` and the applicable-fields query (`workspace_config.applicable_fields`); reference values use `ref_exists_fn`.

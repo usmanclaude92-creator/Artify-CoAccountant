@@ -8,7 +8,7 @@ One window, 1360×860, minimum 980×640, resizable, centered. `withGlobalTauri` 
 
 ## Content Security Policy
 
-`default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src ipc: http://ipc.localhost; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`. The webview can only talk to the Rust side; it has no network permission toward the API or anywhere else. `'unsafe-inline'` for styles is needed for React `style` attributes; scripts are never inline. `freezePrototype` is on.
+`default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; frame-src blob:; font-src 'self'; connect-src ipc: http://ipc.localhost; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`. Phase 6 added `blob:` for images and frames only, so the in-app viewer can show a verified preview that the Rust side handed over as bytes (a `blob:` URL created in the page; no remote content is allowed). The webview can only talk to the Rust side; it has no network permission toward the API or anywhere else. `'unsafe-inline'` for styles is needed for React `style` attributes; scripts are never inline. `freezePrototype` is on.
 
 ## Capabilities (`capabilities/default.json`)
 

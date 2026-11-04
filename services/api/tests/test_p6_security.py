@@ -117,6 +117,36 @@ def test_an_accountant_sees_only_documents_of_assigned_companies_and_ids_cannot_
     assert acc.get(f"/companies/{a}/documents/{doc_a['id']}/content").status_code == 404
 
 
+def test_a_document_of_another_company_is_never_found_through_this_companys_path_even_for_the_owner(
+    client, mailer
+) -> None:  # type: ignore[no-untyped-def]
+    # the owner reaches every company, so only the company filter in the query (not row-level security) can answer 404 here
+    owner = new_owner(client, mailer, org_name="Cross Company Docs")
+    a, na, b, nb = two_companies(owner)
+    doc_b = stored(owner, b, "only-in-b.pdf", samples.pdf("cross"), nb)
+    for method, suffix in (("get", ""), ("get", "/content"), ("get", "/versions"), ("get", "/events")):
+        r = getattr(owner, method)(f"/companies/{a}/documents/{doc_b['id']}{suffix}")
+        assert r.status_code == 404 and "only-in-b" not in r.text, suffix
+    assert owner.patch(f"/companies/{a}/documents/{doc_b['id']}", {"display_name": "x"}).status_code == 404
+    assert owner.post(f"/companies/{a}/documents/{doc_b['id']}/archive").status_code == 404
+    assert owner.post(f"/companies/{a}/documents/{doc_b['id']}/move", {"node_id": na}).status_code == 404
+    assert owner.post(f"/companies/{a}/documents/{doc_b['id']}/delete", {"reason": "cross company"}).status_code == 404
+    assert owner.get(f"/companies/{b}/documents/{doc_b['id']}").json()["display_name"] == "only-in-b.pdf"  # untouched
+
+
+def test_only_a_removed_document_can_be_permanently_deleted(client, mailer) -> None:  # type: ignore[no-untyped-def]
+    owner = new_owner(client, mailer, org_name="Purge State Docs")
+    c = make_company(owner, "PS")["id"]
+    n = mk(owner, c, "Docs")["id"]
+    d = stored(owner, c, "keep.pdf", samples.pdf("ps"), n)
+    r = owner.post(f"/companies/{c}/documents/{d['id']}/purge", {"confirm": "keep.pdf"})
+    assert r.status_code == 409 and r.json()["code"] == "bad_state"
+    assert (
+        get_storage().exists(keys_of_one(owner, c, d["id"]))
+        and owner.get(f"/companies/{c}/documents/{d['id']}").status_code == 200
+    )
+
+
 def test_folder_permissions_apply_to_documents_and_change_immediately(client, mailer) -> None:  # type: ignore[no-untyped-def]
     owner = new_owner(client, mailer, org_name="Folder Perm Docs")
     c = make_company(owner, "FP")["id"]
@@ -135,7 +165,9 @@ def test_folder_permissions_apply_to_documents_and_change_immediately(client, ma
     assert grant.status_code == 201
     listing = acc.get(f"/companies/{c}/documents").json()
     assert [x["id"] for x in listing["items"]] == [d_open["id"]] and "pay.pdf" not in str(listing)
-    assert "Payroll" not in str(acc.get(f"/companies/{c}/documents/counts").json())
+    counts = acc.get(f"/companies/{c}/documents/counts").json()
+    assert secret not in counts["by_node"] and counts["totals"]["active"] == 1  # a hidden folder is not even counted
+    assert acc.get(f"/companies/{c}/documents/storage").status_code == 403  # company-wide totals include hidden folders
     for path in (
         f"/companies/{c}/documents/{d_secret['id']}",
         f"/companies/{c}/documents/{d_secret['id']}/content",

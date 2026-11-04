@@ -11,6 +11,8 @@ What exists in PostgreSQL 16 after `alembic upgrade head` + `artify-api seed`. D
 | 0003 | `sql/0003_auth_audit_fanout.sql` | tenant-visible fan-out of user-level security events (ADR-025) |
 | 0004 | `sql/0004_super_admin.sql` | **Phase 2:** Super Admin — see §8 |
 | 0005 | `sql/0005_control_center.sql` | **Phase 3:** Firm Control Center — see §9 |
+| 0006 | `sql/0006_workspace.sql` | **Phase 4:** workspace — see §10 |
+| 0007 | `sql/0007_documents.sql` | **Phase 6:** documents and storage — see §11 |
 
 Alembic revisions are thin wrappers executing the hand-written SQL. **Migrations are forward-only (no downgrade)** — a deliberate deviation from the brief's "rollback where supported" (DECISIONS ADR-020): the schema is RLS/trigger-heavy and an unreviewed automatic downgrade would be more dangerous than useful. Recovery path in development: `make db-reset`; in production: restore from backup / forward fix. Tests build the database from migration 0001 upward on every run; `Base.metadata.create_all()` is never used.
 
@@ -93,3 +95,7 @@ Limitations: views run as `artify_definer`, so any new column added to them must
 ## 10. Phase 4 additions (migration 0006)
 
 Forward-only `0006_workspace`: new reference table `document_kinds` (synced by seed); new company-owned tables `workspace_nodes`, `document_categories`, `custom_field_definitions`, `custom_field_options`, `custom_field_applicability`, `naming_rules`, `filing_rules`, `workspace_permissions`, `workspace_revisions` (SELECT/INSERT only); organization-or-system tables `workspace_templates`, `workspace_template_versions`; `company_configurations` gains `workspace_access_mode`, `applied_template_id`, `applied_template_version`; function `app.is_unique_uuid_array`; `app.measure_entitlement` replaced to measure `limit.workspace_templates` (definer read policy on `workspace_templates`). Details: [`../workspace/WORKSPACE_DATA_MODEL.md`](../workspace/WORKSPACE_DATA_MODEL.md).
+
+## 11. Phase 6 additions (migration 0007)
+
+Forward-only `0007_documents`: `pg_trgm`; company-owned tables `document_import_batches`, `documents`, `document_versions`, `document_field_values`, `document_upload_sessions`, `document_events`, `document_duplicate_candidates`, all with the composite `(organization_id, company_id)` foreign key, forced RLS (ADR-024 InitPlan pattern) and grants for `artify_app` only — **no DELETE on documents, versions, events or duplicate decisions**; `documents.node_id` / `category_id` reference the Phase 4 tables with `ON DELETE RESTRICT`; triggers: `document_versions_guard` (a stored version is immutable; no delete), `document_events_immutable`, `document_duplicate_candidates_immutable`; `app.measure_entitlement` replaced to measure `quota.storage_bytes` (bytes of non-purged versions) and `quota.documents_per_month` (documents created this UTC month); a backfill of the usage counters for existing organizations and a trigger that seeds them for new ones. Binary content is never stored in PostgreSQL. Details: [`../documents/DOCUMENT_DATA_MODEL.md`](../documents/DOCUMENT_DATA_MODEL.md).

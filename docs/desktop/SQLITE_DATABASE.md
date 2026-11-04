@@ -2,7 +2,7 @@
 
 File `artify.db` in the app-data folder (`%APPDATA%\com.artify.coaccountant`), SQLite 3 via `rusqlite` (bundled), WAL, foreign keys on.
 
-## Schema (migration 1)
+## Schema (migration 1; migration 2 adds the Phase 6 tables below)
 
 | Table | Purpose |
 |---|---|
@@ -14,6 +14,8 @@ File `artify.db` in the app-data folder (`%APPDATA%\com.artify.coaccountant`), S
 | `local_dirs(user_id, company_id, dir_name)` | stable local folder name per company |
 | `pending_ops` | operation queue skeleton: state `pending/in_progress/failed`, attempts, `next_retry_at`, sealed payload |
 | `events` | notification log (bounded to ~200 per user) |
+| `imports` (migration 2) | the **upload queue**: one row per file — company, destination node and category by id, status (`waiting · preparing · uploading · verifying · completed · failed · cancelled · quarantined`), bytes sent, attempts, next retry, server session id, idempotency key, duplicate policy, result document id, error code/message; the source path, file name, display name, field values and change reason are in a **sealed** JSON column |
+| `local_files` (migration 2) | the **local mirror**: document id → version id, node id, relative path under the company folder, SHA-256, size |
 
 Indexes: `companies_by_org`, `companies_recent`, `pending_ops_due`, `events_recent`.
 

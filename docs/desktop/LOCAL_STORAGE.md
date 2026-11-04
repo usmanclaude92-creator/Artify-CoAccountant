@@ -16,6 +16,10 @@ The user chooses the root folder (Settings → Storage; native folder dialog ope
 
 Each company has its own folder; the database, caches and settings are keyed by Windows user profile (app data) and by signed-in user. Different Windows users have separate databases and roots. The frontend can never pass an arbitrary path to a file operation: only `storage_set_root` (validated) receives a path.
 
-## Not built (Phase 6 and later)
+## Phase 6 additions
 
-Directory tree derived from the workspace, files, sync, the `_Inbox` watched folder, long-path (`\\?\`) handling beyond the length guard, Explorer-edit detection (D-7).
+Document copies, the folder mirror, the download policy and path rules are in [`../documents/LOCAL_STORAGE_INTEGRATION.md`](../documents/LOCAL_STORAGE_INTEGRATION.md).
+
+## Not built (Phase 7 and later)
+
+Two-way file sync, the `_Inbox` watched folder, long-path (`\\?\`) handling beyond the length guard, Explorer-edit detection (D-7).

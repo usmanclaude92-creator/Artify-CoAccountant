@@ -324,9 +324,10 @@ function DocumentsTab({ co }: { co: Company }) {
   const { orgId, can } = useOrg();
   const [q, setQ] = useState("");
   const [offset, setOffset] = useState(0);
-  const stats = useTenantApi<CompanyStorage>(orgId, `/companies/${co.id}/documents/storage`);
+  const manager = can("workspace.manage"); // storage totals cover every folder, so the server only gives them to managers
+  const stats = useTenantApi<CompanyStorage>(orgId, manager ? `/companies/${co.id}/documents/storage` : null);
   const list = useTenantApi<Page<DocRow>>(orgId, `/companies/${co.id}/documents?limit=25&offset=${offset}${q ? `&q=${encodeURIComponent(q)}` : ""}`);
-  const failed = useTenantApi<Page<UploadRow>>(orgId, can("workspace.manage") ? `/companies/${co.id}/uploads?mine=false&status=failed&limit=10` : null);
+  const failed = useTenantApi<Page<UploadRow>>(orgId, manager ? `/companies/${co.id}/uploads?mine=false&status=failed&limit=10` : null);
   const s = stats.data;
   return (
     <div className="grid gap-4">
@@ -338,7 +339,7 @@ function DocumentsTab({ co }: { co: Company }) {
           <div className="a-kpi"><span className="a-kpi__label">Stored (all versions)</span><span className="a-kpi__value">{fmtBytes(s.stored_bytes)}</span><span className="a-hint">{fmtNumber(s.stored_versions)} files</span></div>
           <div className="a-kpi"><span className="a-kpi__label">Uploads, last 7 days</span><span className="a-kpi__value">{fmtNumber(s.uploads_last_7_days.completed)} done</span><span className="a-hint">{fmtNumber(s.uploads_last_7_days.failed)} failed</span></div>
         </div>
-      ) : <Loading what="storage" />}
+      ) : manager ? <Loading what="storage" /> : null}
       {s && s.by_type.length ? <p className="a-hint">By type: {s.by_type.map((t) => `${t.extension.toUpperCase()} ${fmtNumber(t.documents)} (${fmtBytes(t.bytes)})`).join(" · ")}</p> : null}
       <form role="search" className="a-toolbar" onSubmit={(e) => { e.preventDefault(); setOffset(0); }}>
         <Field label="Search documents">{(id) => <input id={id} type="search" value={q} placeholder="Name or metadata value" onChange={(e) => { setQ(e.target.value); setOffset(0); }} />}</Field>

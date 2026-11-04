@@ -1,6 +1,6 @@
 # Document Naming Rules
 
-Configuration, validation and preview only. Phase 6 will call the same engine when storing documents.
+Configuration, validation and preview. Since Phase 6 the same engine renders the *suggested* document name at import ([`../documents/DOCUMENT_NAMING_AND_FILING.md`](../documents/DOCUMENT_NAMING_AND_FILING.md)); the stored name is whatever the user accepted.
 
 ## Pattern syntax
 

@@ -11,7 +11,8 @@ type Accountant = Schemas["AccountantRow"];
 type Settings = Schemas["OrgSettingsOut"];
 interface Pick { on: boolean; type: "primary" | "secondary" | "reviewer"; responsibility: string }
 
-const STEPS = ["Basic information", "Accounting information", "Assign accountants", "Review"];
+const STEPS = ["Basic information", "Accounting information", "Assign accountants", "Workspace", "Review"];
+interface Tpl { id: string; name: string; description: string; is_system: boolean; counts: Record<string, number> }
 
 export default function NewCompanyPage() {
   const { orgId, can, href } = useOrg();
@@ -28,6 +29,11 @@ export default function NewCompanyPage() {
     fy_month: "1", fy_day: "1", basis: "", vat_registered: false, vat_number: "", tax_jurisdiction: "",
   });
   const [picks, setPicks] = useState<Record<string, Pick>>({});
+  const [wsMode, setWsMode] = useState<"blank" | "template" | "copy">("blank");
+  const [wsTemplate, setWsTemplate] = useState("");
+  const [wsSource, setWsSource] = useState("");
+  const tpls = useTenantApi<{ items: Tpl[] }>(orgId, can("workspace.manage") ? `/orgs/${orgId}/workspace-templates` : null);
+  const cos = useTenantApi<Schemas["CompanyOut"][]>(orgId, can("workspace.manage") ? `/orgs/${orgId}/companies` : null);
   const set = (k: keyof typeof f, v: string | boolean) => setF((p) => ({ ...p, [k]: v }));
   // Defaults come from the organization settings once, and only while the field is untouched.
   const country = f.country || org.data?.country || "";
@@ -40,7 +46,8 @@ export default function NewCompanyPage() {
   const chosen = Object.entries(picks).filter(([, p]) => p.on);
   const primaries = chosen.filter(([, p]) => p.type === "primary").length;
   const step3Ok = primaries <= 1;
-  const ok = [step1Ok, step2Ok, step3Ok, true];
+  const step4Ok = wsMode === "blank" || (wsMode === "template" ? !!wsTemplate : !!wsSource);
+  const ok = [step1Ok, step2Ok, step3Ok, step4Ok, true];
   const opt = (v: string) => (v.trim() ? v.trim() : null);
 
   const submit = async () => {
@@ -56,6 +63,7 @@ export default function NewCompanyPage() {
           accounting_basis: f.basis || null, vat_registered: f.vat_registered, vat_number: f.vat_registered ? opt(f.vat_number) : null,
           tax_jurisdiction: opt(f.tax_jurisdiction),
           assignments: chosen.map(([user_id, p]) => ({ user_id, assignment_type: p.type, responsibility: opt(p.responsibility) })),
+          workspace: wsMode === "blank" ? undefined : wsMode === "template" ? { mode: "template", template_id: wsTemplate } : { mode: "copy", source_company_id: wsSource },
         },
       });
       toast(`Company “${created.name}” created.`);
@@ -73,7 +81,7 @@ export default function NewCompanyPage() {
       <ol className="a-steps" aria-label="Progress" style={{ display: "flex", gap: "1rem", flexWrap: "wrap", listStyle: "none", padding: 0 }}>
         {STEPS.map((s, i) => <li key={s} aria-current={i === step ? "step" : undefined} style={{ fontWeight: i === step ? 700 : 400 }}>{i + 1}. {s}</li>)}
       </ol>
-      <form className="grid gap-4" onSubmit={(e) => { e.preventDefault(); if (step < 3) setStep(step + 1); else void submit(); }}>
+      <form className="grid gap-4" onSubmit={(e) => { e.preventDefault(); if (step < 4) setStep(step + 1); else void submit(); }}>
         {step === 0 ? (
           <Panel className="grid gap-3">
             <h2>Basic information</h2>
@@ -132,6 +140,24 @@ export default function NewCompanyPage() {
         ) : null}
         {step === 3 ? (
           <Panel className="grid gap-3">
+            <h2>Workspace</h2>
+            <p className="a-hint">Optional. Every company has its own workspace of sections and folders. Start blank, from a suggested template, or from a copy of another company’s configuration (never its documents, users or permissions). Everything stays editable afterwards, and you can change it at any time.</p>
+            {!can("workspace.manage") ? <Alert tone="info">Your role cannot set up workspaces. The company will start with an empty workspace.</Alert> : null}
+            <fieldset className="a-field" disabled={!can("workspace.manage")}><legend>Starting point</legend>
+              <label style={{ display: "flex", gap: "0.5rem" }}><input type="radio" name="wsmode" checked={wsMode === "blank"} onChange={() => setWsMode("blank")} /> Blank workspace — configure it later</label>
+              <label style={{ display: "flex", gap: "0.5rem" }}><input type="radio" name="wsmode" checked={wsMode === "template"} onChange={() => setWsMode("template")} /> Start from a template</label>
+              <label style={{ display: "flex", gap: "0.5rem" }}><input type="radio" name="wsmode" checked={wsMode === "copy"} onChange={() => setWsMode("copy")} /> Copy the workspace configuration of another company</label>
+            </fieldset>
+            {wsMode === "template" ? (
+              <Field label="Template">{(id) => <select id={id} value={wsTemplate} onChange={(e) => setWsTemplate(e.target.value)}><option value="">Choose a template…</option>{tpls.data?.items.map((t) => <option key={t.id} value={t.id}>{t.name} — {t.counts.sections} sections, {t.counts.folders} folders</option>)}</select>}</Field>
+            ) : null}
+            {wsMode === "copy" ? (
+              <Field label="Copy from">{(id) => <select id={id} value={wsSource} onChange={(e) => setWsSource(e.target.value)}><option value="">Choose a company…</option>{cos.data?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>}</Field>
+            ) : null}
+          </Panel>
+        ) : null}
+        {step === 4 ? (
+          <Panel className="grid gap-3">
             <h2>Review</h2>
             <dl className="a-dl">
               <dt>Name</dt><dd>{f.name}</dd><dt>Code</dt><dd>{f.code}</dd>
@@ -141,15 +167,16 @@ export default function NewCompanyPage() {
               <dt>Accounting basis</dt><dd>{f.basis || "Not specified"}</dd>
               <dt>VAT</dt><dd>{f.vat_registered ? `Registered${f.vat_number ? ` (${f.vat_number})` : ""}` : "Not registered"}</dd>
               <dt>Tax jurisdiction</dt><dd>{f.tax_jurisdiction || "—"}</dd>
+              <dt>Workspace</dt><dd>{wsMode === "blank" ? "Blank" : wsMode === "template" ? `Template: ${tpls.data?.items.find((t) => t.id === wsTemplate)?.name ?? ""}` : `Copy of ${cos.data?.find((c) => c.id === wsSource)?.name ?? ""}`}</dd>
               <dt>Accountants</dt><dd>{chosen.length ? chosen.map(([id, p]) => `${team.data?.items.find((a) => a.user_id === id)?.display_name ?? id} (${p.type})`).join(", ") : "None yet"}</dd>
             </dl>
-            <p className="a-hint">Creating the company reserves one unit of your company limit. Its workspace structure is configured separately; nothing is created automatically.</p>
+            <p className="a-hint">Creating the company reserves one unit of your company limit. The workspace starts as you chose in the previous step; nothing else is created automatically.</p>
           </Panel>
         ) : null}
         {err ? <Alert tone="danger">{err}</Alert> : null}
         <div className="a-actions">
           {step > 0 ? <Button type="button" variant="secondary" onClick={() => setStep(step - 1)} disabled={busy}>Back</Button> : null}
-          <Button type="submit" disabled={!ok[step] || busy}>{step < 3 ? "Next" : busy ? "Creating…" : "Create company"}</Button>
+          <Button type="submit" disabled={!ok[step] || busy}>{step < 4 ? "Next" : busy ? "Creating…" : "Create company"}</Button>
         </div>
       </form>
     </div>

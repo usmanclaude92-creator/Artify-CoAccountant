@@ -46,6 +46,16 @@ PERMISSIONS: tuple[Permission, ...] = (
     _P(
         "company_settings.manage", "company", "Edit a company's accounting settings (financial year, VAT, jurisdiction)"
     ),
+    _P("workspace.read", "company", "View a company's workspace structure, categories, fields and rules"),
+    _P(
+        "workspace.manage",
+        "company",
+        "Change a company's workspace structure, categories, fields, rules and apply templates",
+    ),
+    _P("workspace.permissions.manage", "company", "Manage who can see and change which parts of a company's workspace"),
+    _P(
+        "workspace_templates.manage", "organization", "Save, version and archive the organization's workspace templates"
+    ),
     # ---- platform realm (Artify Super Admin) ----
     _P("platform.self.read", "platform", "Read own platform-admin profile"),
     _P("platform.dashboard.read", "platform", "View the platform overview"),
@@ -114,6 +124,9 @@ SYSTEM_ROLES: dict[str, tuple[str, str, frozenset[str]]] = {
                 "assignments.read",
                 "assignments.manage",
                 "devices.manage_own",
+                "workspace.read",
+                "workspace.manage",
+                "workspace_templates.manage",
             }
         ),
     ),
@@ -129,6 +142,7 @@ SYSTEM_ROLES: dict[str, tuple[str, str, frozenset[str]]] = {
                 "company_members.read",
                 "assignments.read",
                 "devices.manage_own",
+                "workspace.read",
             }
         ),
     ),
@@ -143,23 +157,24 @@ SYSTEM_ROLES: dict[str, tuple[str, str, frozenset[str]]] = {
                 "company_members.read",
                 "assignments.read",
                 "devices.manage_own",
+                "workspace.read",
             }
         ),
     ),
     "staff": (
         "organization",
         "Staff",
-        frozenset({"organization.read", "companies.list", "companies.read", "devices.manage_own"}),
+        frozenset({"organization.read", "companies.list", "companies.read", "devices.manage_own", "workspace.read"}),
     ),
     "document_operator": (
         "organization",
         "Document operator",
-        frozenset({"organization.read", "companies.list", "companies.read", "devices.manage_own"}),
+        frozenset({"organization.read", "companies.list", "companies.read", "devices.manage_own", "workspace.read"}),
     ),
     "read_only": (
         "organization",
         "Read-only user",
-        frozenset({"organization.read", "companies.list", "companies.read"}),
+        frozenset({"organization.read", "companies.list", "companies.read", "workspace.read"}),
     ),
     "company_owner": (
         "company",

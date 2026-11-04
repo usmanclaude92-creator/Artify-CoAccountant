@@ -67,6 +67,10 @@ Custom (organization-defined) roles and per-user permission overrides are **not 
 | `ownership.transfer` | ● |  |  |  |  |  |  |  |  |  |  |
 | `companies.archive` | ● | ● |  |  |  |  |  |  |  |  |  |
 | `company_settings.manage` | ● | ● | ● |  |  |  |  |  |  |  |  |
+| `workspace.read` | ● | ● | ● | ● | ● | ● | ● | ● |  |  |  |
+| `workspace.manage` | ● | ● | ● |  |  |  |  |  |  |  |  |
+| `workspace.permissions.manage` | ● | ● |  |  |  |  |  |  |  |  |  |
+| `workspace_templates.manage` | ● | ● | ● |  |  |  |  |  |  |  |  |
 
 ## Rules enforced by the server
 
@@ -75,7 +79,8 @@ Custom (organization-defined) roles and per-user permission overrides are **not 
 3. **Last owner** — the final active owner cannot be demoted, suspended or removed. The approved process is **ownership transfer**: owner-only, MFA-verified session, confirmation by typing the organization identifier, active target; the target becomes owner and the caller becomes administrator in one transaction.
 4. **MFA** — owner, administrator and practice manager are refused (403 `mfa_required`) until the session completed two-factor authentication.
 5. **Assignment-based visibility** — restricted roles see a company only through a currently open assignment window and an active organization membership.
-6. **Company lifecycle powers are separate keys** — `companies.archive` (activate/deactivate/archive/restore) and `company_settings.manage` are distinct from `companies.update`.
+6. **Workspace keys (Phase 4)** gate the route; what a member may do to a particular section or folder is then decided by the allow/deny grant engine described in [`../workspace/WORKSPACE_PERMISSIONS.md`](../workspace/WORKSPACE_PERMISSIONS.md).
+7. **Company lifecycle powers are separate keys** — `companies.archive` (activate/deactivate/archive/restore) and `company_settings.manage` are distinct from `companies.update`.
 7. **Audit** — role changes, invitations, assignment changes, ownership transfers, status changes and settings changes write append-only audit events with actor, target and before/after values.
 8. **Platform admins** hold no tenant permissions; they reach customer data only through approved, time-limited support grants.
 

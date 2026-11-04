@@ -4,6 +4,8 @@ Skills are written against real code, so each is created in the phase where that
 
 **Created in Phase 1 (6 of 17):** `co-accountant-architecture`, `multi-tenant-saas`, `api-development`, `security-audit`, `automated-testing`, `code-review`.
 
-**Not yet created** (later phases): frontend-design, workspace-customization-engine, multi-company-configuration, tauri-desktop-development, document-storage-and-sync, financial-document-intelligence, accounting-engine, vat-compliance, financial-data-validation, excel-template-engine, flutter-mobile-development.
+**Created in Phase 4 (2 more, 8 of 17):** `workspace-customization-engine`, `multi-company-configuration`.
+
+**Not yet created** (later phases): frontend-design, tauri-desktop-development, document-storage-and-sync, financial-document-intelligence, accounting-engine, vat-compliance, financial-data-validation, excel-template-engine, flutter-mobile-development.
 
 No third-party or community skills are installed.

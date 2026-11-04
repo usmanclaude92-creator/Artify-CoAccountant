@@ -1,6 +1,6 @@
 # Phase 4 — Workspace Structure & Customization Engine
 
-**Status: NOT STARTED.** This phase establishes the configurable model that Phases 5–11 depend on. It must be complete and stable before any document management or AI work.
+**Status: delivered for review (see [`PHASE_4_COMPLETION_REPORT.md`](PHASE_4_COMPLETION_REPORT.md) for what was built, what deliberately differs from this plan — change sets, workflows/approvals, Intake Inbox, drag-and-drop, change feed — and the evidence).** This phase establishes the configurable model that Phases 5–11 depend on. It must be complete and stable before any document management or AI work.
 
 ## Objectives
 
@@ -55,11 +55,11 @@ Executable: TS-WS-01 through TS-WS-12; TS-ISO-03 (workspace parts); TS-ENT-05; p
 
 ## Completion checklist
 
-- [ ] All TS-WS scenarios executed and recorded
-- [ ] Usability sessions done; findings addressed or logged
-- [ ] Skills created: `workspace-customization-engine`, `multi-company-configuration`
-- [ ] Docs updated if the model changed
-- [ ] `PHASE_4_COMPLETION_REPORT.md`
+- [~] TS-WS scenarios: executed or partially executed and recorded in `TEST_SCENARIOS.md` (document-bound halves wait for Phase 6; TS-WS-12 not built)
+- [ ] Usability sessions done; findings addressed or logged — **not done** (no moderated sessions with non-technical accountants)
+- [x] Skills created: `workspace-customization-engine`, `multi-company-configuration`
+- [x] Docs updated (`docs/workspace/`, ADR-041…046)
+- [x] `PHASE_4_COMPLETION_REPORT.md`
 
 ## Known risks
 

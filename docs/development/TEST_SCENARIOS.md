@@ -47,6 +47,27 @@ Format: Given / When / Then. "Phase" is where the scenario must first become an 
 | TS-ISO-09 | 1 | **Realm separation.** A tenant-realm token is rejected by `/platform/*`; a platform token is rejected by tenant routes. |
 | TS-ISO-10 | 1 | **Route-table authorization.** Every route in the OpenAPI document declares a permission; a test fails if any does not. |
 
+### Execution status – Phase 4 (workspace)
+
+Tests: `services/api/tests/test_p4_workspace.py`, `test_p4_engine.py`, `test_database_rls.py`; browser: `apps/web/e2e/workspace.spec.ts`. Scenarios are marked EXECUTED only for what exists today; document-bound halves are Phase 6.
+
+| ID | Status | Implemented by | Coverage note |
+|---|---|---|---|
+| TS-WS-01 | EXECUTED | `test_two_companies_have_different_structures_and_never_affect_each_other` | |
+| TS-WS-02 | PARTIAL | same test; `test_upload_config_returns_only_permitted_active_targets_and_supports_etag` | 4 vs 10 sections and per-company upload-config; filing/processing/export parts need documents |
+| TS-WS-03 | PARTIAL | `test_unbounded_nesting_and_stable_ids_and_keys` | rename keeps id and key; document retention needs Phase 6 |
+| TS-WS-04 | PARTIAL | `test_archive_restore_cascade_and_confirmation`, `test_upload_config_…` | archive is a flag, vanishes from pickers/upload-config, restore works, hard delete refused by a RESTRICT reference (stand-in table); `409 section_archived` on upload needs Phase 6 |
+| TS-WS-05 | EXECUTED | `test_templates_are_copied_independently`, `test_save_as_template_versions_and_later_updates_do_not_change_companies` | |
+| TS-WS-06 | PARTIAL | `test_save_as_template_versions_…` (archive/new version leave companies unchanged) | the “no runtime join” claim is by code inspection only |
+| TS-WS-07 | PARTIAL | `test_version_conflicts_are_detected`, `test_entitlements_are_enforced_…` (failed apply changes nothing) | change sets were not built; individual changes and bulk operations are atomic |
+| TS-WS-08 | PARTIAL | `test_archive_restore_cascade_and_confirmation` | counts subfolders/categories/rules/grants; documents = 0 and devices not counted yet |
+| TS-WS-09 | PARTIAL | `test_categories_need_a_document_kind_and_validated_mapping` | kind is NOT NULL; the “re-map with derived records” rule cannot be tested before records exist |
+| TS-WS-10 | PARTIAL | `test_custom_fields_options_scope_and_archival_preserve_data`, engine tests | definitions and validators; stored values need Phase 6 |
+| TS-WS-11 | PARTIAL | `test_permissions_inheritance_deny_and_hidden_names` | API level (tree, upload-config, direct access); documents/RLS/change feed need Phase 6 |
+| TS-WS-12 | NOT BUILT | — | Intake Inbox is not part of this delivery |
+| TS-ENT-05 | EXECUTED | `test_entitlements_are_enforced_by_the_backend_and_never_delete_data` | per-change and bulk (template apply, duplicate) totals, atomic |
+| TS-ISO-03 | EXECUTED for workspace | `test_company_and_tenant_isolation`, `test_rls_hides_workspace_rows_across_organizations` | Excel templates and documents still absent |
+
 ## Workspace (TS-WS)
 
 | ID | Phase | Scenario |

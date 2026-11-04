@@ -18,7 +18,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
 from artify_api.context import PlatformCtx
-from artify_api.entitlements import MEASURABLE
+from artify_api.entitlements import ENFORCED
 from artify_api.errors import Conflict, NotFound, Unprocessable
 from artify_api.ids import new_id
 from artify_api.routers.platform_common import Sensitive, padmin, paudit, require_confirmation
@@ -254,7 +254,7 @@ def entitlement_catalog(ctx: Annotated[PlatformCtx, padmin("platform.plans.read"
     """Every key plans can configure. `enforced_now` is false for keys whose feature does not exist yet:
     the value can be set today and starts being enforced when the feature ships."""
     rows = ctx.conn.execute(text("SELECT * FROM entitlement_definitions ORDER BY key")).mappings()
-    return [CatalogEntry(**r, enforced_now=r["key"] in MEASURABLE) for r in rows]
+    return [CatalogEntry(**r, enforced_now=r["key"] in ENFORCED) for r in rows]
 
 
 @router.get("/plans", response_model=list[PlanRow], operation_id="platform_plans")
@@ -296,7 +296,7 @@ def compare_plans(
             key=d.key,
             description=d.description,
             unit=d.unit,
-            enforced_now=d.key in MEASURABLE,
+            enforced_now=d.key in ENFORCED,
             values=[v.get(d.key) for v in values],
         )
         for d in ctx.conn.execute(text("SELECT key, description, unit FROM entitlement_definitions ORDER BY key"))

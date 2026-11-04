@@ -126,3 +126,5 @@ Gaps: no per-administrator custom permission sets; no dual control; no IP allow-
 ## 8. Phase 3 additions (Firm Control Center)
 
 Phase 3 adds roles `practice_manager`, `assistant_accountant`, `document_operator` and `read_only`, and the permissions `organization.settings.update`, `member_profiles.manage`, `ownership.transfer`, `companies.archive` and `company_settings.manage`. The rank rule (invite or grant only at or below your own rank), ownership transfer and assignment windows are described, with generated role and permission tables, in [`../firm-control-center/ROLE_AND_PERMISSION_MODEL.md`](../firm-control-center/ROLE_AND_PERMISSION_MODEL.md). Where the two documents differ, the code in `permissions.py` wins. Custom roles are not implemented.
+
+Phase 4 adds `workspace.read`, `workspace.manage`, `workspace.permissions.manage` (company scope) and `workspace_templates.manage` (organization scope); see [`../workspace/WORKSPACE_PERMISSIONS.md`](../workspace/WORKSPACE_PERMISSIONS.md). Platform admins have no workspace permission (workspace configuration is tenant business data).

@@ -40,6 +40,7 @@ interface NavItem { label: string; path: string; perm?: string; any?: string[] }
 const NAV: NavItem[] = [
   { label: "Dashboard", path: "/dashboard" },
   { label: "My Companies", path: "/companies", perm: "companies.list" },
+  { label: "Workspace Templates", path: "/workspace-templates", perm: "companies.list" },
   { label: "Team Members", path: "/team", perm: "members.read" },
   { label: "Accountants", path: "/accountants", perm: "members.read" },
   { label: "Client Assignments", path: "/assignments", perm: "members.read" },

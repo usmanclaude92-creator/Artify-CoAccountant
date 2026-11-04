@@ -161,7 +161,14 @@ def test_tenant_cannot_read_other_tenants_plan_or_write_subscriptions(app_engine
 
 def test_every_table_is_classified_and_protected(owner_engine) -> None:  # type: ignore[no-untyped-def]
     """CI gate from docs/database/ISOLATION_AND_RLS.md §6: new tables fail until classified."""
-    reference_tables = {"currencies", "entitlement_definitions", "permissions", "role_permissions", "alembic_version"}
+    reference_tables = {
+        "currencies",
+        "entitlement_definitions",
+        "permissions",
+        "role_permissions",
+        "alembic_version",
+        "document_kinds",
+    }
     with owner_engine.connect() as conn:
         tables = conn.execute(
             text(

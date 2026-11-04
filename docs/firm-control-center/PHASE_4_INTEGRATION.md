@@ -1,5 +1,7 @@
 # Phase 4 Integration — Company Configuration Ownership
 
+> **Update (Phase 4 delivered):** the integration rules below were followed — see [`../workspace/WORKSPACE_ARCHITECTURE.md`](../workspace/WORKSPACE_ARCHITECTURE.md). The “Not done in Phase 3” list at the end is historical; the Company page now links to the workspace builder.
+
 Phase 3 does **not** build the workspace builder. It establishes who owns a company’s configuration, how it is reached securely, and what Phase 4 must respect. Nothing below the “Integration point” heading is implemented unless stated.
 
 ## What exists in Phase 3

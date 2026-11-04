@@ -1,6 +1,7 @@
 "use client";
 import { use, useState } from "react";
 import type { Schemas } from "@artify/api-client";
+import Link from "next/link";
 import { Alert, Button, Panel } from "@artify/ui";
 import { CcHeader, useOrg } from "@/components/cc/shell";
 import { ActionDialog, DataTable, Empty, ErrorBox, Field, Loading, Status, Tabs, useToast } from "@/components/kit";
@@ -272,7 +273,7 @@ function ClientUsers({ co }: { co: Company }) {
 }
 
 function Configuration({ co }: { co: Company }) {
-  const { orgId } = useOrg();
+  const { orgId, href } = useOrg();
   const cfg = useTenantApi<Config>(orgId, `/companies/${co.id}/configuration`);
   if (cfg.error && !cfg.data) return <ErrorBox message={cfg.error} onRetry={cfg.reload} />;
   if (!cfg.data) return <Loading what="configuration" />;
@@ -280,8 +281,8 @@ function Configuration({ co }: { co: Company }) {
     <Panel className="grid gap-3">
       <h2>Company configuration</h2>
       <p>Workspace state: <Status value={cfg.data.workspace_state === "configured" ? "active" : "not_configured"} text={cfg.data.workspace_state === "configured" ? "Configured" : "Not configured"} /> · version {cfg.data.config_version}</p>
-      <p className="a-hint">Every company owns its own configuration record, so two companies can have completely different structures. Nothing is configured yet: the workspace builder is not part of this release and no default sections or folders are created. The following areas will attach to this record later:</p>
-      <ul>{cfg.data.future_areas.map((a) => <li key={a}>{a}</li>)}</ul>
+      <p className="a-hint">Each company owns its own workspace: sections, folders, categories, custom fields, naming and filing rules and permissions. Changing one company never changes another.</p>
+      <p><Link className="a-btn a-btn--primary" href={href(`/companies/${co.id}/workspace`)}>Open the workspace builder</Link></p>
     </Panel>
   );
 }

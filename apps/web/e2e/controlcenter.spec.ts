@@ -6,7 +6,7 @@ test("firm owner runs the Control Center: company wizard, lifecycle, invitation,
   await signedInOwner(page, "Control Test Firm");
   const org = await page.getByLabel("Organization", { exact: true }).inputValue();
 
-  // ---- company wizard (4 steps) ------------------------------------------------------------
+  // ---- company wizard (5 steps) ------------------------------------------------------------
   await page.getByRole("link", { name: "My Companies" }).click();
   await expect(page.getByText("No companies yet.")).toBeVisible();
   await page.getByRole("link", { name: "Create company" }).click();
@@ -21,6 +21,9 @@ test("firm owner runs the Control Center: company wizard, lifecycle, invitation,
   await page.getByLabel("Tax jurisdiction").fill("Sample jurisdiction");
   await page.getByRole("button", { name: "Next" }).click();
   await expect(page.getByText("No active accountants exist yet")).toBeVisible();
+  await page.getByRole("button", { name: "Next" }).click();
+  await expect(page.getByRole("heading", { name: "Workspace", level: 2 })).toBeVisible();
+  await expect(page.getByLabel("Blank workspace — configure it later")).toBeChecked();
   await page.getByRole("button", { name: "Next" }).click();
   await expect(page.getByText("Registered (VAT-E2E-1)")).toBeVisible();
   await page.getByRole("button", { name: "Create company" }).click();
@@ -38,7 +41,7 @@ test("firm owner runs the Control Center: company wizard, lifecycle, invitation,
   // ---- the configuration record exists but nothing is pre-built ------------------------------
   await page.getByRole("tab", { name: "Configuration" }).click();
   await expect(page.getByText("Not configured")).toBeVisible();
-  await expect(page.getByText("no default sections or folders are created")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open the workspace builder" })).toBeVisible();
 
   // ---- lifecycle: deactivate -> activate -> archive -> restore (nothing is deleted) -----------
   const dialog = page.getByRole("dialog");

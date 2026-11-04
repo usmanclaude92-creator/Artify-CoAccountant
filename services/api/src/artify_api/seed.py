@@ -15,6 +15,8 @@ from sqlalchemy import Connection, text
 from artify_api.entitlements import DEFINITIONS
 from artify_api.ids import new_id
 from artify_api.permissions import PERMISSIONS, SYSTEM_ROLES
+from artify_api.workspace_engine import DOCUMENT_KINDS
+from artify_api.workspace_templates_data import SYSTEM_TEMPLATES
 
 # ISO 4217 minor units (subset needed initially; extend by adding rows, not code paths).
 CURRENCIES = (
@@ -44,6 +46,8 @@ DEV_PLAN_LIMITS: dict[str, int | bool] = {
     "limit.folder_depth": 6,
     "limit.folders_per_company": 200,
     "limit.custom_fields_per_company": 30,
+    "limit.filing_rules_per_company": 50,
+    "limit.workspace_templates": 10,
     "limit.excel_templates_per_company": 10,
     "quota.documents_per_month": 500,
     "quota.storage_bytes": 5 * 1024**3,
@@ -65,6 +69,26 @@ def sync_reference_data(conn: Connection) -> None:
             ),
             {"c": code, "n": name, "m": minor},
         )
+    for i, k in enumerate(DOCUMENT_KINDS):
+        conn.execute(
+            text(
+                "INSERT INTO document_kinds (key, name, description, accounting_domain, processing_type, creates_financial_records, sort_order)"
+                " VALUES (:k, :n, :d, :ad, :pt, :cf, :s) ON CONFLICT (key) DO UPDATE SET name = EXCLUDED.name,"
+                " description = EXCLUDED.description, accounting_domain = EXCLUDED.accounting_domain,"
+                " processing_type = EXCLUDED.processing_type, creates_financial_records = EXCLUDED.creates_financial_records,"
+                " sort_order = EXCLUDED.sort_order"
+            ),
+            {
+                "k": k.key,
+                "n": k.name,
+                "d": k.description,
+                "ad": k.accounting_domain,
+                "pt": k.processing_type,
+                "cf": k.creates_financial_records,
+                "s": i,
+            },
+        )
+    _sync_system_templates(conn)
     for d in DEFINITIONS:
         conn.execute(
             text(
@@ -138,3 +162,48 @@ def sync_reference_data(conn: Connection) -> None:
             ),
             {"k": setting_key, "v": json.dumps(setting_value)},
         )
+
+
+def _sync_system_templates(conn: Connection) -> None:
+    """Artify system workspace templates (organization_id NULL). A changed definition becomes a NEW version; existing
+    versions and every company that applied them are never touched."""
+    for key, (name, description, build) in SYSTEM_TEMPLATES.items():
+        definition = build()
+        definition.check()
+        template_id = conn.execute(
+            text("SELECT id FROM workspace_templates WHERE organization_id IS NULL AND key = :k"), {"k": key}
+        ).scalar()
+        if template_id is None:
+            template_id = new_id()
+            conn.execute(
+                text(
+                    "INSERT INTO workspace_templates (id, organization_id, key, name, description) VALUES (:id, NULL, :k, :n, :d)"
+                ),
+                {"id": template_id, "k": key, "n": name, "d": description},
+            )
+        else:
+            conn.execute(
+                text("UPDATE workspace_templates SET name = :n, description = :d WHERE id = :id"),
+                {"n": name, "d": description, "id": template_id},
+            )
+        latest = conn.execute(
+            text(
+                "SELECT version, definition FROM workspace_template_versions WHERE template_id = :t ORDER BY version DESC LIMIT 1"
+            ),
+            {"t": template_id},
+        ).first()
+        new_def = json.loads(definition.model_dump_json())
+        if latest is None or latest.definition != new_def:
+            conn.execute(
+                text(
+                    "INSERT INTO workspace_template_versions (id, template_id, organization_id, version, definition, changelog)"
+                    " VALUES (:id, :t, NULL, :v, CAST(:d AS jsonb), :c)"
+                ),
+                {
+                    "id": new_id(),
+                    "t": template_id,
+                    "v": 1 if latest is None else latest.version + 1,
+                    "d": json.dumps(new_def),
+                    "c": "Initial version" if latest is None else "Updated by Artify",
+                },
+            )

@@ -57,12 +57,16 @@ def test_wizard_creates_profile_settings_configuration_and_assignments_atomicall
     assert acc.get(f"/companies/{c['id']}").status_code == 200  # assignment grants access at once
     with (
         owner_engine.connect() as conn
-    ):  # nothing was created that Phase 4 should own: no sections, folders or categories
-        tables = {
-            r[0]
-            for r in conn.execute(text("SELECT table_name FROM information_schema.tables WHERE table_schema='public'"))
-        }
-    assert not {t for t in tables if any(w in t for w in ("workspace", "folder", "section", "category"))}
+    ):  # Phase 4 tables exist, but a new company gets NO sections, folders or categories
+        for table in (
+            "workspace_nodes",
+            "document_categories",
+            "custom_field_definitions",
+            "naming_rules",
+            "filing_rules",
+        ):
+            n = conn.execute(text(f"SELECT count(*) FROM {table} WHERE company_id = :c"), {"c": c["id"]}).scalar_one()
+            assert n == 0, table
 
 
 def test_each_company_owns_its_settings_and_organization_settings_never_overwrite_them(client, mailer) -> None:  # type: ignore[no-untyped-def]

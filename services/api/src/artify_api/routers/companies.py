@@ -84,6 +84,24 @@ class AssignmentInput(BaseModel):
         return self
 
 
+class WorkspaceSetup(BaseModel):
+    """Optional starting workspace for a new company: blank (default), a template version, or a copy of another company's
+    configuration (never its documents, users or permissions). Everything stays editable and independent afterwards."""
+
+    mode: Literal["blank", "template", "copy"] = "blank"
+    template_id: uuid.UUID | None = None
+    template_version: int | None = Field(default=None, ge=1)
+    source_company_id: uuid.UUID | None = None
+
+    @model_validator(mode="after")
+    def _consistent(self) -> WorkspaceSetup:
+        if self.mode == "template" and self.template_id is None:
+            raise ValueError("choose a template")
+        if self.mode == "copy" and self.source_company_id is None:
+            raise ValueError("choose a company to copy from")
+        return self
+
+
 class CompanyCreate(CompanyProfile, CompanyAccounting):
     name: str = Field(min_length=1, max_length=200)  # display name
     code: str = Field(pattern=r"^[A-Za-z0-9_-]{1,32}$")
@@ -91,6 +109,7 @@ class CompanyCreate(CompanyProfile, CompanyAccounting):
     base_currency: str = Field(pattern="^[A-Z]{3}$")
     tax_registration: str | None = Field(default=None, max_length=64)
     assignments: list[AssignmentInput] = Field(default_factory=list, max_length=50)
+    workspace: WorkspaceSetup | None = None
 
 
 class CompanyUpdate(CompanyProfile):
@@ -324,6 +343,10 @@ def create_company(
         )
         for a in body.assignments:
             _insert_assignment(ctx, org_id, company_id, a)
+        if body.workspace and body.workspace.mode != "blank":
+            from artify_api.routers.workspace import apply_at_creation
+
+            apply_at_creation(ctx, org_id, company_id, body.workspace)
         entitlements.refresh_counter(ctx.conn, org_id, "limit.companies")
         audit.write_audit(
             ctx.conn,

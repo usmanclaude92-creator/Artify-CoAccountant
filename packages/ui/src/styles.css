@@ -181,3 +181,20 @@ html[lang="ar"] body { font-family: var(--font-arabic); }
   .a-topbar { padding-inline: var(--space-3); } .a-main { padding: var(--space-4); }
 }
 @media (prefers-reduced-motion: reduce) { .a-sidebar { transition: none; } }
+
+/* Workspace builder: tree + detail layout (Phase 4). Uses the same tokens as every other surface. */
+.a-split { display: grid; gap: var(--space-4); grid-template-columns: minmax(15rem, 22rem) minmax(0, 1fr); align-items: start; }
+.a-tree, .a-tree ul { list-style: none; margin: 0; padding: 0; }
+.a-tree ul { padding-inline-start: var(--space-4); border-inline-start: 1px dashed var(--color-border); margin-inline-start: var(--space-2); }
+.a-tree__row { display: flex; align-items: center; gap: var(--space-1); }
+.a-tree__toggle { all: unset; cursor: pointer; inline-size: 1.5rem; text-align: center; color: var(--color-text-muted); border-radius: var(--radius-sm); }
+.a-tree__toggle:focus-visible, .a-tree__item:focus-visible { box-shadow: var(--focus-ring); }
+.a-tree__item { flex: 1; text-align: start; background: transparent; border: 1px solid transparent; border-radius: var(--radius-sm); padding: var(--space-1) var(--space-2);
+  color: var(--color-text); font: inherit; min-block-size: 2rem; cursor: pointer; overflow-wrap: anywhere; }
+.a-tree__item:hover { background: var(--color-surface-2); }
+.a-tree__item[aria-current="true"] { background: var(--color-info-bg); border-color: var(--color-info); font-weight: 600; }
+.a-tree__item--archived { color: var(--color-text-muted); text-decoration: line-through; }
+.a-checks { display: grid; gap: var(--space-1); max-block-size: 10rem; overflow: auto; border: 1px solid var(--color-border); border-radius: var(--radius-sm); padding: var(--space-2); }
+.a-checks label { display: flex; gap: var(--space-2); align-items: center; font-weight: 400; }
+.a-mono { font-family: var(--font-mono); font-size: var(--text-sm); }
+@media (max-width: 52rem) { .a-split { grid-template-columns: minmax(0, 1fr); } }

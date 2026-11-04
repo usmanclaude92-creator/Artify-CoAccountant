@@ -111,3 +111,10 @@ If Playwright reports a missing browser, point it at an installed Chromium: `E2E
 2. You land on `/dashboard`. Create a company at **My Companies → Create company** (4 steps), invite people at **Invitations**; with `ARTIFY_MAILER_BACKEND=console` (default locally) the invitation link appears in the API console and the page says that no e-mail server is configured. Open the link at `/accept-invitation?token=…` in another browser profile to accept.
 3. Settings that must be configured outside the app: SMTP for real invitation e-mail (`ARTIFY_MAILER_BACKEND=smtp` and its host settings), plans and limits in the Super Admin (the Control Center only reads them).
 4. Tests: `make test-api` (includes the Phase 3 files `test_p3_*.py`), `make e2e` (adds `controlcenter.spec.ts`). After API changes run `make client`.
+
+## 9. Workspace builder (Phase 4)
+
+1. Run `make db-reset` (migrations 0001→0006, seeds permissions, document kinds, entitlement definitions and the Artify starter templates; the development plan now includes the Phase 4 limits).
+2. Sign in, create a company (optionally choosing a template in the new **Workspace** step) and open **My Companies → company → Configuration → Open the workspace builder**.
+3. Plans created in Super Admin **before** Phase 4 do not contain `limit.filing_rules_per_company` and `limit.workspace_templates`: add them to those plans, otherwise creating filing rules or organization templates is refused (default deny). The section/folder/depth/custom-field limits existed before and are now enforced.
+4. Tests: `make test-api` (includes `test_p4_*.py`), `make e2e` (adds `workspace.spec.ts`), `make client` after API changes.

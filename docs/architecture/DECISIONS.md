@@ -124,6 +124,24 @@ E-mail delivery is reported from the mailer backend (`configured` only for SMTP)
 ### ADR-040 — The Control Center UI is English-only in Phase 3 (deviation from D-9 and ADR-032)
 D-9 decided English + Arabic with RTL from the first screen and ADR-032 said the customer console keeps both. The Phase 3 screens were built in English only to finish within scope; the Phase 1 customer dashboard that had Arabic strings was replaced, so signed-in pages regressed to English. Public pages (sign-in, sign-up, invitation) remain bilingual. Restoring Arabic and RTL for the Control Center is open work and needs native-reviewed strings.
 
+### ADR-041 — One adjacency table for sections and folders, with `path_ids`
+Sections are roots and folders nest below in a single `workspace_nodes` table (`node_type`, `parent_id`, `depth`, `path_ids uuid[]`, GIN-indexed). Row-level CHECKs enforce type/parent, depth = path length, last path element = own id, second-last = parent and no repeated element (no cycles); cross-row path correctness is maintained by the application inside the per-company locked transaction. Supersedes the separate `workspace_sections`/`workspace_folders` tables and fractional `sort_key` of the Phase 0 design (integer `position`, renumbered per sibling list).
+
+### ADR-042 — Workspace edits are individually atomic and versioned; change sets are deferred
+Each mutation locks `company_configurations`, optionally checks `base_version`, bumps `config_version` and writes an immutable `workspace_revisions` row (changes + snapshot) and an audit event in the same transaction. Bulk operations (template apply, duplicate, restore) are atomic. The Phase 0 “change-set” request (many operations, dry run, pending summary) is **not built**; revisit if the Builder needs batch editing.
+
+### ADR-043 — Workspace authorization is role keys plus an allow/deny grant engine
+Role keys `workspace.read/manage/permissions.manage` gate the route; per-node actions are decided by `workspace_engine.decide`: administrators always pass; read-only is capped at view; nearest grant wins down the tree, deny beats allow on the same level; no grant → role default (`open`) or nothing for members below manager (`restricted`). Hidden nodes answer 404. Replaces the “grants to roles per section, deny implicit only” sketch of Phase 0 with explicit deny, because the brief requires deterministic allow/deny behaviour.
+
+### ADR-044 — Per-company entitlement counts are measured under RLS and enforced after the change
+`limit.workspace_sections_per_company`, `…folders…`, `…custom_fields…`, `limit.filing_rules_per_company` (new) and `limit.folder_depth` are measured by plain queries in the caller’s RLS context (`entitlements.COMPANY_MEASURES`) and checked once at `commit` against the counts before the change, so bulk operations are covered by one rule. Only **increases** beyond a limit are refused: lowering a limit never deletes or blocks edits/archive. `limit.workspace_templates` (new, organization scope) uses `app.measure_entitlement`. `limit.folder_depth` counts levels including the section (a section is level 1). The system ceiling `MAX_DEPTH_HARD = 12` in `workspace.py` is a technical safety limit, not a plan limit. Plans created before Phase 4 do not contain the two new keys and therefore deny those actions until Super Admin adds them (default-deny rule).
+
+### ADR-045 — Custom field validation is declarative; no regular expressions
+Phase 0 allowed length-bounded regex in a “ReDoS-safe engine”. Phase 4 supports lengths, numeric/date ranges, decimal places, currency lists, option sets and a linear-time character `mask` instead, so there is no ReDoS surface and no executable content. Revisit only with a concrete customer need and a linear-time engine.
+
+### ADR-046 — Templates are deep-copied definitions; provenance only
+A template version is an immutable JSON definition validated by the same engine that validates live configuration. Applying replays it with new ids; the company keeps `applied_template_id/_version` as provenance (no foreign key drives behaviour in code, queries never join back). `replace` archives, never deletes. System templates are seeded from code by version (changed definition → new version). The “review differences and merge” update flow is not built.
+
 ## Outcomes of decisions taken at the start of Phase 1
 
 The product owner replied "Accept the recommendations and start Phase 1" on 2026-11-04, which settles:

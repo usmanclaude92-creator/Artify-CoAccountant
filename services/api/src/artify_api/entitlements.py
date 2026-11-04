@@ -11,6 +11,7 @@ COMMITTED), so concurrent creators cannot oversubscribe and counters cannot drif
 from __future__ import annotations
 
 import uuid
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 from sqlalchemy import Connection, text
@@ -39,6 +40,15 @@ DEFINITIONS: tuple[Definition, ...] = (
     _D("limit.folder_depth", "company", "int", "hard", "levels", "Maximum folder nesting depth"),
     _D("limit.folders_per_company", "company", "int", "hard", "folders", "Non-archived folders"),
     _D("limit.custom_fields_per_company", "company", "int", "hard", "fields", "Non-archived custom field definitions"),
+    _D("limit.filing_rules_per_company", "company", "int", "hard", "rules", "Non-archived automatic filing rules"),
+    _D(
+        "limit.workspace_templates",
+        "organization",
+        "int",
+        "hard",
+        "templates",
+        "Non-archived organization workspace templates",
+    ),
     _D("limit.excel_templates_per_company", "company", "int", "hard", "templates", "Non-archived Excel templates"),
     _D(
         "quota.documents_per_month",
@@ -58,7 +68,17 @@ DEFINITIONS: tuple[Definition, ...] = (
 )
 BY_KEY = {d.key: d for d in DEFINITIONS}
 # Keys the database can measure today (app.measure_entitlement). Others arrive with their feature.
-MEASURABLE = frozenset({"limit.companies", "limit.users", "limit.accountants", "limit.devices"})
+MEASURABLE = frozenset(
+    {"limit.companies", "limit.users", "limit.accountants", "limit.devices", "limit.workspace_templates"}
+)
+# Company-scope workspace limits are measured per company through RLS-protected counts (see workspace_usage below).
+COMPANY_MEASURES: dict[str, str] = {
+    "limit.workspace_sections_per_company": "SELECT count(*) FROM workspace_nodes WHERE company_id = :c AND node_type = 'section' AND archived_at IS NULL",
+    "limit.folders_per_company": "SELECT count(*) FROM workspace_nodes WHERE company_id = :c AND node_type = 'folder' AND archived_at IS NULL",
+    "limit.custom_fields_per_company": "SELECT count(*) FROM custom_field_definitions WHERE company_id = :c AND archived_at IS NULL",
+    "limit.filing_rules_per_company": "SELECT count(*) FROM filing_rules WHERE company_id = :c AND archived_at IS NULL",
+    "limit.folder_depth": "SELECT COALESCE(max(depth), 0) FROM workspace_nodes WHERE company_id = :c AND archived_at IS NULL",
+}
 _CURRENT_STATUSES = ("trialing", "active", "past_due", "suspended")
 
 
@@ -73,6 +93,11 @@ class Limit:
     value: int | None  # None when unlimited or for a boolean flag
     flag: bool | None
     source: str  # override | plan | default
+
+
+# Everything the backend enforces today: organization counts measured by the database function, plus the per-company
+# workspace limits above. (`MEASURABLE` is only the organization-level subset.)
+ENFORCED = MEASURABLE | frozenset(COMPANY_MEASURES)
 
 
 def effective_limit(conn: Connection, org_id: uuid.UUID, key: str) -> Limit:
@@ -208,3 +233,60 @@ def reconcile(conn: Connection, org_id: uuid.UUID) -> dict[str, tuple[int, int]]
         if stored != actual:
             drift[key] = (stored, actual)
     return drift
+
+
+# ---------------------------------------------------------------- per-company workspace limits
+def company_usage(conn: Connection, org_id: uuid.UUID, company_id: uuid.UUID) -> dict[str, int]:
+    """Current per-company counts (depth is a maximum, not a count). Runs under the caller's RLS context."""
+    return {k: int(conn.execute(text(q), {"c": company_id}).scalar_one()) for k, q in COMPANY_MEASURES.items()}
+
+
+def company_limits(conn: Connection, org_id: uuid.UUID, company_id: uuid.UUID) -> list[dict[str, object]]:
+    usage = company_usage(conn, org_id, company_id)
+    out: list[dict[str, object]] = []
+    for key, current in usage.items():
+        lim = effective_limit(conn, org_id, key)
+        out.append(
+            {
+                "key": key,
+                "unit": BY_KEY[key].unit,
+                "description": BY_KEY[key].description,
+                "limit": lim.value,
+                "unlimited": lim.unlimited,
+                "current": current,
+                "source": lim.source,
+                "at_limit": (not lim.unlimited) and current >= (lim.value or 0),
+            }
+        )
+    return out
+
+
+def enforce_company_limits(
+    conn: Connection,
+    org_id: uuid.UUID,
+    company_id: uuid.UUID,
+    before: dict[str, int],
+    *,
+    keys: Iterable[str] | None = None,
+) -> None:
+    """Raise EntitlementExceeded when a change INCREASED a company count beyond its limit.
+
+    Called inside the mutating transaction after the change (so one check covers bulk operations such as template
+    apply, duplicate and restore). A company already above a reduced limit keeps everything it has and can still edit,
+    archive and restore within the limit: only increases are refused. Callers hold the company configuration lock, so
+    concurrent changes to one company are serialized."""
+    after = company_usage(conn, org_id, company_id)
+    status = subscription_status(conn, org_id)
+    for key in keys or COMPANY_MEASURES:
+        if after[key] <= before.get(key, 0):
+            continue
+        if status in (None, "suspended"):
+            raise SubscriptionRestricted(
+                "The subscription is suspended or missing; this action is not available.",
+                extra={"subscription_status": status},
+            )
+        lim = effective_limit(conn, org_id, key)
+        if not lim.unlimited and after[key] > (lim.value or 0):
+            raise EntitlementExceeded(
+                key=key, limit=lim.value or 0, current=before.get(key, 0), requested=after[key] - before.get(key, 0)
+            )

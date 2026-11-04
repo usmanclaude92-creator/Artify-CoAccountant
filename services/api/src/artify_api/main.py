@@ -30,6 +30,7 @@ from artify_api.routers import (
     platform_subs,
     platform_support,
     support_grants,
+    workspace,
 )
 from artify_api.settings import get_settings
 
@@ -42,6 +43,7 @@ ROUTERS = (
     orgs.router,
     companies.router,
     control_center.router,
+    workspace.router,
     me.router,
     platform.router,
     platform_orgs.router,

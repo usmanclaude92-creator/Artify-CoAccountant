@@ -95,3 +95,22 @@ Base path `/api/v1`. All tenant routes require a bearer token from the tenant re
 ## Compatibility with Phases 1–2
 
 `make openapi-breaking BASE=<phase 2 commit>` reports no breaking change by the detector’s rules. One behavioural change the detector cannot see: `PATCH /companies/{id}` no longer accepts `status`; lifecycle moved to `POST /companies/{id}/status`. See the completion report, known issues.
+
+
+## Workspace endpoints (Phase 4)
+
+All under `/companies/{company_id}/workspace` unless noted; permission `workspace.read` (company) at the route plus per-node checks ([`../workspace/WORKSPACE_PERMISSIONS.md`](../workspace/WORKSPACE_PERMISSIONS.md)). Mutations accept an optional `base_version` (409 `workspace_version_conflict`). OpenAPI is the contract (`packages/api-client/openapi.json`).
+
+| Group | Endpoints |
+|---|---|
+| Overview | `GET /workspace` (ETag), `GET /workspace/upload-config` (ETag), `GET /workspace/usage`, `PATCH /workspace/settings`, `GET /workspace/access/me` |
+| Structure | `POST /nodes`, `PATCH /nodes/{id}`, `POST /nodes/{id}/move`, `POST /nodes/reorder`, `GET /nodes/{id}/impact`, `POST /nodes/{id}/archive`, `POST /nodes/{id}/restore`, `DELETE /nodes/{id}`, `POST /nodes/{id}/duplicate` |
+| Categories | `GET/POST /categories`, `PATCH /categories/{id}`, `POST /categories/{id}/archive|restore`; `GET /reference/document-kinds` (any signed-in user) |
+| Fields | `GET/POST /fields`, `PATCH /fields/{id}`, `POST /fields/{id}/archive|restore`, `POST /fields/validate-values` |
+| Naming | `GET/POST /naming-rules`, `PATCH /naming-rules/{id}`, `POST /naming-rules/validate|preview`, `POST /naming-rules/{id}/archive|restore` |
+| Filing | `GET/POST /filing-rules`, `PATCH /filing-rules/{id}`, `POST /filing-rules/reorder|validate|evaluate`, `GET /filing-rules/analysis`, `POST /filing-rules/{id}/archive|restore` |
+| Permissions | `GET/POST /permissions`, `DELETE /permissions/{id}`, `POST /permissions/check` |
+| Templates | `GET /orgs/{org}/workspace-templates`, `GET …/{id}?version=`, `POST /orgs/{org}/workspace-templates` (save as), `POST …/{id}/versions`, `POST …/{id}/archive`; `POST /workspace/templates/apply`, `POST /workspace/copy-from` |
+| History | `GET /revisions`, `GET /revisions/{version}`, `POST /revisions/{version}/restore`, `GET /audit` |
+
+Company creation accepts `workspace: {mode: blank|template|copy, template_id, template_version, source_company_id}`.

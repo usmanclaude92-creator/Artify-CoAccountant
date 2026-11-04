@@ -30,7 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }     # the breaking-change check compares against an earlier commit
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
       - run: uv sync --project services/api --frozen
       - run: uv run --project services/api ruff check services/api
       - run: uv run --project services/api ruff format --check services/api
@@ -74,7 +74,7 @@ jobs:
       PGPASSWORD: postgres
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
@@ -87,7 +87,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
       - uses: pnpm/action-setup@v4
       - run: uv export --project services/api --no-hashes --no-emit-project | grep -v '^#' > /tmp/req.txt
       - run: uvx pip-audit -r /tmp/req.txt --no-deps --disable-pip
@@ -99,7 +99,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
       - run: uv sync --project services/api --frozen
       - run: docker compose build
       - run: docker compose up -d --no-build

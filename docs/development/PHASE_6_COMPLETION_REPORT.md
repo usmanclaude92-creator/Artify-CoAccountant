@@ -1,6 +1,6 @@
 # Phase 6 Completion Report — Document Management & Storage Engine
 
-**Status: delivered for review (2026-11-04). Phase 7 has not been started and will not be until the owner approves this phase.**
+**Status: delivered for review (2026-11-04) and approved by the owner ("Approved", same session). Phase 7 has not been started; it needs the owner's Phase 7 brief and an answer on D-5.**
 
 Evidence conventions: *Executed* means the command was run in this session in this repository's Linux sandbox (PostgreSQL 16, Redis 7, Chromium, Xvfb, a real running API) or by GitHub Actions on the pushed branch `phase-6-document-management`. *Not executed* means it was written but never run. **The sandbox is Linux: nothing in this report was run on Windows by hand.** Numbers below are the numbers that were printed, not estimates. Where something is partial or depends on infrastructure that does not exist yet, it is marked **PARTIAL** or **NOT BUILT**.
 

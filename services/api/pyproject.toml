@@ -20,6 +20,11 @@ dependencies = [
   "packaging>=24.2",
   "uuid-utils==1.2.0",
   "boto3>=1.35",
+  "pillow>=11",
+  "numpy>=2",
+  "pypdfium2>=4",
+  "pypdf>=5",
+  "pillow-heif>=0.20",
 ]
 
 [dependency-groups]

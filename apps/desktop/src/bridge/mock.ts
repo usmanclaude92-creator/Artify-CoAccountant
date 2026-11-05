@@ -2,7 +2,7 @@
  * In-memory bridge for unit tests and for `VITE_BRIDGE=mock pnpm dev` (browser preview without Rust). It is NEVER selected
  * in a production build, and the dev preview shows a permanent "demo data" banner.
  */
-import type { XlCustomReport, XlAnalysis, XlCatalogue, XlExport, XlMapping, XlOp, XlTemplate, XlValidation, AcctAccount, AcctContact, AcctIssue, AcctOp, AcctTaxCode, AcctTxn, AcctTxnRow, AppError, Assignment, Bridge, DocDetail, ExtractionView, ExtractedField, ProcessingJob, StatementTx, DocQuery, QueueItem, StagedFile, CompanyDetail, CompanyView, EventRow, Identity, LocalDevice, Organization, RefreshOutcome, RootReport, ServerDevice, Settings, SyncStatus, WorkspaceData, WorkspaceView, WsNode } from "./types";
+import type { BkChecklist, BkClosing, BkDay, BkException, BkIssue, BkOp, BkResult, BkTask, XlCustomReport, XlAnalysis, XlCatalogue, XlExport, XlMapping, XlOp, XlTemplate, XlValidation, AcctAccount, AcctContact, AcctIssue, AcctOp, AcctTaxCode, AcctTxn, AcctTxnRow, AppError, Assignment, Bridge, DocDetail, ExtractionView, ExtractedField, ProcessingJob, StatementTx, DocQuery, QueueItem, StagedFile, CompanyDetail, CompanyView, EventRow, Identity, LocalDevice, Organization, RefreshOutcome, RootReport, ServerDevice, Settings, SyncStatus, WorkspaceData, WorkspaceView, WsNode } from "./types";
 
 export function node(id: string, parent: string | null, name: string, extra: Partial<WsNode> = {}): WsNode {
   return { id, parent_id: parent, node_type: parent ? "folder" : "section", key: id, name, display_name: null, description: "", position: 0, depth: 1, is_active: true, archived_at: null, ...extra };
@@ -50,10 +50,15 @@ export interface MockOptions {
   xlExports?: XlExport[];
   /** the native "choose a workbook" dialog is cancelled */
   xlPickCancel?: boolean;
+  /** synthetic daily bookkeeping data (Phase 10): what validation finds, existing tasks and checklists, and whether somebody else already submitted the closing */
+  bkIssues?: BkIssue[];
+  bkTasks?: BkTask[];
+  bkChecklists?: BkChecklist[];
+  bkSubmittedByOther?: boolean;
 }
 export type MockBridge = Bridge & {
   calls: string[];
-  state: { xl: { reports: XlCustomReport[]; templates: XlTemplate[]; mappings: XlMapping[]; exports: XlExport[]; saved: string[] }; acct: { txns: AcctTxn[]; accounts: AcctAccount[]; taxCodes: AcctTaxCode[]; contacts: AcctContact[] }; extractions: ExtractionView[]; jobs: ProcessingJob[]; docs: DocDetail[]; queue: QueueItem[]; opts: MockOptions; settings: Settings; workspaces: Record<string, WorkspaceData>; companies: Record<string, CompanyView[]>; signedIn: boolean; devices: ServerDevice[]; root: string | null };
+  state: { bk: { issues: BkIssue[]; exceptions: BkException[]; tasks: BkTask[]; checklists: BkChecklist[]; closing: BkClosing | null; previous: BkClosing[] }; xl: { reports: XlCustomReport[]; templates: XlTemplate[]; mappings: XlMapping[]; exports: XlExport[]; saved: string[] }; acct: { txns: AcctTxn[]; accounts: AcctAccount[]; taxCodes: AcctTaxCode[]; contacts: AcctContact[] }; extractions: ExtractionView[]; jobs: ProcessingJob[]; docs: DocDetail[]; queue: QueueItem[]; opts: MockOptions; settings: Settings; workspaces: Record<string, WorkspaceData>; companies: Record<string, CompanyView[]>; signedIn: boolean; devices: ServerDevice[]; root: string | null };
   emit(event: string, payload?: unknown): void;
 };
 
@@ -66,6 +71,7 @@ export function createMockBridge(opts: MockOptions = {}): MockBridge {
   const calls: string[] = [];
   const state = {
     opts, xl: { reports: [] as XlCustomReport[], templates: structuredClone(opts.xlTemplates ?? []), mappings: [] as XlMapping[], exports: structuredClone(opts.xlExports ?? []), saved: [] as string[] }, acct: structuredClone({ txns: opts.acctTransactions ?? [], accounts: opts.acctAccounts ?? [], taxCodes: opts.acctTaxCodes ?? [], contacts: opts.acctContacts ?? [] }), extractions: structuredClone(opts.extractions ?? []), jobs: [] as ProcessingJob[], docs: structuredClone(opts.documents ?? []), queue: [] as QueueItem[], signedIn: false, root: opts.storageRoot ?? null,
+    bk: { issues: structuredClone(opts.bkIssues ?? []), exceptions: [] as BkException[], tasks: structuredClone(opts.bkTasks ?? []), checklists: structuredClone(opts.bkChecklists ?? []), closing: null as BkClosing | null, previous: [] as BkClosing[] },
     settings: { theme: "system", language: "en", start_on_login: "false", default_company_id: "", notifications: "true", update_channel: "stable" } as Settings,
     workspaces: structuredClone(opts.workspaces ?? DEMO_WORKSPACES) as Record<string, WorkspaceData>,
     companies: structuredClone(opts.companies ?? { [orgs[0]?.id ?? "org-1"]: DEMO_COMPANIES }) as Record<string, CompanyView[]>,
@@ -322,6 +328,96 @@ export function createMockBridge(opts: MockOptions = {}): MockBridge {
       }
     },
     // ---- Excel (synthetic: the mock records requests and serves canned results; it neither reads workbooks nor generates files)
+    // ---- daily bookkeeping (synthetic: the mock applies the server's refusals for the paths the UI shows; it validates nothing of its own beyond a result ladder)
+    bk: async <T,>(_o: string, _c: string, op: BkOp, args?: { ids?: string[]; query?: Record<string, string>; body?: unknown }): Promise<T> => {
+      rec(`bk:${op}`); needAuth();
+      const K = state.bk;
+      const body = (args?.body ?? {}) as Record<string, unknown>;
+      const out = (v: unknown) => structuredClone(v) as T;
+      const ladder = (): BkResult => {
+        const open = K.issues.filter((i) => (K.exceptions.find((e) => e.code === i.code)?.status ?? "open") === "open");
+        return open.some((i) => i.severity === "critical") ? "failed" : open.some((i) => i.severity === "error") ? "awaiting_review" : open.some((i) => i.severity === "warning") || K.exceptions.length ? "passed_with_warnings" : "passed";
+      };
+      const need = (): BkClosing => { if (!K.closing) throw err("not_found", "Closing not found.", 404); return K.closing; };
+      const syncExceptions = () => { for (const i of K.issues) if (!K.exceptions.some((e) => e.code === i.code)) K.exceptions.push({ id: `ex-${K.exceptions.length + 1}`, business_date: need().business_date, code: i.code, severity: i.severity, subject_type: i.subject_type, subject_id: i.subject_id, message: i.message, data: i.data, status: "open", resolution_note: null, resolved_by_name: null }); };
+      const trail = (action: string, note: string | null = null) => need().approvals.push({ action, actor_name: "Test Accountant", note, created_at: "2026-03-02T09:00:00Z" });
+      const day = args?.ids?.[0] ?? "2026-03-02";
+      switch (op) {
+        case "day": {
+          const c = K.closing;
+          const d: BkDay = { business_date: day, timezone: "Asia/Muscat", today: "2026-03-02", is_future: day > "2026-03-02", day_closed: c?.status === "closed", closing: c ? { id: c.id, status: c.status, stage: c.stage, validation_status: c.validation_status, submitted_by_name: c.submitted_by_name, closed_by_name: c.closed_by_name, closed_at: c.closed_at } : null,
+            documents: { total: 3, unprocessed: 1 }, transactions: { approved: 2, draft: 1 }, approved_not_exported: 2, validation: { result: ladder(), counts: {}, issue_count: K.issues.length }, checklist: { total: K.checklists.flatMap((l) => l.items).length, done: K.checklists.flatMap((l) => l.items).filter((i) => i.done).length, mandatory_open: K.checklists.flatMap((l) => l.items).filter((i) => i.mandatory && !i.done).length },
+            tasks_mine: { open: K.tasks.filter((t) => !["completed", "cancelled"].includes(t.status)).length, overdue: K.tasks.filter((t) => t.overdue).length }, sync_reports: 0, has_activity: true, scope_note: "Document counts here and in validation cover the whole company; the queue lists only the folders you can see." };
+          return out(d);
+        }
+        case "day_validation": return out({ business_date: day, result: ladder(), counts: {}, issues: K.issues.map((i) => ({ ...i, status: K.exceptions.find((e) => e.code === i.code)?.status ?? "open" })), checklists: K.checklists });
+        case "day_documents": return out([{ id: "doc-1", display_name: "Invoice 1001.pdf", processing_status: "awaiting_review", scan_status: "clean", transactions: 0, status: "active", source: "desktop", created_at: "2026-03-02T08:00:00Z" }]);
+        case "day_transactions": return out([{ id: "t-1", number: "PI-0001", txn_type: "purchase_invoice", status: "approved", currency: "OMR", net_amount: "100.000000", tax_amount: "5.000000", gross_amount: "105.000000", narration: null, duplicate_status: "none", blocking_issues: 0 }]);
+        case "day_exceptions": return out(K.exceptions);
+        case "day_report": return out({ business_date: day, transactions: { by_status: [{ status: "approved", n: 2 }], approved_totals: [{ txn_type: "purchase_invoice", currency: "OMR", n: 2, net: "200.000000", tax: "10.000000", gross: "210.000000" }], journal_totals: { debit: "210.000000", credit: "210.000000", journals: 2 }, basis: "Approved and posted transactions only; drafts and rejected ones are counted but not totalled." }, cash_bank: { accounts: [], totals: { opening: "0.000000", receipts: "0.000000", payments: "0.000000", closing: "0.000000" }, reconciled: false, unapproved_cash_bank_transactions: 0, base_currency: "OMR", note: "Books only. Not a bank reconciliation: nothing here is compared with a bank statement." }, snapshots: [] });
+        case "day_cash_bank": return out({ accounts: [{ account_id: "a-1", code: "1120", name: "Main bank account", opening: "1000.100000", receipts: "250.250000", payments: "100.050000", closing: "1150.300000" }], totals: { opening: "1000.100000", receipts: "250.250000", payments: "100.050000", closing: "1150.300000" }, reconciled: false, unapproved_cash_bank_transactions: 0, base_currency: "OMR", note: "Books only. Not a bank reconciliation: nothing here is compared with a bank statement." });
+        case "tasks": return out(K.tasks);
+        case "task_create": { const t: BkTask = { id: `task-${K.tasks.length + 1}`, title: String(body.title), description: null, status: "new", priority: "normal", business_date: (body.business_date as string) ?? null, due_date: null, requires_review: !!body.requires_review, blocks_closing: !!body.blocks_closing, assignee_id: null, assignee_name: null, overdue: false, row_version: 1 }; K.tasks.push(t); return out(t); }
+        case "task_transition": {
+          const t = K.tasks.find((x) => x.id === args?.ids?.[0]); if (!t) throw err("not_found", "Task not found.", 404);
+          const to = String(body.status);
+          if (to === "approved" && t.status === "awaiting_review") throw err("independence_required", "The person who asked for the review cannot approve or reject it.", 403);
+          t.status = to as BkTask["status"]; return out(t);
+        }
+        case "checklists": return out(K.checklists);
+        case "checklist_templates": return out([{ key: "daily_bookkeeping", name: "Daily bookkeeping", description: "What is normally checked before a bookkeeping day is closed.", items: ["All documents received today are filed and processed"] }]);
+        case "checklist_copy": { const l: BkChecklist = { id: `cl-${K.checklists.length + 1}`, name: K.checklists.some((x) => x.name === "Daily bookkeeping") ? "Daily bookkeeping (2)" : "Daily bookkeeping", items: [{ id: `it-${K.checklists.length + 1}`, title: "Count cash", mandatory: true, assigned_role: null, auto_rule: null, description: null, done: false }] }; K.checklists.push(l); return out(l); }
+        case "item_complete": case "item_uncomplete": { const it = K.checklists.flatMap((l) => l.items).find((i) => i.id === args?.ids?.[0]); if (!it) throw err("not_found", "Item not found.", 404); it.done = op === "item_complete"; it.done_by = it.done ? "manual" : null; return out({ done: it.done }); }
+        case "closings": return out(K.closing ? [K.closing] : []);
+        case "closing_create": {
+          if (K.closing && K.closing.status !== "reopened") throw Object.assign(err("closing_exists", "This day already has a closing.", 409), {});
+          K.closing = { id: "cl-1", business_date: String(body.business_date), status: "draft", stage: 1, validation_status: null, independence_required: true, stale: false, review_note: null, prepared_by_name: "Test Accountant", submitted_by_name: null, closed_by_name: null, closed_at: null, reopen_reason: null, reopened_from_id: null, approvals: [], exceptions: [], snapshot: null, exports: [] };
+          trail("prepare"); return out(K.closing);
+        }
+        case "closing": return out({ ...need(), exceptions: K.exceptions });
+        case "closing_validate": { const c = need(); syncExceptions(); c.validation_status = ladder(); c.stage = Math.max(c.stage, 2); c.status = "in_progress"; trail("validate", `result: ${c.validation_status}`); return out({ ...c, exceptions: K.exceptions }); }
+        case "exception_acknowledge": case "exception_override": {
+          const e = K.exceptions.find((x) => x.id === args?.ids?.[0]); if (!e) throw err("not_found", "Exception not found.", 404);
+          const note = String(body.note ?? "");
+          if (op === "exception_override" && e.severity !== "critical") throw err("not_overridable", "Only critical issues are overridden; acknowledge warnings and errors instead.", 409);
+          if (op === "exception_acknowledge" && e.severity === "critical") throw err("not_acknowledgeable", "Only warnings and errors can be acknowledged; critical issues need an override.", 409);
+          if (note.trim().length < 10 && e.severity !== "warning") throw err("explanation_required", "An explanation of at least 10 characters is needed.", 422);
+          e.status = op === "exception_override" ? "overridden" : "acknowledged"; e.resolution_note = note; need().validation_status = ladder(); return out(e);
+        }
+        case "closing_summary": { need().stage = Math.max(need().stage, 4); return out({ business_date: need().business_date, validation: { result: ladder() }, transactions: { approved_totals: [{ gross: "210.000000", currency: "OMR" }] }, cash_bank: { reconciled: false } }); }
+        case "closing_submit": {
+          const c = need();
+          if (c.validation_status === null) throw err("validation_required", "Validate the day before submitting it.", 409);
+          if (c.validation_status === "failed") throw err("critical_failure", "The day has an unresolved critical problem and cannot be submitted.", 409);
+          if (c.validation_status === "awaiting_review") throw err("errors_open", "The day has errors that nobody has fixed or acknowledged yet.", 409);
+          c.status = "ready_for_review"; c.stage = 5; c.submitted_by_name = opts.bkSubmittedByOther ? "Another Preparer" : "Test Accountant"; trail("submit"); return out(c);
+        }
+        case "closing_send_back": { const c = need(); c.status = "in_progress"; c.stage = 3; c.review_note = String(body.note); trail("send_back", c.review_note); return out(c); }
+        case "closing_close": {
+          const c = need();
+          if (c.status !== "ready_for_review") throw err("invalid_status", "Only a closing that was submitted for review can be approved and closed.", 409);
+          if (c.independence_required && c.submitted_by_name === "Test Accountant") throw err("independence_required", "The person who submitted the closing cannot approve and close it.", 403);
+          c.status = "closed"; c.stage = 6; c.closed_by_name = "Test Accountant"; c.closed_at = "2026-03-02T10:00:00Z"; c.snapshot = { id: "snap-1", snapshot_no: K.previous.length + 1, sha256: "a".repeat(64) }; trail("approve_close"); return out(c);
+        }
+        case "closing_reopen": {
+          const c = need();
+          if (String(body.reason ?? "").trim().length < 10) throw err("reason_required", "Reopening needs a reason of at least 10 characters.", 422);
+          K.previous.push({ ...c, status: "reopened", reopen_reason: String(body.reason) });
+          K.closing = { ...c, id: "cl-2", status: "in_progress", stage: 2, validation_status: null, closed_by_name: null, closed_at: null, snapshot: null, reopened_from_id: c.id, approvals: [], exceptions: [] }; return out(K.closing);
+        }
+        case "closing_snapshot": return out({ id: "snap-1", snapshot_no: 1, sha256: "a".repeat(64), verified: true, payload: {} });
+        case "closing_exports": return out(need().exports);
+        case "closing_export_create": {
+          const c = need();
+          const tname = state.xl.templates.find((t) => t.id === body.template_id)?.name ?? String(body.template_id);
+          if (c.exports.some((x) => x.template_name === tname) && !body.acknowledge_repeat) throw err("conflict", "Some of these transactions were already exported with this template. Confirm that a repeat export is intended.", 409);
+          c.exports.push({ id: `exp-${c.exports.length + 1}`, snapshot_id: c.snapshot?.id ?? null, status: "completed", filename: "daily.xlsx", template_name: tname, template_version: 1, mapping_no: 1, include_unapproved: false, repeat_acknowledged: !!body.acknowledge_repeat, created_at: "2026-03-02T10:30:00Z", created_by_name: "Test Accountant" });
+          return out(c.exports[c.exports.length - 1]);
+        }
+        case "readiness": return out({ ready: false, days: 31, days_needing_closing: 2, days_closed: 1, attention: { approved_not_exported: 2, documents_not_processed: 1, without_source_document: 0 }, blockers: [{ code: "DAYS_NOT_CLOSED", message: "1 day(s) with activity are not closed.", dates: ["2026-03-11"] }], period_status: "open", note: "An overview only. It does not lock the period, prepare a VAT return or approve anything." });
+        default: return out({});
+      }
+    },
     xl: async <T,>(_o: string, _c: string, op: XlOp, args?: { ids?: string[]; query?: Record<string, string>; body?: unknown }): Promise<T> => {
       rec(`xl:${op}`); needAuth();
       const X = state.xl;

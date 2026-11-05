@@ -81,6 +81,8 @@ export const tauriBridge: Bridge = {
   intelPageImage: (org, company, doc, page) => call("intel_page_image", { org, company, doc, page }),
   acct: <T,>(org: string, company: string, op: string, args?: { ids?: string[]; query?: Record<string, string>; body?: unknown }) =>
     call<T>("acct_call", { org, company, op, ids: args?.ids ?? [], query: Object.entries(args?.query ?? {}), body: args?.body ?? null }),
+  bk: <T,>(org: string, company: string, op: string, args?: { ids?: string[]; query?: Record<string, string>; body?: unknown }) =>
+    call<T>("bk_call", { org, company, op, ids: args?.ids ?? [], query: Object.entries(args?.query ?? {}), body: args?.body ?? null }),
   xl: <T,>(org: string, company: string, op: string, args?: { ids?: string[]; query?: Record<string, string>; body?: unknown }) =>
     call<T>("xl_call", { org, company, op, ids: args?.ids ?? [], query: Object.entries(args?.query ?? {}), body: args?.body ?? null }),
   xlUploadPick: (org, company, meta) => call("xl_upload_pick", { org, company, meta }),

@@ -33,4 +33,10 @@ test("the Documents & Storage and Document Processing pages show real usage, the
   await expect(page.getByText("No exports yet.")).toBeVisible();
   await expect(page.getByRole("table", { name: "Excel usage" }).getByText("Excel exports this month")).toBeVisible();
   await expect(page.getByRole("link", { name: /download/i })).toHaveCount(0);
+  // Phase 10: the Daily Closing overview: status and counts only, nothing that closes, reopens or overrides a day
+  await page.getByRole("link", { name: "Daily Closing" }).click();
+  await expect(page.getByRole("heading", { name: "Daily Closing", level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Summary", level: 2 })).toBeVisible();
+  await expect(page.getByRole("table", { name: "Daily closing by company" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /close day|reopen|override|approve/i })).toHaveCount(0);
 });

@@ -163,6 +163,44 @@ export interface AcctTaxCode { id: string; code: string; name: string; treatment
 export interface AcctContact { id: string; kind: "customer" | "supplier"; legal_name: string; display_name: string; tax_number: string | null; is_active: boolean }
 export interface TrialBalance { as_of: string | null; rows: { account_id: string; code: string; name: string; debit: string; credit: string }[]; debit: string; credit: string; balanced: boolean }
 
+// ---------------------------------------------------------------- daily bookkeeping and closing (Phase 10). The server validates, authorises and decides.
+export type BkOp =
+  | "policy" | "policy_update" | "checklist_templates" | "checklists" | "checklist_create" | "checklist_copy" | "checklist_update" | "item_add" | "item_order"
+  | "item_update" | "item_complete" | "item_uncomplete" | "tasks" | "task_create" | "task" | "task_update" | "task_assign" | "task_transition" | "task_comment"
+  | "day" | "day_validation" | "day_documents" | "day_transactions" | "day_exceptions" | "day_report" | "day_cash_bank" | "day_snapshots" | "sync_report"
+  | "exception_acknowledge" | "exception_override" | "closings" | "closing_create" | "closing" | "closing_validate" | "closing_stage" | "closing_summary"
+  | "closing_submit" | "closing_send_back" | "closing_close" | "closing_reopen" | "closing_cancel" | "closing_snapshot" | "closing_exports"
+  | "closing_export_create" | "closing_export_regenerate" | "readiness";
+export type BkResult = "passed" | "passed_with_warnings" | "failed" | "awaiting_review";
+export type BkSeverity = "info" | "warning" | "error" | "critical";
+export type BkClosingStatus = "draft" | "in_progress" | "ready_for_review" | "closed" | "reopened" | "cancelled";
+export type BkTaskStatus = "new" | "assigned" | "in_progress" | "awaiting_information" | "awaiting_review" | "approved" | "rejected" | "completed" | "cancelled";
+export interface BkClosingBrief { id: string; status: BkClosingStatus; stage: number; validation_status: BkResult | null; submitted_by_name: string | null; closed_by_name: string | null; closed_at: string | null }
+export interface BkDay {
+  business_date: string; timezone: string; today: string; is_future: boolean; day_closed: boolean; closing: BkClosingBrief | null;
+  documents: Record<string, number>; transactions: Record<string, number>; approved_not_exported: number; validation: { result: BkResult; counts: Record<string, number>; issue_count: number };
+  checklist: { total: number; done: number; mandatory_open: number }; tasks_mine: { open: number; overdue: number } | null; sync_reports: number; has_activity: boolean; scope_note: string;
+}
+export interface BkIssue { code: string; severity: BkSeverity; message: string; subject_type: string; subject_id: string | null; fingerprint: string; data: Record<string, unknown>; status?: string }
+export interface BkException { id: string; business_date: string; code: string; severity: BkSeverity; subject_type: string; subject_id: string | null; message: string; data: Record<string, unknown>; status: "open" | "resolved" | "overridden" | "acknowledged"; resolution_note: string | null; resolved_by_name: string | null }
+export interface BkChecklistItem { id: string; title: string; description: string | null; mandatory: boolean; assigned_role: string | null; auto_rule: string | null; archived_at?: string | null; done?: boolean; done_by?: "manual" | "auto" | null }
+export interface BkChecklist { id: string; name: string; description?: string | null; items: BkChecklistItem[]; row_version?: number }
+export interface BkValidationPreview { business_date: string; result: BkResult; counts: Record<string, number>; issues: BkIssue[]; checklists: BkChecklist[] }
+export interface BkTask {
+  id: string; title: string; description: string | null; status: BkTaskStatus; priority: "low" | "normal" | "high" | "urgent"; category?: string | null; reviewer_name?: string | null; business_date: string | null; due_date: string | null; requires_review: boolean;
+  blocks_closing: boolean; assignee_id: string | null; assignee_name: string | null; overdue: boolean; row_version: number;
+  comments?: { id: string; body: string; author_name: string | null; created_at: string }[]; history?: { action: string; actor_name: string | null; reason: string | null; created_at: string }[];
+}
+export interface BkClosingExport { id: string; snapshot_id: string | null; status: string; filename: string | null; template_name: string; template_version: number; mapping_no: number; include_unapproved: boolean; repeat_acknowledged: boolean; created_at: string; created_by_name: string | null }
+export interface BkClosing {
+  id: string; business_date: string; status: BkClosingStatus; stage: number; validation_status: BkResult | null; independence_required: boolean; stale: boolean; review_note: string | null;
+  prepared_by_name: string | null; submitted_by_name: string | null; closed_by_name: string | null; closed_at: string | null; reopen_reason: string | null; reopened_from_id: string | null;
+  approvals: { action: string; actor_name: string | null; note: string | null; created_at: string }[]; exceptions: BkException[]; snapshot: { id: string; snapshot_no: number; sha256: string } | null; exports: BkClosingExport[];
+}
+export interface BkCashBank { accounts: { account_id: string; code: string; name: string; opening: string; receipts: string; payments: string; closing: string }[]; totals: { opening: string; receipts: string; payments: string; closing: string }; reconciled: boolean; unapproved_cash_bank_transactions: number; base_currency: string | null; note: string }
+export interface BkDayReport { business_date: string; transactions: { by_status: { status: string; n: number }[]; approved_totals: { txn_type: string; currency: string; n: number; net: string; tax: string; gross: string }[]; journal_totals?: { debit: string; credit: string; journals: number } | null; basis: string }; cash_bank: BkCashBank; snapshots: { id: string; snapshot_no: number; closing_status: string; sha256: string }[] }
+export interface BkReadiness { attention?: { approved_not_exported: number; documents_not_processed: number; without_source_document: number }; ready: boolean; days: number; days_needing_closing: number; days_closed: number; blockers: { code: string; message: string; dates: string[] }[]; period_status: string | null; note: string }
+
 // ---------------------------------------------------------------- Excel templates and reports (Phase 9). Amounts are strings; the server generates every file.
 export type XlOp =
   | "catalogue" | "templates" | "template" | "template_update" | "template_status" | "template_duplicate" | "template_delete" | "template_analysis"
@@ -274,6 +312,8 @@ export interface Bridge {
   intelPageImage(org: string, company: string, doc: string, page: number): Promise<PageImage>;
   /** Accounting: one allow-listed server call. The server calculates, validates and decides; the interface only displays. */
   acct<T = unknown>(org: string, company: string, op: AcctOp, args?: { ids?: string[]; query?: Record<string, string>; body?: unknown }): Promise<T>;
+  /** Daily bookkeeping and closing: one allow-listed server call. The server validates, authorises and decides every step; the interface only displays. */
+  bk<T = unknown>(org: string, company: string, op: BkOp, args?: { ids?: string[]; query?: Record<string, string>; body?: unknown }): Promise<T>;
   /** Excel templates, exports and reports: one allow-listed server call. The server validates workbooks and generates every file. */
   xl<T = unknown>(org: string, company: string, op: XlOp, args?: { ids?: string[]; query?: Record<string, string>; body?: unknown }): Promise<T>;
   /** Choose a workbook in the native dialog and upload it as a template (or a new version). Resolves null when cancelled. */
@@ -281,5 +321,5 @@ export interface Bridge {
   /** Ask where to save a completed export, download it and verify its checksum. Resolves the saved path, or null when cancelled. */
   xlExportSave(org: string, company: string, exportId: string, suggestedName: string): Promise<string | null>;
   /** Backend events: workspace-updated (RefreshOutcome), session-expired, sync-error (AppError), queue-changed, queue-progress, documents-changed, files-dropped (StagedFile[]). */
-  on(event: "workspace-updated" | "session-expired" | "sync-error" | "queue-changed" | "queue-progress" | "documents-changed" | "processing-changed" | "accounting-changed" | "excel-changed" | "files-dropped", handler: (payload: unknown) => void): Promise<Unlisten>;
+  on(event: "workspace-updated" | "session-expired" | "sync-error" | "queue-changed" | "queue-progress" | "documents-changed" | "processing-changed" | "accounting-changed" | "bookkeeping-changed" | "excel-changed" | "files-dropped", handler: (payload: unknown) => void): Promise<Unlisten>;
 }

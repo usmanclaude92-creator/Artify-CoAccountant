@@ -1685,6 +1685,11 @@ def approve(
     t = load_txn(ctx, tid, lock=True)
     if t["status"] != "awaiting_approval":
         raise Conflict("This transaction is not waiting for approval.")
+    from artify_api import bookkeeping  # local import: bookkeeping builds on accounting, not the other way round
+
+    bookkeeping.assert_day_open(
+        ctx, t["transaction_date"]
+    )  # Phase 10: a closed day takes no new approvals until reopened
     policy = acc.get_policy(ctx) or {
         "separate_preparer_approver": True,
         "levels": 1,

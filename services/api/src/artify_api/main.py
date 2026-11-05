@@ -17,6 +17,7 @@ from artify_api.logging_config import configure_logging, correlation_id_var
 from artify_api.routers import (
     accounting,
     auth,
+    bookkeeping,
     companies,
     control_center,
     documents,
@@ -51,6 +52,7 @@ ROUTERS = (
     documents.router,
     accounting.router,
     excel.router,
+    bookkeeping.router,
     processing.router,
     me.router,
     platform.router,

@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { Bridge, CompanyDetail, Identity, Organization, Settings } from "../bridge/types";
 import { describe, isSessionExpired } from "../lib/errors";
 
-export type Page = "dashboard" | "companies" | "workspace" | "documents" | "import" | "queue" | "archive" | "processing" | "review" | "accounting" | "acct-review" | "excel" | "sync" | "notifications" | "settings";
+export type Page = "dashboard" | "companies" | "workspace" | "documents" | "import" | "queue" | "archive" | "processing" | "review" | "accounting" | "acct-review" | "bookkeeping" | "excel" | "sync" | "notifications" | "settings";
 
 export interface AppCtx {
   bridge: Bridge;

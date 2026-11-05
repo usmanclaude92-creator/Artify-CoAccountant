@@ -8,6 +8,7 @@ import { Workspace } from "./screens/workspace";
 import { Documents, ImportDocuments, UploadQueue } from "./screens/documents";
 import { ProcessingQueue, Review } from "./screens/intelligence";
 import { AccountingHome, AccountingReview } from "./screens/accounting";
+import { BookkeepingHome } from "./screens/bookkeeping";
 import { Brand } from "./screens/auth";
 import { useApp, type Page } from "./state/app";
 
@@ -15,7 +16,7 @@ const NAV: { page: Page; label: string; future?: boolean }[] = [
   { page: "dashboard", label: "Dashboard" }, { page: "companies", label: "My Companies" }, { page: "workspace", label: "Workspace" },
   { page: "documents", label: "All Documents" }, { page: "import", label: "Import Documents" }, { page: "queue", label: "Upload Queue" }, { page: "archive", label: "Archived Documents" },
   { page: "processing", label: "Processing Queue" },
-  { page: "accounting", label: "Accounting" }, { page: "excel", label: "Excel & Reports" },
+  { page: "bookkeeping", label: "Daily Bookkeeping" }, { page: "accounting", label: "Accounting" }, { page: "excel", label: "Excel & Reports" },
   { page: "sync", label: "Synchronization" }, { page: "notifications", label: "Notifications" }, { page: "settings", label: "Settings" },
 ];
 
@@ -57,7 +58,7 @@ export function Shell() {
         </header>
         <main id="main" className="d-content" tabIndex={-1}>
           {notice ? <Alert tone="warning">{notice} <Button variant="secondary" className="a-btn--sm" onClick={dismissNotice}>Dismiss</Button></Alert> : null}
-          {page === "dashboard" ? <Dashboard /> : page === "companies" ? <Companies /> : page === "workspace" ? <Workspace key={company?.id ?? "none"} /> : page === "documents" ? <Documents mode="active" key="docs" /> : page === "archive" ? <Documents mode="archived" key="arch" /> : page === "import" ? <ImportDocuments /> : page === "queue" ? <UploadQueue /> : page === "accounting" ? <AccountingHome /> : page === "acct-review" ? <AccountingReview key={acctTxn ?? "none"} /> : page === "processing" ? <ProcessingQueue /> : page === "review" ? <Review key={reviewDoc ?? "none"} /> : page === "sync" ? <Sync /> : page === "notifications" ? <Notifications /> : page === "excel" ? <ExcelHome key={company?.id ?? "none"} /> : <Settings />}
+          {page === "dashboard" ? <Dashboard /> : page === "companies" ? <Companies /> : page === "workspace" ? <Workspace key={company?.id ?? "none"} /> : page === "documents" ? <Documents mode="active" key="docs" /> : page === "archive" ? <Documents mode="archived" key="arch" /> : page === "import" ? <ImportDocuments /> : page === "queue" ? <UploadQueue /> : page === "accounting" ? <AccountingHome /> : page === "acct-review" ? <AccountingReview key={acctTxn ?? "none"} /> : page === "processing" ? <ProcessingQueue /> : page === "review" ? <Review key={reviewDoc ?? "none"} /> : page === "sync" ? <Sync /> : page === "notifications" ? <Notifications /> : page === "excel" ? <ExcelHome key={company?.id ?? "none"} /> : page === "bookkeeping" ? <BookkeepingHome key={company?.id ?? "none"} /> : <Settings />}
         </main>
       </div>
     </div>

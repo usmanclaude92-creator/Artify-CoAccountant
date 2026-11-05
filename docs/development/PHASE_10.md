@@ -1,6 +1,6 @@
 # Phase 10 — Daily Bookkeeping and Closing
 
-**Status: NOT STARTED.**
+**Status: DELIVERED FOR REVIEW** (see [PHASE_10_COMPLETION_REPORT.md](PHASE_10_COMPLETION_REPORT.md) and `docs/bookkeeping/`). The owner's Phase 10 brief superseded the scope below where they differ; items of this plan that the brief did not require (period lock/reopen UI, bulk operations, digest emails, dashboard enrichment, `daily_summaries`) were **not** built.
 
 ## Objectives
 

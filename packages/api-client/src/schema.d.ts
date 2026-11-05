@@ -245,6 +245,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/bookkeeping/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Overview
+         * @description Closing status of every visible company for one day (default: each company's own today). Status and counts only:
+         *     no transactions, documents or amounts.
+         */
+        get: operations["bookkeeping_overview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/companies/{company_id}": {
         parameters: {
             query?: never;
@@ -1282,6 +1303,709 @@ export interface paths {
          *     the company from that day; the row stays as history of who was assigned.
          */
         patch: operations["companies_update_assignment"];
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/bookkeeping/checklist-items/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Item Update */
+        patch: operations["bookkeeping_checklist_item_update"];
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/bookkeeping/checklist-items/{item_id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Item Complete */
+        post: operations["bookkeeping_checklist_item_complete"];
+        /** Item Uncomplete */
+        delete: operations["bookkeeping_checklist_item_uncomplete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/bookkeeping/checklist-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Checklist Templates */
+        get: operations["bookkeeping_checklist_templates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/bookkeeping/checklists": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Checklists */
+        get: operations["bookkeeping_checklists"];
+        put?: never;
+        /** Checklist Create */
+        post: operations["bookkeeping_checklist_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/bookkeeping/checklists/from-template/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Checklist From Template
+         * @description COPY a default template into this company. The copy is the company's own; it never follows the template.
+         */
+        post: operations["bookkeeping_checklist_from_template"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/bookkeeping/checklists/{checklist_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Checklist Update */
+        patch: operations["bookkeeping_checklist_update"];
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/bookkeeping/checklists/{checklist_id}/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Item Add */
+        post: operations["bookkeeping_checklist_item_add"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/bookkeeping/checklists/{checklist_id}/order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Item Order */
+        put: operations["bookkeeping_checklist_order"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/bookkeeping/closings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Closings */
+        get: operations["bookkeeping_closings"];
+        put?: never;
+        /** Closing Create */
+        post: operations["bookkeeping_closing_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/bookkeeping/closings/{closing_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Closing */
+        get: operations["bookkeeping_closing"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/bookkeeping/closings/{closing_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Closing Cancel */
+        post: operations["bookkeeping_closing_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/bookkeeping/closings/{closing_id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Closing Close
+         * @description Approve and close. The day is validated again at this moment and an immutable snapshot is stored.
+         */
+        post: operations["bookkeeping_closing_close"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/bookkeeping/closings/{closing_id}/exports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Closing Exports */
+        get: operations["bookkeeping_closing_exports"];
+        put?: never;
+        /**
+         * Closing Export Create
+         * @description A daily report for the day through the Excel engine (approved data unless explicitly allowed otherwise).
+         */
+        post: operations["bookkeeping_closing_export_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/bookkeeping/closings/{closing_id}/exports/{export_id}/regenerate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Closing Export Regenerate */
+        post: operations["bookkeeping_closing_export_regenerate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/bookkeeping/closings/{closing_id}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Closing Reopen
+         * @description Keeps the original closing and snapshot and returns a NEW, linked closing for the same day.
+         */
+        post: operations["bookkeeping_closing_reopen"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/bookkeeping/closings/{closing_id}/send-back": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Closing Send Back */
+        post: operations["bookkeeping_closing_send_back"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/bookkeeping/closings/{closing_id}/snapshot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Closing Snapshot
+         * @description The stored snapshot with a live re-check of its hash. Snapshots can only be read, never changed.
+         */
+        get: operations["bookkeeping_closing_snapshot"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/bookkeeping/closings/{closing_id}/stage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Closing Stage */
+        post: operations["bookkeeping_closing_stage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/bookkeeping/closings/{closing_id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Closing Submit */
+        post: operations["bookkeeping_closing_submit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/bookkeeping/closings/{closing_id}/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Closing Summary */
+        get: operations["bookkeeping_closing_summary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/bookkeeping/closings/{closing_id}/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Closing Validate */
+        post: operations["bookkeeping_closing_validate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/bookkeeping/days/{business_date}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Day
+         * @description The workbench overview for one business day (a calendar day in the company's own time zone). Real data only.
+         */
+        get: operations["bookkeeping_day"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/bookkeeping/days/{business_date}/cash-bank": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Day Cash Bank */
+        get: operations["bookkeeping_day_cash_bank"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/bookkeeping/days/{business_date}/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Day Documents */
+        get: operations["bookkeeping_day_documents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/bookkeeping/days/{business_date}/exceptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Day Exceptions */
+        get: operations["bookkeeping_day_exceptions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/bookkeeping/days/{business_date}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Day Report */
+        get: operations["bookkeeping_day_report"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/bookkeeping/days/{business_date}/snapshots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Day Snapshots
+         * @description Every closing snapshot the day ever had, oldest first. A reopened day keeps its original.
+         */
+        get: operations["bookkeeping_day_snapshots"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/bookkeeping/days/{business_date}/transactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Day Transactions */
+        get: operations["bookkeeping_day_transactions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/bookkeeping/days/{business_date}/validation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Day Validation
+         * @description What a validation would find right now. Nothing is stored.
+         */
+        get: operations["bookkeeping_day_validation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/bookkeeping/exceptions/{exception_id}/acknowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Exception Ack */
+        post: operations["bookkeeping_exception_acknowledge"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/bookkeeping/exceptions/{exception_id}/override": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Exception Override */
+        post: operations["bookkeeping_exception_override"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/bookkeeping/policy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Policy */
+        get: operations["bookkeeping_policy"];
+        /** Policy Update */
+        put: operations["bookkeeping_policy_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/bookkeeping/readiness": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Readiness
+         * @description Whether every day that needs a closing has one. An overview only: it locks no period and prepares no VAT return.
+         */
+        get: operations["bookkeeping_readiness"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/bookkeeping/sync-reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sync Report
+         * @description A device DECLARES its local synchronisation state for a day. It is shown as declared, never as proof.
+         */
+        post: operations["bookkeeping_sync_report"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/bookkeeping/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tasks */
+        get: operations["bookkeeping_tasks"];
+        put?: never;
+        /** Task Create */
+        post: operations["bookkeeping_task_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/bookkeeping/tasks/{task_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Task */
+        get: operations["bookkeeping_task"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Task Update */
+        patch: operations["bookkeeping_task_update"];
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/bookkeeping/tasks/{task_id}/assign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Task Assign */
+        post: operations["bookkeeping_task_assign"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/bookkeeping/tasks/{task_id}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Task Comment */
+        post: operations["bookkeeping_task_comment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/bookkeeping/tasks/{task_id}/transition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Task Transition
+         * @description Move a task along its status graph. Who may do which move (assignee, manager, an independent reviewer) is decided on the server.
+         */
+        post: operations["bookkeeping_task_transition"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/companies/{company_id}/configuration": {
@@ -5848,6 +6572,11 @@ export interface components {
              */
             confirm_impact: boolean;
         };
+        /** AssignIn */
+        AssignIn: {
+            /** Assignee Id */
+            assignee_id?: string | null;
+        };
         /** AssignedCompany */
         AssignedCompany: {
             /** Active */
@@ -6115,6 +6844,12 @@ export interface components {
             /** Provider */
             provider: string | null;
         };
+        /** BookkeepingOverviewOut */
+        BookkeepingOverviewOut: {
+            /** Companies */
+            companies: components["schemas"]["OverviewCompany"][];
+            summary: components["schemas"]["OverviewSummary"];
+        };
         /** CancelAtPeriodEnd */
         CancelAtPeriodEnd: {
             /** Enabled */
@@ -6235,6 +6970,58 @@ export interface components {
              */
             user_id: string;
         };
+        /** ChecklistIn */
+        ChecklistIn: {
+            /** Description */
+            description?: string | null;
+            /** Items */
+            items?: components["schemas"]["ItemIn"][];
+            /** Name */
+            name: string;
+        };
+        /** ChecklistPatch */
+        ChecklistPatch: {
+            /** Archived */
+            archived?: boolean | null;
+            /** Base Row Version */
+            base_row_version?: number | null;
+            /** Description */
+            description?: string | null;
+            /** Name */
+            name?: string | null;
+            /** Position */
+            position?: number | null;
+        };
+        /** ClosingExportIn */
+        ClosingExportIn: {
+            /**
+             * Acknowledge Repeat
+             * @default false
+             */
+            acknowledge_repeat: boolean;
+            /** Idempotency Key */
+            idempotency_key: string;
+            /**
+             * Include Unapproved
+             * @default false
+             */
+            include_unapproved: boolean;
+            /** Reason */
+            reason?: string | null;
+            /**
+             * Template Id
+             * Format: uuid
+             */
+            template_id: string;
+        };
+        /** ClosingIn */
+        ClosingIn: {
+            /**
+             * Business Date
+             * Format: date
+             */
+            business_date: string;
+        };
         /** ClsReview */
         ClsReview: {
             /**
@@ -6246,6 +7033,11 @@ export interface components {
             reason?: string | null;
             /** Type Key */
             type_key?: string | null;
+        };
+        /** CommentIn */
+        CommentIn: {
+            /** Body */
+            body: string;
         };
         /** CompanyCounts */
         CompanyCounts: {
@@ -6823,6 +7615,11 @@ export interface components {
             /** Usage */
             usage: components["schemas"]["UsageBrief"][] | null;
             viewer: components["schemas"]["Viewer"];
+        };
+        /** DecisionIn */
+        DecisionIn: {
+            /** Note */
+            note?: string | null;
         };
         /** Deny */
         Deny: {
@@ -7738,6 +8535,41 @@ export interface components {
             /** Subscription Id */
             subscription_id: string | null;
         };
+        /** ItemIn */
+        ItemIn: {
+            /** Assigned Role */
+            assigned_role?: string | null;
+            /** Auto Rule */
+            auto_rule?: string | null;
+            /** Description */
+            description?: string | null;
+            /**
+             * Mandatory
+             * @default false
+             */
+            mandatory: boolean;
+            /** Position */
+            position?: number | null;
+            /** Title */
+            title: string;
+        };
+        /** ItemPatch */
+        ItemPatch: {
+            /** Archived */
+            archived?: boolean | null;
+            /** Assigned Role */
+            assigned_role?: string | null;
+            /** Auto Rule */
+            auto_rule?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Mandatory */
+            mandatory?: boolean | null;
+            /** Position */
+            position?: number | null;
+            /** Title */
+            title?: string | null;
+        };
         /** ItemReview */
         ItemReview: {
             /**
@@ -8091,17 +8923,17 @@ export interface components {
             /** Name */
             name?: string | null;
         };
-        /** NoteIn */
-        NoteIn: {
-            /** Note */
-            note?: string | null;
-        };
         /** OptionIn */
         OptionIn: {
             /** Label */
             label: string;
             /** Value */
             value: string;
+        };
+        /** OrderIn */
+        OrderIn: {
+            /** Item Ids */
+            item_ids: string[];
         };
         /** OrgActivityRow */
         OrgActivityRow: {
@@ -8403,6 +9235,45 @@ export interface components {
             /** Reason */
             reason: string;
             value: components["schemas"]["EntitlementValue"];
+        };
+        /** OverviewCompany */
+        OverviewCompany: {
+            /** Closing Status */
+            closing_status: string | null;
+            /** Company Id */
+            company_id: string;
+            /** Company Name */
+            company_name: string;
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /** Open Exceptions */
+            open_exceptions: number;
+            /** Open Tasks */
+            open_tasks: number;
+            /** Overdue Tasks */
+            overdue_tasks: number;
+            /** Timezone */
+            timezone: string;
+            /** Unclosed Recent Days */
+            unclosed_recent_days: number;
+        };
+        /** OverviewSummary */
+        OverviewSummary: {
+            /** Closed */
+            closed: number;
+            /** Companies */
+            companies: number;
+            /** Not Started */
+            not_started: number;
+            /** Open Exceptions */
+            open_exceptions: number;
+            /** Overdue Tasks */
+            overdue_tasks: number;
+            /** Ready For Review */
+            ready_for_review: number;
         };
         /** OwnershipTransfer */
         OwnershipTransfer: {
@@ -8808,27 +9679,6 @@ export interface components {
             /** Role */
             role: string;
         };
-        /** PolicyIn */
-        PolicyIn: {
-            /** Approval Limit */
-            approval_limit?: string | null;
-            /**
-             * Distinct Levels
-             * @default true
-             */
-            distinct_levels: boolean;
-            /**
-             * Levels
-             * @default 1
-             * @enum {integer}
-             */
-            levels: 1 | 2;
-            /**
-             * Separate Preparer Approver
-             * @default true
-             */
-            separate_preparer_approver: boolean;
-        };
         /** PreviewIn */
         PreviewIn: {
             /** Category Id */
@@ -9028,11 +9878,6 @@ export interface components {
             /** Source */
             source: string;
         };
-        /** ReasonIn */
-        ReasonIn: {
-            /** Reason */
-            reason?: string | null;
-        };
         /** ReasonRequired */
         ReasonRequired: {
             /** Reason */
@@ -9156,13 +10001,6 @@ export interface components {
             note: string;
             /** Reference */
             reference?: string | null;
-        };
-        /** RegenerateIn */
-        RegenerateIn: {
-            /** Idempotency Key */
-            idempotency_key: string;
-            /** Reason */
-            reason: string;
         };
         /** RejectIn */
         RejectIn: {
@@ -9529,6 +10367,11 @@ export interface components {
             /** Approve */
             approve: boolean;
         };
+        /** StageIn */
+        StageIn: {
+            /** Stage */
+            stage: number;
+        };
         /** StatementPatch */
         StatementPatch: {
             /** Closing Balance */
@@ -9817,6 +10660,98 @@ export interface components {
              */
             status: "requested" | "active" | "revoked" | "expired" | "denied";
         };
+        /** SyncIn */
+        SyncIn: {
+            /**
+             * Business Date
+             * Format: date
+             */
+            business_date: string;
+            /** Client Id */
+            client_id: string;
+            /**
+             * Conflicts
+             * @default 0
+             */
+            conflicts: number;
+            /**
+             * Failed Uploads
+             * @default 0
+             */
+            failed_uploads: number;
+            /** Last Sync At */
+            last_sync_at?: string | null;
+            /**
+             * Pending Changes
+             * @default 0
+             */
+            pending_changes: number;
+            /**
+             * Pending Uploads
+             * @default 0
+             */
+            pending_uploads: number;
+        };
+        /** TaskIn */
+        TaskIn: {
+            /** Assignee Id */
+            assignee_id?: string | null;
+            /**
+             * Blocks Closing
+             * @default false
+             */
+            blocks_closing: boolean;
+            /** Business Date */
+            business_date?: string | null;
+            /** Category */
+            category?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Due Date */
+            due_date?: string | null;
+            /**
+             * Priority
+             * @default normal
+             * @enum {string}
+             */
+            priority: "low" | "normal" | "high" | "urgent";
+            /**
+             * Requires Review
+             * @default false
+             */
+            requires_review: boolean;
+            /** Reviewer Id */
+            reviewer_id?: string | null;
+            /** Subject Id */
+            subject_id?: string | null;
+            /** Subject Type */
+            subject_type?: ("document" | "transaction" | "exception" | "closing") | null;
+            /** Title */
+            title: string;
+        };
+        /** TaskPatch */
+        TaskPatch: {
+            /** Base Row Version */
+            base_row_version?: number | null;
+            /** Blocks Closing */
+            blocks_closing?: boolean | null;
+            /** Business Date */
+            business_date?: string | null;
+            /** Category */
+            category?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Due Date */
+            due_date?: string | null;
+            /** Priority */
+            priority?: ("low" | "normal" | "high" | "urgent") | null;
+            /** Requires Review */
+            requires_review?: boolean | null;
+            /** Reviewer Id */
+            reviewer_id?: string | null;
+            /** Title */
+            title?: string | null;
+        };
         /** TaxCodeIn */
         TaxCodeIn: {
             /** Code */
@@ -10020,6 +10955,11 @@ export interface components {
             /** Source Company Id */
             source_company_id?: string | null;
         };
+        /** TickIn */
+        TickIn: {
+            /** Note */
+            note?: string | null;
+        };
         /** TimelineEntry */
         TimelineEntry: {
             /** Actor Id */
@@ -10057,6 +10997,16 @@ export interface components {
              * @constant
              */
             token_type: "bearer";
+        };
+        /** TransitionIn */
+        TransitionIn: {
+            /** Reason */
+            reason?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "new" | "assigned" | "in_progress" | "awaiting_information" | "awaiting_review" | "approved" | "rejected" | "completed" | "cancelled";
         };
         /** TxAdd */
         TxAdd: {
@@ -10384,6 +11334,75 @@ export interface components {
             /** Note */
             note?: string | null;
         };
+        /** NoteIn */
+        artify_api__routers__accounting__NoteIn: {
+            /** Note */
+            note?: string | null;
+        };
+        /** PolicyIn */
+        artify_api__routers__accounting__PolicyIn: {
+            /** Approval Limit */
+            approval_limit?: string | null;
+            /**
+             * Distinct Levels
+             * @default true
+             */
+            distinct_levels: boolean;
+            /**
+             * Levels
+             * @default 1
+             * @enum {integer}
+             */
+            levels: 1 | 2;
+            /**
+             * Separate Preparer Approver
+             * @default true
+             */
+            separate_preparer_approver: boolean;
+        };
+        /** ReasonIn */
+        artify_api__routers__accounting__ReasonIn: {
+            /** Reason */
+            reason?: string | null;
+        };
+        /** NoteIn */
+        artify_api__routers__bookkeeping__NoteIn: {
+            /** Note */
+            note: string;
+        };
+        /** PolicyIn */
+        artify_api__routers__bookkeeping__PolicyIn: {
+            /** Action Roles */
+            action_roles?: {
+                [key: string]: string[];
+            } | null;
+            /** Base Row Version */
+            base_row_version?: number | null;
+            /** Override Min Chars */
+            override_min_chars?: number | null;
+            /** Require Independent Approval */
+            require_independent_approval?: boolean | null;
+            /** Require Independent Task Review */
+            require_independent_task_review?: boolean | null;
+            /** Severity Overrides */
+            severity_overrides?: {
+                [key: string]: string;
+            } | null;
+            /** Timezone */
+            timezone?: string | null;
+        };
+        /** ReasonIn */
+        artify_api__routers__bookkeeping__ReasonIn: {
+            /** Reason */
+            reason: string;
+        };
+        /** RegenerateIn */
+        artify_api__routers__bookkeeping__RegenerateIn: {
+            /** Idempotency Key */
+            idempotency_key: string;
+            /** Reason */
+            reason: string;
+        };
         /** DuplicateIn */
         artify_api__routers__documents__DuplicateIn: {
             /** Display Name */
@@ -10407,6 +11426,13 @@ export interface components {
         artify_api__routers__excel__DuplicateIn: {
             /** Name */
             name: string;
+        };
+        /** RegenerateIn */
+        artify_api__routers__excel__RegenerateIn: {
+            /** Idempotency Key */
+            idempotency_key: string;
+            /** Reason */
+            reason: string;
         };
         /** ApproveIn */
         artify_api__routers__processing__ApproveIn: {
@@ -10847,6 +11873,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_overview: {
+        parameters: {
+            query?: {
+                business_date?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookkeepingOverviewOut"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -11720,7 +12777,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ReasonIn"];
+                "application/json": components["schemas"]["artify_api__routers__accounting__ReasonIn"];
             };
         };
         responses: {
@@ -11788,7 +12845,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ReasonIn"];
+                "application/json": components["schemas"]["artify_api__routers__accounting__ReasonIn"];
             };
         };
         responses: {
@@ -11823,7 +12880,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["PolicyIn"];
+                "application/json": components["schemas"]["artify_api__routers__accounting__PolicyIn"];
             };
         };
         responses: {
@@ -13113,7 +14170,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["NoteIn"];
+                "application/json": components["schemas"]["artify_api__routers__accounting__NoteIn"];
             };
         };
         responses: {
@@ -13149,7 +14206,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["NoteIn"];
+                "application/json": components["schemas"]["artify_api__routers__accounting__NoteIn"];
             };
         };
         responses: {
@@ -13185,7 +14242,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["NoteIn"];
+                "application/json": components["schemas"]["artify_api__routers__accounting__NoteIn"];
             };
         };
         responses: {
@@ -13394,6 +14451,1587 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AssignmentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_checklist_item_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ItemPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_checklist_item_complete: {
+        parameters: {
+            query: {
+                business_date: string;
+            };
+            header?: never;
+            path: {
+                company_id: string;
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TickIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_checklist_item_uncomplete: {
+        parameters: {
+            query: {
+                business_date: string;
+            };
+            header?: never;
+            path: {
+                company_id: string;
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_checklist_templates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_checklists: {
+        parameters: {
+            query?: {
+                include_archived?: boolean;
+            };
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_checklist_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChecklistIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_checklist_from_template: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_checklist_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                checklist_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChecklistPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_checklist_item_add: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                checklist_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ItemIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_checklist_order: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                checklist_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrderIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_closings: {
+        parameters: {
+            query?: {
+                date_from?: string | null;
+                date_to?: string | null;
+                status?: ("draft" | "in_progress" | "ready_for_review" | "closed" | "reopened" | "cancelled") | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_closing_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClosingIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_closing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                closing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_closing_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                closing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["artify_api__routers__bookkeeping__ReasonIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_closing_close: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                closing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_closing_exports: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                closing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_closing_export_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                closing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClosingExportIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_closing_export_regenerate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                closing_id: string;
+                export_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["artify_api__routers__bookkeeping__RegenerateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_closing_reopen: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                closing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["artify_api__routers__bookkeeping__ReasonIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_closing_send_back: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                closing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["artify_api__routers__bookkeeping__NoteIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_closing_snapshot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                closing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_closing_stage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                closing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StageIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_closing_submit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                closing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_closing_summary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                closing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_closing_validate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                closing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_day: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                business_date: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_day_cash_bank: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                business_date: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_day_documents: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                company_id: string;
+                business_date: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_day_exceptions: {
+        parameters: {
+            query?: {
+                status?: ("open" | "resolved" | "overridden" | "acknowledged") | null;
+            };
+            header?: never;
+            path: {
+                company_id: string;
+                business_date: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_day_report: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                business_date: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_day_snapshots: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                business_date: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_day_transactions: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                company_id: string;
+                business_date: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_day_validation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                business_date: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_exception_acknowledge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                exception_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_exception_override: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                exception_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_policy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_policy_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["artify_api__routers__bookkeeping__PolicyIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_readiness: {
+        parameters: {
+            query?: {
+                period_id?: string | null;
+                date_from?: string | null;
+                date_to?: string | null;
+            };
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_sync_report: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SyncIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_tasks: {
+        parameters: {
+            query?: {
+                status?: ("new" | "assigned" | "in_progress" | "awaiting_information" | "awaiting_review" | "approved" | "rejected" | "completed" | "cancelled") | null;
+                mine?: boolean;
+                business_date?: string | null;
+                open_only?: boolean;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_task_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaskIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_task: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_task_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaskPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_task_assign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_task_comment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommentIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bookkeeping_task_transition: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransitionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
@@ -14901,7 +17539,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["RegenerateIn"];
+                "application/json": components["schemas"]["artify_api__routers__excel__RegenerateIn"];
             };
         };
         responses: {

@@ -2,6 +2,7 @@
 //! shell, HTTP or credential capability exposed to it. Tokens stay in Rust (memory + Windows Credential Manager).
 
 mod acct_commands;
+mod bk_commands;
 mod commands;
 mod doc_commands;
 mod intel_commands;
@@ -127,6 +128,7 @@ pub fn run() {
             doc_commands::mirror_sync,
             doc_commands::mirror_open,
             acct_commands::acct_call,
+            bk_commands::bk_call,
             xl_commands::xl_call,
             xl_commands::xl_upload_pick,
             xl_commands::xl_export_save,

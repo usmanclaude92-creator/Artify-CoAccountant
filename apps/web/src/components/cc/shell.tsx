@@ -44,6 +44,7 @@ const NAV: NavItem[] = [
   { label: "Documents & Storage", path: "/documents", perm: "storage.manage" },
   { label: "Document Processing", path: "/processing", perm: "processing.monitor" },
   { label: "Excel & Reports", path: "/excel", perm: "excel.monitor" },
+  { label: "Daily Closing", path: "/bookkeeping", perm: "bookkeeping.monitor" },
   { label: "Team Members", path: "/team", perm: "members.read" },
   { label: "Accountants", path: "/accountants", perm: "members.read" },
   { label: "Client Assignments", path: "/assignments", perm: "members.read" },

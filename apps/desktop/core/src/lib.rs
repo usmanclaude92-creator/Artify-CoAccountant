@@ -1,6 +1,7 @@
 //! Artify Co-Accountant Desktop core. Platform-neutral logic that the Tauri shell wraps in a narrow command surface.
 pub mod acct;
 pub mod api;
+pub mod bk;
 pub mod db;
 pub mod desktop;
 pub mod docs;

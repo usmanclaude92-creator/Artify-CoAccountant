@@ -795,6 +795,24 @@
         "title": "ArchiveIn",
         "type": "object"
       },
+      "AssignIn": {
+        "properties": {
+          "assignee_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assignee Id"
+          }
+        },
+        "title": "AssignIn",
+        "type": "object"
+      },
       "AssignedCompany": {
         "properties": {
           "active": {
@@ -1588,6 +1606,26 @@
         "title": "BillingSummary",
         "type": "object"
       },
+      "BookkeepingOverviewOut": {
+        "properties": {
+          "companies": {
+            "items": {
+              "$ref": "#/components/schemas/OverviewCompany"
+            },
+            "title": "Companies",
+            "type": "array"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/OverviewSummary"
+          }
+        },
+        "required": [
+          "companies",
+          "summary"
+        ],
+        "title": "BookkeepingOverviewOut",
+        "type": "object"
+      },
       "CancelAtPeriodEnd": {
         "properties": {
           "enabled": {
@@ -1964,6 +2002,163 @@
         "title": "CheckIn",
         "type": "object"
       },
+      "ChecklistIn": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ItemIn"
+            },
+            "maxItems": 100,
+            "title": "Items",
+            "type": "array"
+          },
+          "name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "ChecklistIn",
+        "type": "object"
+      },
+      "ChecklistPatch": {
+        "properties": {
+          "archived": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archived"
+          },
+          "base_row_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Row Version"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position"
+          }
+        },
+        "title": "ChecklistPatch",
+        "type": "object"
+      },
+      "ClosingExportIn": {
+        "properties": {
+          "acknowledge_repeat": {
+            "default": false,
+            "title": "Acknowledge Repeat",
+            "type": "boolean"
+          },
+          "idempotency_key": {
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "Idempotency Key",
+            "type": "string"
+          },
+          "include_unapproved": {
+            "default": false,
+            "title": "Include Unapproved",
+            "type": "boolean"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "template_id": {
+            "format": "uuid",
+            "title": "Template Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "template_id",
+          "idempotency_key"
+        ],
+        "title": "ClosingExportIn",
+        "type": "object"
+      },
+      "ClosingIn": {
+        "properties": {
+          "business_date": {
+            "format": "date",
+            "title": "Business Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "business_date"
+        ],
+        "title": "ClosingIn",
+        "type": "object"
+      },
       "ClsReview": {
         "properties": {
           "action": {
@@ -2004,6 +2199,21 @@
           "action"
         ],
         "title": "ClsReview",
+        "type": "object"
+      },
+      "CommentIn": {
+        "properties": {
+          "body": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Body",
+            "type": "string"
+          }
+        },
+        "required": [
+          "body"
+        ],
+        "title": "CommentIn",
         "type": "object"
       },
       "CompanyCounts": {
@@ -4059,6 +4269,24 @@
           "email_delivery"
         ],
         "title": "DashboardOut",
+        "type": "object"
+      },
+      "DecisionIn": {
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "title": "DecisionIn",
         "type": "object"
       },
       "Deny": {
@@ -6911,6 +7139,163 @@
         "title": "InvoiceRow",
         "type": "object"
       },
+      "ItemIn": {
+        "properties": {
+          "assigned_role": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned Role"
+          },
+          "auto_rule": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auto Rule"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "mandatory": {
+            "default": false,
+            "title": "Mandatory",
+            "type": "boolean"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position"
+          },
+          "title": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "ItemIn",
+        "type": "object"
+      },
+      "ItemPatch": {
+        "properties": {
+          "archived": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archived"
+          },
+          "assigned_role": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned Role"
+          },
+          "auto_rule": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auto Rule"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "mandatory": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mandatory"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "title": "ItemPatch",
+        "type": "object"
+      },
       "ItemReview": {
         "properties": {
           "action": {
@@ -8090,24 +8475,6 @@
         "title": "NodeUpdate",
         "type": "object"
       },
-      "NoteIn": {
-        "properties": {
-          "note": {
-            "anyOf": [
-              {
-                "maxLength": 500,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Note"
-          }
-        },
-        "title": "NoteIn",
-        "type": "object"
-      },
       "OptionIn": {
         "properties": {
           "label": {
@@ -8128,6 +8495,23 @@
           "label"
         ],
         "title": "OptionIn",
+        "type": "object"
+      },
+      "OrderIn": {
+        "properties": {
+          "item_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Item Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "item_ids"
+        ],
+        "title": "OrderIn",
         "type": "object"
       },
       "OrgActivityRow": {
@@ -9044,6 +9428,105 @@
           "active"
         ],
         "title": "OverrideOut",
+        "type": "object"
+      },
+      "OverviewCompany": {
+        "properties": {
+          "closing_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closing Status"
+          },
+          "company_id": {
+            "title": "Company Id",
+            "type": "string"
+          },
+          "company_name": {
+            "title": "Company Name",
+            "type": "string"
+          },
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "open_exceptions": {
+            "title": "Open Exceptions",
+            "type": "integer"
+          },
+          "open_tasks": {
+            "title": "Open Tasks",
+            "type": "integer"
+          },
+          "overdue_tasks": {
+            "title": "Overdue Tasks",
+            "type": "integer"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          },
+          "unclosed_recent_days": {
+            "title": "Unclosed Recent Days",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "company_id",
+          "company_name",
+          "timezone",
+          "day",
+          "closing_status",
+          "open_exceptions",
+          "open_tasks",
+          "overdue_tasks",
+          "unclosed_recent_days"
+        ],
+        "title": "OverviewCompany",
+        "type": "object"
+      },
+      "OverviewSummary": {
+        "properties": {
+          "closed": {
+            "title": "Closed",
+            "type": "integer"
+          },
+          "companies": {
+            "title": "Companies",
+            "type": "integer"
+          },
+          "not_started": {
+            "title": "Not Started",
+            "type": "integer"
+          },
+          "open_exceptions": {
+            "title": "Open Exceptions",
+            "type": "integer"
+          },
+          "overdue_tasks": {
+            "title": "Overdue Tasks",
+            "type": "integer"
+          },
+          "ready_for_review": {
+            "title": "Ready For Review",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "companies",
+          "closed",
+          "ready_for_review",
+          "not_started",
+          "open_exceptions",
+          "overdue_tasks"
+        ],
+        "title": "OverviewSummary",
         "type": "object"
       },
       "OwnershipTransfer": {
@@ -10149,43 +10632,6 @@
         "title": "PlatformMe",
         "type": "object"
       },
-      "PolicyIn": {
-        "properties": {
-          "approval_limit": {
-            "anyOf": [
-              {
-                "pattern": "^-?\\d{1,18}(\\.\\d{1,10})?$",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Approval Limit"
-          },
-          "distinct_levels": {
-            "default": true,
-            "title": "Distinct Levels",
-            "type": "boolean"
-          },
-          "levels": {
-            "default": 1,
-            "enum": [
-              1,
-              2
-            ],
-            "title": "Levels",
-            "type": "integer"
-          },
-          "separate_preparer_approver": {
-            "default": true,
-            "title": "Separate Preparer Approver",
-            "type": "boolean"
-          }
-        },
-        "title": "PolicyIn",
-        "type": "object"
-      },
       "PreviewIn": {
         "properties": {
           "category_id": {
@@ -10743,24 +11189,6 @@
         "title": "RateIn",
         "type": "object"
       },
-      "ReasonIn": {
-        "properties": {
-          "reason": {
-            "anyOf": [
-              {
-                "maxLength": 500,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Reason"
-          }
-        },
-        "title": "ReasonIn",
-        "type": "object"
-      },
       "ReasonRequired": {
         "properties": {
           "reason": {
@@ -11077,28 +11505,6 @@
           "note"
         ],
         "title": "RefundCreate",
-        "type": "object"
-      },
-      "RegenerateIn": {
-        "properties": {
-          "idempotency_key": {
-            "maxLength": 128,
-            "minLength": 8,
-            "title": "Idempotency Key",
-            "type": "string"
-          },
-          "reason": {
-            "maxLength": 500,
-            "minLength": 3,
-            "title": "Reason",
-            "type": "string"
-          }
-        },
-        "required": [
-          "idempotency_key",
-          "reason"
-        ],
-        "title": "RegenerateIn",
         "type": "object"
       },
       "RejectIn": {
@@ -12137,6 +12543,21 @@
         "title": "SplitDecision",
         "type": "object"
       },
+      "StageIn": {
+        "properties": {
+          "stage": {
+            "maximum": 6.0,
+            "minimum": 1.0,
+            "title": "Stage",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "stage"
+        ],
+        "title": "StageIn",
+        "type": "object"
+      },
       "StatementPatch": {
         "properties": {
           "closing_balance": {
@@ -12952,6 +13373,333 @@
         "title": "SupportGrantOut",
         "type": "object"
       },
+      "SyncIn": {
+        "properties": {
+          "business_date": {
+            "format": "date",
+            "title": "Business Date",
+            "type": "string"
+          },
+          "client_id": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Client Id",
+            "type": "string"
+          },
+          "conflicts": {
+            "default": 0,
+            "maximum": 1000000.0,
+            "minimum": 0.0,
+            "title": "Conflicts",
+            "type": "integer"
+          },
+          "failed_uploads": {
+            "default": 0,
+            "maximum": 1000000.0,
+            "minimum": 0.0,
+            "title": "Failed Uploads",
+            "type": "integer"
+          },
+          "last_sync_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Sync At"
+          },
+          "pending_changes": {
+            "default": 0,
+            "maximum": 1000000.0,
+            "minimum": 0.0,
+            "title": "Pending Changes",
+            "type": "integer"
+          },
+          "pending_uploads": {
+            "default": 0,
+            "maximum": 1000000.0,
+            "minimum": 0.0,
+            "title": "Pending Uploads",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "client_id",
+          "business_date"
+        ],
+        "title": "SyncIn",
+        "type": "object"
+      },
+      "TaskIn": {
+        "properties": {
+          "assignee_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assignee Id"
+          },
+          "blocks_closing": {
+            "default": false,
+            "title": "Blocks Closing",
+            "type": "boolean"
+          },
+          "business_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Business Date"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "pattern": "^[a-z][a-z0-9_]{1,59}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "priority": {
+            "default": "normal",
+            "enum": [
+              "low",
+              "normal",
+              "high",
+              "urgent"
+            ],
+            "title": "Priority",
+            "type": "string"
+          },
+          "requires_review": {
+            "default": false,
+            "title": "Requires Review",
+            "type": "boolean"
+          },
+          "reviewer_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewer Id"
+          },
+          "subject_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject Id"
+          },
+          "subject_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "document",
+                  "transaction",
+                  "exception",
+                  "closing"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject Type"
+          },
+          "title": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "TaskIn",
+        "type": "object"
+      },
+      "TaskPatch": {
+        "properties": {
+          "base_row_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Row Version"
+          },
+          "blocks_closing": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blocks Closing"
+          },
+          "business_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Business Date"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "pattern": "^[a-z][a-z0-9_]{1,59}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "priority": {
+            "anyOf": [
+              {
+                "enum": [
+                  "low",
+                  "normal",
+                  "high",
+                  "urgent"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Priority"
+          },
+          "requires_review": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requires Review"
+          },
+          "reviewer_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewer Id"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "title": "TaskPatch",
+        "type": "object"
+      },
       "TaxCodeIn": {
         "properties": {
           "code": {
@@ -13598,6 +14346,24 @@
         "title": "TemplateVersionIn",
         "type": "object"
       },
+      "TickIn": {
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "title": "TickIn",
+        "type": "object"
+      },
       "TimelineEntry": {
         "properties": {
           "actor_id": {
@@ -13692,6 +14458,42 @@
           "mfa"
         ],
         "title": "TokenResponse",
+        "type": "object"
+      },
+      "TransitionIn": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "status": {
+            "enum": [
+              "new",
+              "assigned",
+              "in_progress",
+              "awaiting_information",
+              "awaiting_review",
+              "approved",
+              "rejected",
+              "completed",
+              "cancelled"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "TransitionIn",
         "type": "object"
       },
       "TxAdd": {
@@ -14693,6 +15495,226 @@
         "title": "ApproveIn",
         "type": "object"
       },
+      "artify_api__routers__accounting__NoteIn": {
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "title": "NoteIn",
+        "type": "object"
+      },
+      "artify_api__routers__accounting__PolicyIn": {
+        "properties": {
+          "approval_limit": {
+            "anyOf": [
+              {
+                "pattern": "^-?\\d{1,18}(\\.\\d{1,10})?$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approval Limit"
+          },
+          "distinct_levels": {
+            "default": true,
+            "title": "Distinct Levels",
+            "type": "boolean"
+          },
+          "levels": {
+            "default": 1,
+            "enum": [
+              1,
+              2
+            ],
+            "title": "Levels",
+            "type": "integer"
+          },
+          "separate_preparer_approver": {
+            "default": true,
+            "title": "Separate Preparer Approver",
+            "type": "boolean"
+          }
+        },
+        "title": "PolicyIn",
+        "type": "object"
+      },
+      "artify_api__routers__accounting__ReasonIn": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "title": "ReasonIn",
+        "type": "object"
+      },
+      "artify_api__routers__bookkeeping__NoteIn": {
+        "properties": {
+          "note": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "note"
+        ],
+        "title": "NoteIn",
+        "type": "object"
+      },
+      "artify_api__routers__bookkeeping__PolicyIn": {
+        "properties": {
+          "action_roles": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action Roles"
+          },
+          "base_row_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Row Version"
+          },
+          "override_min_chars": {
+            "anyOf": [
+              {
+                "maximum": 500.0,
+                "minimum": 5.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Override Min Chars"
+          },
+          "require_independent_approval": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Require Independent Approval"
+          },
+          "require_independent_task_review": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Require Independent Task Review"
+          },
+          "severity_overrides": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Severity Overrides"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone"
+          }
+        },
+        "title": "PolicyIn",
+        "type": "object"
+      },
+      "artify_api__routers__bookkeeping__ReasonIn": {
+        "properties": {
+          "reason": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "ReasonIn",
+        "type": "object"
+      },
+      "artify_api__routers__bookkeeping__RegenerateIn": {
+        "properties": {
+          "idempotency_key": {
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "Idempotency Key",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason",
+          "idempotency_key"
+        ],
+        "title": "RegenerateIn",
+        "type": "object"
+      },
       "artify_api__routers__documents__DuplicateIn": {
         "properties": {
           "display_name": {
@@ -14773,6 +15795,28 @@
           "name"
         ],
         "title": "DuplicateIn",
+        "type": "object"
+      },
+      "artify_api__routers__excel__RegenerateIn": {
+        "properties": {
+          "idempotency_key": {
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "Idempotency Key",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 3,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "idempotency_key",
+          "reason"
+        ],
+        "title": "RegenerateIn",
         "type": "object"
       },
       "artify_api__routers__processing__ApproveIn": {
@@ -15364,6 +16408,57 @@
         "summary": "Verify Email",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/v1/bookkeeping/overview": {
+      "get": {
+        "description": "Closing status of every visible company for one day (default: each company's own today). Status and counts only:\nno transactions, documents or amounts.",
+        "operationId": "bookkeeping_overview",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "business_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Business Date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookkeepingOverviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Overview",
+        "tags": [
+          "bookkeeping"
         ]
       }
     },
@@ -16914,7 +18009,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ReasonIn"
+                "$ref": "#/components/schemas/artify_api__routers__accounting__ReasonIn"
               }
             }
           },
@@ -17030,7 +18125,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ReasonIn"
+                "$ref": "#/components/schemas/artify_api__routers__accounting__ReasonIn"
               }
             }
           },
@@ -17083,7 +18178,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/PolicyIn"
+                "$ref": "#/components/schemas/artify_api__routers__accounting__PolicyIn"
               }
             }
           },
@@ -19478,7 +20573,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/NoteIn"
+                "$ref": "#/components/schemas/artify_api__routers__accounting__NoteIn"
               }
             }
           },
@@ -19541,7 +20636,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/NoteIn"
+                "$ref": "#/components/schemas/artify_api__routers__accounting__NoteIn"
               }
             }
           },
@@ -19604,7 +20699,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/NoteIn"
+                "$ref": "#/components/schemas/artify_api__routers__accounting__NoteIn"
               }
             }
           },
@@ -19961,6 +21056,2877 @@
         "summary": "Update Assignment",
         "tags": [
           "companies"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/bookkeeping/checklist-items/{item_id}": {
+      "patch": {
+        "operationId": "bookkeeping_checklist_item_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ItemPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Checklist Item Update"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Item Update",
+        "tags": [
+          "bookkeeping"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/bookkeeping/checklist-items/{item_id}/complete": {
+      "delete": {
+        "operationId": "bookkeeping_checklist_item_uncomplete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Item Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "business_date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Business Date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Checklist Item Uncomplete"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Item Uncomplete",
+        "tags": [
+          "bookkeeping"
+        ]
+      },
+      "post": {
+        "operationId": "bookkeeping_checklist_item_complete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Item Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "business_date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Business Date",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TickIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Checklist Item Complete"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Item Complete",
+        "tags": [
+          "bookkeeping"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/bookkeeping/checklist-templates": {
+      "get": {
+        "operationId": "bookkeeping_checklist_templates",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Checklist Templates"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Checklist Templates",
+        "tags": [
+          "bookkeeping"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/bookkeeping/checklists": {
+      "get": {
+        "operationId": "bookkeeping_checklists",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_archived",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Archived",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Checklists"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Checklists",
+        "tags": [
+          "bookkeeping"
+        ]
+      },
+      "post": {
+        "operationId": "bookkeeping_checklist_create",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChecklistIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Checklist Create"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Checklist Create",
+        "tags": [
+          "bookkeeping"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/bookkeeping/checklists/from-template/{key}": {
+      "post": {
+        "description": "COPY a default template into this company. The copy is the company's own; it never follows the template.",
+        "operationId": "bookkeeping_checklist_from_template",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Checklist From Template"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Checklist From Template",
+        "tags": [
+          "bookkeeping"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/bookkeeping/checklists/{checklist_id}": {
+      "patch": {
+        "operationId": "bookkeeping_checklist_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "checklist_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Checklist Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChecklistPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Checklist Update"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Checklist Update",
+        "tags": [
+          "bookkeeping"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/bookkeeping/checklists/{checklist_id}/items": {
+      "post": {
+        "operationId": "bookkeeping_checklist_item_add",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "checklist_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Checklist Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ItemIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Checklist Item Add"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Item Add",
+        "tags": [
+          "bookkeeping"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/bookkeeping/checklists/{checklist_id}/order": {
+      "put": {
+        "operationId": "bookkeeping_checklist_order",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "checklist_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Checklist Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Checklist Order"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Item Order",
+        "tags": [
+          "bookkeeping"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/bookkeeping/closings": {
+      "get": {
+        "operationId": "bookkeeping_closings",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date_from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date To"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "draft",
+                    "in_progress",
+                    "ready_for_review",
+                    "closed",
+                    "reopened",
+                    "cancelled"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Closings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Closings",
+        "tags": [
+          "bookkeeping"
+        ]
+      },
+      "post": {
+        "operationId": "bookkeeping_closing_create",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClosingIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Closing Create"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Closing Create",
+        "tags": [
+          "bookkeeping"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/bookkeeping/closings/{closing_id}": {
+      "get": {
+        "operationId": "bookkeeping_closing",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "closing_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Closing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Closing"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Closing",
+        "tags": [
+          "bookkeeping"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/bookkeeping/closings/{closing_id}/cancel": {
+      "post": {
+        "operationId": "bookkeeping_closing_cancel",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "closing_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Closing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/artify_api__routers__bookkeeping__ReasonIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Closing Cancel"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Closing Cancel",
+        "tags": [
+          "bookkeeping"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/bookkeeping/closings/{closing_id}/close": {
+      "post": {
+        "description": "Approve and close. The day is validated again at this moment and an immutable snapshot is stored.",
+        "operationId": "bookkeeping_closing_close",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "closing_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Closing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Closing Close"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Closing Close",
+        "tags": [
+          "bookkeeping"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/bookkeeping/closings/{closing_id}/exports": {
+      "get": {
+        "operationId": "bookkeeping_closing_exports",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "closing_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Closing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Closing Exports"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Closing Exports",
+        "tags": [
+          "bookkeeping"
+        ]
+      },
+      "post": {
+        "description": "A daily report for the day through the Excel engine (approved data unless explicitly allowed otherwise).",
+        "operationId": "bookkeeping_closing_export_create",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "closing_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Closing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClosingExportIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Closing Export Create"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Closing Export Create",
+        "tags": [
+          "bookkeeping"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/bookkeeping/closings/{closing_id}/exports/{export_id}/regenerate": {
+      "post": {
+        "operationId": "bookkeeping_closing_export_regenerate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "closing_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Closing Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "export_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Export Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/artify_api__routers__bookkeeping__RegenerateIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Closing Export Regenerate"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Closing Export Regenerate",
+        "tags": [
+          "bookkeeping"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/bookkeeping/closings/{closing_id}/reopen": {
+      "post": {
+        "description": "Keeps the original closing and snapshot and returns a NEW, linked closing for the same day.",
+        "operationId": "bookkeeping_closing_reopen",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "closing_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Closing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/artify_api__routers__bookkeeping__ReasonIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Closing Reopen"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Closing Reopen",
+        "tags": [
+          "bookkeeping"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/bookkeeping/closings/{closing_id}/send-back": {
+      "post": {
+        "operationId": "bookkeeping_closing_send_back",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "closing_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Closing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/artify_api__routers__bookkeeping__NoteIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Closing Send Back"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Closing Send Back",
+        "tags": [
+          "bookkeeping"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/bookkeeping/closings/{closing_id}/snapshot": {
+      "get": {
+        "description": "The stored snapshot with a live re-check of its hash. Snapshots can only be read, never changed.",
+        "operationId": "bookkeeping_closing_snapshot",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "closing_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Closing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Closing Snapshot"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Closing Snapshot",
+        "tags": [
+          "bookkeeping"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/bookkeeping/closings/{closing_id}/stage": {
+      "post": {
+        "operationId": "bookkeeping_closing_stage",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "closing_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Closing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StageIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Closing Stage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Closing Stage",
+        "tags": [
+          "bookkeeping"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/bookkeeping/closings/{closing_id}/submit": {
+      "post": {
+        "operationId": "bookkeeping_closing_submit",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "closing_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Closing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Closing Submit"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Closing Submit",
+        "tags": [
+          "bookkeeping"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/bookkeeping/closings/{closing_id}/summary": {
+      "get": {
+        "operationId": "bookkeeping_closing_summary",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "closing_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Closing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Closing Summary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Closing Summary",
+        "tags": [
+          "bookkeeping"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/bookkeeping/closings/{closing_id}/validate": {
+      "post": {
+        "operationId": "bookkeeping_closing_validate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "closing_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Closing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Closing Validate"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Closing Validate",
+        "tags": [
+          "bookkeeping"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/bookkeeping/days/{business_date}": {
+      "get": {
+        "description": "The workbench overview for one business day (a calendar day in the company's own time zone). Real data only.",
+        "operationId": "bookkeeping_day",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "business_date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Business Date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Day"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Day",
+        "tags": [
+          "bookkeeping"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/bookkeeping/days/{business_date}/cash-bank": {
+      "get": {
+        "operationId": "bookkeeping_day_cash_bank",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "business_date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Business Date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Day Cash Bank"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Day Cash Bank",
+        "tags": [
+          "bookkeeping"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/bookkeeping/days/{business_date}/documents": {
+      "get": {
+        "operationId": "bookkeeping_day_documents",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "business_date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Business Date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Day Documents"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Day Documents",
+        "tags": [
+          "bookkeeping"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/bookkeeping/days/{business_date}/exceptions": {
+      "get": {
+        "operationId": "bookkeeping_day_exceptions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "business_date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Business Date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "open",
+                    "resolved",
+                    "overridden",
+                    "acknowledged"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Day Exceptions"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Day Exceptions",
+        "tags": [
+          "bookkeeping"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/bookkeeping/days/{business_date}/report": {
+      "get": {
+        "operationId": "bookkeeping_day_report",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "business_date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Business Date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Day Report"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Day Report",
+        "tags": [
+          "bookkeeping"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/bookkeeping/days/{business_date}/snapshots": {
+      "get": {
+        "description": "Every closing snapshot the day ever had, oldest first. A reopened day keeps its original.",
+        "operationId": "bookkeeping_day_snapshots",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "business_date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Business Date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Day Snapshots"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Day Snapshots",
+        "tags": [
+          "bookkeeping"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/bookkeeping/days/{business_date}/transactions": {
+      "get": {
+        "operationId": "bookkeeping_day_transactions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "business_date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Business Date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Day Transactions"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Day Transactions",
+        "tags": [
+          "bookkeeping"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/bookkeeping/days/{business_date}/validation": {
+      "get": {
+        "description": "What a validation would find right now. Nothing is stored.",
+        "operationId": "bookkeeping_day_validation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "business_date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Business Date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Day Validation"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Day Validation",
+        "tags": [
+          "bookkeeping"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/bookkeeping/exceptions/{exception_id}/acknowledge": {
+      "post": {
+        "operationId": "bookkeeping_exception_acknowledge",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "exception_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Exception Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Exception Acknowledge"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Exception Ack",
+        "tags": [
+          "bookkeeping"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/bookkeeping/exceptions/{exception_id}/override": {
+      "post": {
+        "operationId": "bookkeeping_exception_override",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "exception_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Exception Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Exception Override"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Exception Override",
+        "tags": [
+          "bookkeeping"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/bookkeeping/policy": {
+      "get": {
+        "operationId": "bookkeeping_policy",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Policy"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Policy",
+        "tags": [
+          "bookkeeping"
+        ]
+      },
+      "put": {
+        "operationId": "bookkeeping_policy_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/artify_api__routers__bookkeeping__PolicyIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Policy Update"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Policy Update",
+        "tags": [
+          "bookkeeping"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/bookkeeping/readiness": {
+      "get": {
+        "description": "Whether every day that needs a closing has one. An overview only: it locks no period and prepares no VAT return.",
+        "operationId": "bookkeeping_readiness",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Period Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date_from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Readiness"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Readiness",
+        "tags": [
+          "bookkeeping"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/bookkeeping/sync-reports": {
+      "post": {
+        "description": "A device DECLARES its local synchronisation state for a day. It is shown as declared, never as proof.",
+        "operationId": "bookkeeping_sync_report",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyncIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Sync Report"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Sync Report",
+        "tags": [
+          "bookkeeping"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/bookkeeping/tasks": {
+      "get": {
+        "operationId": "bookkeeping_tasks",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "new",
+                    "assigned",
+                    "in_progress",
+                    "awaiting_information",
+                    "awaiting_review",
+                    "approved",
+                    "rejected",
+                    "completed",
+                    "cancelled"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "mine",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Mine",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "business_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Business Date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "open_only",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Open Only",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Tasks"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tasks",
+        "tags": [
+          "bookkeeping"
+        ]
+      },
+      "post": {
+        "operationId": "bookkeeping_task_create",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Task Create"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Task Create",
+        "tags": [
+          "bookkeeping"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/bookkeeping/tasks/{task_id}": {
+      "get": {
+        "operationId": "bookkeeping_task",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Task"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Task",
+        "tags": [
+          "bookkeeping"
+        ]
+      },
+      "patch": {
+        "operationId": "bookkeeping_task_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Task Update"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Task Update",
+        "tags": [
+          "bookkeeping"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/bookkeeping/tasks/{task_id}/assign": {
+      "post": {
+        "operationId": "bookkeeping_task_assign",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Task Assign"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Task Assign",
+        "tags": [
+          "bookkeeping"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/bookkeeping/tasks/{task_id}/comments": {
+      "post": {
+        "operationId": "bookkeeping_task_comment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Task Comment"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Task Comment",
+        "tags": [
+          "bookkeeping"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/bookkeeping/tasks/{task_id}/transition": {
+      "post": {
+        "description": "Move a task along its status graph. Who may do which move (assignee, manager, an independent reviewer) is decided on the server.",
+        "operationId": "bookkeeping_task_transition",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransitionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bookkeeping Task Transition"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Task Transition",
+        "tags": [
+          "bookkeeping"
         ]
       }
     },
@@ -22942,7 +26908,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/RegenerateIn"
+                "$ref": "#/components/schemas/artify_api__routers__excel__RegenerateIn"
               }
             }
           },

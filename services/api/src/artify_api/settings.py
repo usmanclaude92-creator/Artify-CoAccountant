@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     database_url_migrate: str = "postgresql+psycopg://postgres@localhost:5432/artify"
 
     redis_url: str = "redis://localhost:6379/0"
+    # Connection pool per database identity. Serverless hosting (one tiny instance per request burst, small pooler) sets 1 / 0.
+    db_pool_size: int = 10
+    db_max_overflow: int = 10
 
     # Token signing: one secret per realm so a tenant token can never validate as a platform token.
     tenant_jwt_secret: SecretStr = SecretStr(f"{_DEV_SECRET_MARKER}-tenant-secret-change-me-0123456789")

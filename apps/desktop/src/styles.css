@@ -82,3 +82,21 @@ h1 { font-size: var(--text-xl); margin: 0; } h2 { font-size: var(--text-lg); mar
 .d-viewer__img { max-inline-size: none; transform-origin: center; }
 .d-viewer__img--fit { max-inline-size: 100%; max-block-size: 65vh; }
 @media print { body * { visibility: hidden; } .d-print-area, .d-print-area * { visibility: visible; } .d-print-area { position: absolute; inset: 0; } }
+
+/* document review workspace (Phase 7) */
+.d-review { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(20rem, 1fr); gap: var(--space-4); align-items: start; }
+.d-review__side { display: grid; gap: var(--space-2); max-block-size: 78vh; overflow: auto; padding-inline-end: var(--space-2); }
+.d-review__thumbs { display: flex; gap: var(--space-2); overflow-x: auto; padding: var(--space-2); border-block-end: 1px solid var(--color-border); }
+.d-thumb { inline-size: 3.5rem; block-size: 4.5rem; flex: none; padding: 0; border: 2px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); cursor: pointer; overflow: hidden; }
+.d-thumb[aria-current="page"] { border-color: var(--color-focus, currentColor); }
+.d-thumb img { inline-size: 100%; block-size: 100%; object-fit: cover; display: block; }
+.d-review__page { position: relative; margin: 0 auto; transform-origin: center; }
+.d-review__page img { inline-size: 100%; display: block; }
+.d-box { position: absolute; border: 2px solid var(--color-info, #2b6cb0); border-radius: 2px; pointer-events: none; opacity: 0.5; }
+.d-box--on { border-color: var(--color-warning, #b7791f); opacity: 1; background: rgba(183, 121, 31, 0.15); }
+.d-fields { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+.d-field { display: grid; gap: var(--space-1); padding: var(--space-2); border: 1px solid var(--color-border); border-radius: var(--radius-sm); }
+.d-field--on, .d-row--on { outline: 2px solid var(--color-warning, #b7791f); }
+.d-review__foot { margin-block: var(--space-3); }
+.d-table--tx input { inline-size: 100%; min-inline-size: 5rem; }
+@media (max-width: 62rem) { .d-review { grid-template-columns: minmax(0, 1fr); } }

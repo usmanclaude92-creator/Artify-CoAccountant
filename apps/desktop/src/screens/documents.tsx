@@ -180,6 +180,7 @@ export function Documents({ mode }: { mode: "active" | "archived" }) {
 
 function Details({ docId, nodes, onChanged, onGone }: { docId: string; nodes: WsNode[]; onChanged: () => void; onGone: () => void }) {
   const { bridge, orgId, companyId, fail } = useCompany();
+  const { openReview } = useApp();
   const [d, setD] = useState<DocDetail | null>(null);
   const [events, setEvents] = useState<DocEvent[]>([]);
   const [msg, setMsg] = useState<{ tone: "success" | "danger" | "info"; text: string } | null>(null);
@@ -225,6 +226,7 @@ function Details({ docId, nodes, onChanged, onGone }: { docId: string; nodes: Ws
           : active ? <span className="a-hint">No in-app preview for this file type; use Open.</span> : null}
       </div>
       {preview ? <Viewer preview={preview} onClose={() => setPreview(null)} /> : null}
+      {active && d.can.edit ? <div className="d-actions"><Button variant="secondary" disabled={busy} onClick={() => openReview(d.id)}>Read with OCR / review</Button><span className="a-hint">Reads the text, suggests the type and values for you to review. Nothing is approved automatically.</span></div> : null}
       {active && d.can.rename ? (
         <form className="d-actions" onSubmit={(e) => { e.preventDefault(); if (name && name !== d.display_name) void run("Renamed.", () => bridge.docsPatch(orgId, companyId, d.id, { display_name: name, base_row_version: d.row_version })); }}>
           <label className="d-inline">Rename<input value={name ?? d.display_name} onChange={(e) => setName(e.target.value)} /></label><Button type="submit" variant="secondary" disabled={busy}>Rename</Button>

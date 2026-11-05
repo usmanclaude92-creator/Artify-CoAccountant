@@ -4,6 +4,7 @@ pub mod db;
 pub mod desktop;
 pub mod docs;
 pub mod error;
+pub mod intel;
 pub mod logs;
 pub mod mirror;
 pub mod queue;

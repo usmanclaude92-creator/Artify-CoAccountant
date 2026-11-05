@@ -3,6 +3,7 @@
 
 mod commands;
 mod doc_commands;
+mod intel_commands;
 mod state;
 
 use std::sync::Arc;
@@ -123,6 +124,22 @@ pub fn run() {
             doc_commands::docs_open,
             doc_commands::mirror_sync,
             doc_commands::mirror_open,
+            intel_commands::intel_start,
+            intel_commands::intel_latest,
+            intel_commands::intel_queue,
+            intel_commands::intel_jobs,
+            intel_commands::intel_job_action,
+            intel_commands::intel_extraction,
+            intel_commands::intel_extractions,
+            intel_commands::intel_ocr,
+            intel_commands::intel_review,
+            intel_commands::intel_add_transaction,
+            intel_commands::intel_statement,
+            intel_commands::intel_classification,
+            intel_commands::intel_decide,
+            intel_commands::intel_accept,
+            intel_commands::intel_split,
+            intel_commands::intel_page_image,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Artify Co-Accountant");

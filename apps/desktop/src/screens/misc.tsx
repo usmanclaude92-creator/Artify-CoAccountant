@@ -22,13 +22,12 @@ export function Dashboard() {
         <Button onClick={() => go("companies")}>My Companies</Button>
         <Button variant="secondary" disabled={!company} onClick={() => go("workspace")}>Open workspace</Button>
       </Panel>
-      <Alert tone="info">Document import and storage are available; processing and accounting arrive in later releases. Nothing on this screen is sample data.</Alert>
+      <Alert tone="info">Document import, storage and automatic reading with review are available; accounting arrives in a later release. Nothing on this screen is sample data.</Alert>
     </section>
   );
 }
 
-const FUTURE: Record<Exclude<Page, "dashboard" | "companies" | "workspace" | "documents" | "import" | "queue" | "archive" | "sync" | "notifications" | "settings">, { title: string; text: string; phase: string }> = {
-  processing: { title: "Processing Queue", text: "Follow documents through scanning, text recognition and review.", phase: "Document processing (a later release)" },
+const FUTURE: Record<Exclude<Page, "dashboard" | "companies" | "workspace" | "documents" | "import" | "queue" | "archive" | "processing" | "review" | "sync" | "notifications" | "settings">, { title: string; text: string; phase: string }> = {
   accounting: { title: "Accounting", text: "Reviewed documents become accounting entries here, always approved by a person.", phase: "Accounting (a later release)" },
   reports: { title: "Reports", text: "Management reports and Excel exports built from approved entries.", phase: "Reports and Excel (a later release)" },
 };

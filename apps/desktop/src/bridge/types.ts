@@ -78,6 +78,51 @@ export interface SavedCopy { path: string; created: boolean; name: string }
 export interface MirrorReport { created: number; renamed: number; unchanged: number; conflicts: string[]; too_long: string[]; orphaned: number }
 
 export type Unlisten = () => void;
+
+// ---------------------------------------------------------------- document intelligence (Phase 7)
+export type Box = [number, number, number, number]; // normalised x0,y0,x1,y1 (0..1) on the processed page image
+export type ReviewStatus = "extracted" | "needs_review" | "confirmed" | "corrected" | "missing" | "unreadable" | "rejected";
+export interface ProcessingJob {
+  id: string; document_id: string; version_no: number | null; kind: string; status: string; languages: string[] | null; pages_total: number | null; pages_done: number | null;
+  attempt_count: number; max_attempts: number; error_code: string | null; error_message: string | null; reason: string | null; created_at: string; finished_at: string | null; progress: number;
+}
+export interface ClassificationView {
+  id: string; type_key: string; kind_key: string | null; confidence: number; method: string; evidence: unknown; alternatives: { type_key: string; confidence: number }[] | null;
+  needs_manual: boolean; provider_key: string; review_status: string; created_at: string;
+}
+export interface IntelLatest { job: ProcessingJob | null; classification: ClassificationView | null; extraction_id: string | null }
+export interface ReviewQueueItem { id: string; document_id: string; display_name: string; type_key: string; type_name: string; summary: Record<string, unknown> | null; confidence: number | null; created_at: string }
+export interface ExtractedField {
+  id: string; field_key: string; label: string; kind: string; required: boolean; value: string | null; original_value: string | null; confidence: number | null;
+  page_no: number | null; bbox: Box | null; source_text: string | null; method: string; review_status: ReviewStatus; flags: string[] | null;
+}
+export interface ExtractedLine { id: string; line_no: number; page_no: number | null; bbox: Box | null; source_text: string | null; values: Record<string, string | null>; confidence: number | null; review_status: ReviewStatus; flags: string[] | null }
+export interface StatementTx {
+  id: string; row_no: number; page_no: number | null; bbox: Box | null; source_text: string | null; tx_date: string | null; value_date: string | null; description: string | null; reference: string | null;
+  debit: string | null; credit: string | null; balance: string | null; currency: string | null; tx_type: string | null; confidence: number | null; review_status: ReviewStatus; manual: boolean; flags: string[] | null;
+}
+export interface StatementHeader {
+  id: string; bank_name: string | null; account_holder: string | null; account_name: string | null; account_number_masked: string | null; iban_masked: string | null; currency: string | null;
+  period_start: string | null; period_end: string | null; opening_balance: string | null; closing_balance: string | null; validation: Validation | null;
+}
+export interface ValidationIssue { code: string; severity: "error" | "warning" | "info"; message: string; row_no?: number | null; field_key?: string | null; difference?: string | null }
+export interface Validation { ok?: boolean; issues?: ValidationIssue[]; [k: string]: unknown }
+export interface WorkspaceSuggestion { id: string; rank: number; node_id: string | null; node_label: string | null; category_id: string | null; category_name: string | null; confidence: number | null; method: string; evidence: unknown; status: string; you_can_file_here: boolean }
+export interface MetadataSuggestion { id: string; field_id: string; field_key: string; label: string; value: unknown; confidence: number | null; evidence: unknown; problems: string[] | null; status: string }
+export interface SplitProposal { id: string; segments: { from_page: number; to_page: number; type_key?: string | null }[]; evidence: unknown; status: string }
+export interface ExtractionView {
+  id: string; document_id: string; version_id: string; extraction_no: number; type_key: string; schema_key: string; status: string; provider_key: string; model_version: string | null;
+  validation: Validation | null; summary: Record<string, unknown> | null; created_at: string; approved_at: string | null; row_version: number;
+  fields: ExtractedField[]; line_items: ExtractedLine[]; line_fields: { key: string; label: string; kind: string }[]; classification: ClassificationView | null;
+  statement?: StatementHeader; transactions?: StatementTx[];
+  workspace_suggestions: WorkspaceSuggestion[]; metadata_suggestions: MetadataSuggestion[]; split_proposal: SplitProposal | null; unresolved: { fields: number; line_items: number; transactions: number };
+}
+export interface OcrBlock { no: number; text: string; confidence: number | null; bbox: Box }
+export interface OcrPage { page_no: number; width: number; height: number; source: string; is_blank: boolean; avg_confidence: number | null; rotation_applied: number | null; deskew_angle: number | null; quality: unknown; text: string; blocks: OcrBlock[] }
+export interface OcrResult { id: string; provider_key: string; engine_version: string | null; languages: string[] | null; page_count: number; avg_confidence: number | null; pages: OcrPage[] }
+export interface PageImage { page: number; data_base64: string }
+export type ReviewKind = "field" | "line-items" | "transactions";
+
 export interface Bridge {
   appInfo(): Promise<AppInfo>;
   authLogin(email: string, password: string): Promise<LoginResult>;
@@ -131,6 +176,22 @@ export interface Bridge {
   docsOpen(org: string, company: string, doc: string, version: number | null): Promise<SavedCopy>;
   mirrorSync(org: string, company: string): Promise<MirrorReport>;
   mirrorOpen(org: string, company: string, node: string | null): Promise<string>;
+  // document intelligence: the server decides everything; AI output is a suggestion until an accountant approves
+  intelStart(org: string, company: string, doc: string, kind: "full" | "ocr" | "classify" | "extract", languages: string[], reason: string | null): Promise<ProcessingJob>;
+  intelLatest(org: string, company: string, doc: string): Promise<IntelLatest>;
+  intelQueue(org: string, company: string): Promise<{ items: ReviewQueueItem[]; total: number }>;
+  intelJobs(org: string, company: string, status: string | null): Promise<{ items: ProcessingJob[]; total: number }>;
+  intelJobAction(org: string, company: string, job: string, action: "cancel" | "retry"): Promise<ProcessingJob>;
+  intelExtraction(org: string, company: string, extraction: string): Promise<ExtractionView>;
+  intelOcr(org: string, company: string, doc: string, pageFrom: number, pageTo: number): Promise<OcrResult>;
+  intelReview(org: string, company: string, extraction: string, kind: ReviewKind, target: string, action: "correct" | "confirm" | "reject" | "missing" | "unreadable", payload: Record<string, unknown>, reason: string | null): Promise<unknown>;
+  intelAddTransaction(org: string, company: string, extraction: string, data: Record<string, unknown>): Promise<StatementTx>;
+  intelStatement(org: string, company: string, extraction: string, patch: Record<string, unknown>): Promise<unknown>;
+  intelClassification(org: string, company: string, doc: string, action: "confirm" | "correct", typeKey: string | null): Promise<unknown>;
+  intelDecide(org: string, company: string, extraction: string, action: "approve" | "reject", acknowledge: boolean, note: string | null): Promise<unknown>;
+  intelAccept(org: string, company: string, extraction: string, kind: "workspace" | "metadata", suggestion: string, value: unknown): Promise<unknown>;
+  intelSplit(org: string, company: string, extraction: string, approve: boolean): Promise<unknown>;
+  intelPageImage(org: string, company: string, doc: string, page: number): Promise<PageImage>;
   /** Backend events: workspace-updated (RefreshOutcome), session-expired, sync-error (AppError), queue-changed, queue-progress, documents-changed, files-dropped (StagedFile[]). */
-  on(event: "workspace-updated" | "session-expired" | "sync-error" | "queue-changed" | "queue-progress" | "documents-changed" | "files-dropped", handler: (payload: unknown) => void): Promise<Unlisten>;
+  on(event: "workspace-updated" | "session-expired" | "sync-error" | "queue-changed" | "queue-progress" | "documents-changed" | "processing-changed" | "files-dropped", handler: (payload: unknown) => void): Promise<Unlisten>;
 }

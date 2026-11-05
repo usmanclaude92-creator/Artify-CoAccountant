@@ -32,6 +32,8 @@ jobs:
         with: { fetch-depth: 0 }     # the breaking-change check compares against an earlier commit
       - uses: astral-sh/setup-uv@v6
       - run: uv sync --project services/api --frozen
+      - name: OCR engine for the document-intelligence tests (Tesseract with English + Arabic data)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends tesseract-ocr tesseract-ocr-eng tesseract-ocr-ara
       - run: uv run --project services/api ruff check services/api
       - run: uv run --project services/api ruff format --check services/api
       - run: cd services/api && uv run mypy src

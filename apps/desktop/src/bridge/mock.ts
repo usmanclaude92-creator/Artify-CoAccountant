@@ -2,7 +2,7 @@
  * In-memory bridge for unit tests and for `VITE_BRIDGE=mock pnpm dev` (browser preview without Rust). It is NEVER selected
  * in a production build, and the dev preview shows a permanent "demo data" banner.
  */
-import type { AppError, Assignment, Bridge, DocDetail, DocQuery, QueueItem, StagedFile, CompanyDetail, CompanyView, EventRow, Identity, LocalDevice, Organization, RefreshOutcome, RootReport, ServerDevice, Settings, SyncStatus, WorkspaceData, WorkspaceView, WsNode } from "./types";
+import type { AppError, Assignment, Bridge, DocDetail, ExtractionView, ExtractedField, ProcessingJob, StatementTx, DocQuery, QueueItem, StagedFile, CompanyDetail, CompanyView, EventRow, Identity, LocalDevice, Organization, RefreshOutcome, RootReport, ServerDevice, Settings, SyncStatus, WorkspaceData, WorkspaceView, WsNode } from "./types";
 
 export function node(id: string, parent: string | null, name: string, extra: Partial<WsNode> = {}): WsNode {
   return { id, parent_id: parent, node_type: parent ? "folder" : "section", key: id, name, display_name: null, description: "", position: 0, depth: 1, is_active: true, archived_at: null, ...extra };
@@ -38,10 +38,12 @@ export interface MockOptions {
   /** what the native file dialog returns */
   pickFiles?: StagedFile[];
   documents?: DocDetail[];
+  /** draft extractions the review queue shows (synthetic) */
+  extractions?: ExtractionView[];
 }
 export type MockBridge = Bridge & {
   calls: string[];
-  state: { docs: DocDetail[]; queue: QueueItem[]; opts: MockOptions; settings: Settings; workspaces: Record<string, WorkspaceData>; companies: Record<string, CompanyView[]>; signedIn: boolean; devices: ServerDevice[]; root: string | null };
+  state: { extractions: ExtractionView[]; jobs: ProcessingJob[]; docs: DocDetail[]; queue: QueueItem[]; opts: MockOptions; settings: Settings; workspaces: Record<string, WorkspaceData>; companies: Record<string, CompanyView[]>; signedIn: boolean; devices: ServerDevice[]; root: string | null };
   emit(event: string, payload?: unknown): void;
 };
 
@@ -53,7 +55,7 @@ export function createMockBridge(opts: MockOptions = {}): MockBridge {
   const handlers = new Map<string, ((p: unknown) => void)[]>();
   const calls: string[] = [];
   const state = {
-    opts, docs: structuredClone(opts.documents ?? []), queue: [] as QueueItem[], signedIn: false, root: opts.storageRoot ?? null,
+    opts, extractions: structuredClone(opts.extractions ?? []), jobs: [] as ProcessingJob[], docs: structuredClone(opts.documents ?? []), queue: [] as QueueItem[], signedIn: false, root: opts.storageRoot ?? null,
     settings: { theme: "system", language: "en", start_on_login: "false", default_company_id: "", notifications: "true", update_channel: "stable" } as Settings,
     workspaces: structuredClone(opts.workspaces ?? DEMO_WORKSPACES) as Record<string, WorkspaceData>,
     companies: structuredClone(opts.companies ?? { [orgs[0]?.id ?? "org-1"]: DEMO_COMPANIES }) as Record<string, CompanyView[]>,
@@ -177,6 +179,65 @@ export function createMockBridge(opts: MockOptions = {}): MockBridge {
     docsOpen: async (_o, _c, id) => { rec("docsOpen"); return { path: `D:\\Artify\\Acme\\${id}.pdf`, created: true, name: `${id}.pdf` }; },
     mirrorSync: async () => ({ created: 3, renamed: 0, unchanged: 0, conflicts: [], too_long: [], orphaned: 0 }),
     mirrorOpen: async () => "D:\\Artify\\Acme",
+    // ---- document intelligence (synthetic: the mock never "reads" anything, it serves the extractions it was given)
+    intelStart: async (_o, _c, doc, kind, languages, reason) => {
+      rec("intelStart"); needAuth();
+      const job: ProcessingJob = { id: `job-${state.jobs.length + 1}`, document_id: doc, version_no: 1, kind, status: "queued", languages, pages_total: null, pages_done: 0, attempt_count: 0, max_attempts: 3, error_code: null, error_message: null, reason, created_at: new Date().toISOString(), finished_at: null, progress: 0 };
+      state.jobs.push(job); b.emit("processing-changed", {}); return structuredClone(job);
+    },
+    intelLatest: async (_o, _c, doc) => {
+      const ex = state.extractions.find((e) => e.document_id === doc);
+      const job = [...state.jobs].reverse().find((j) => j.document_id === doc) ?? null;
+      return structuredClone({ job, classification: ex?.classification ?? null, extraction_id: ex?.id ?? null });
+    },
+    intelQueue: async () => {
+      const items = state.extractions.filter((e) => e.status === "draft").map((e) => ({ id: e.id, document_id: e.document_id, display_name: state.docs.find((d) => d.id === e.document_id)?.display_name ?? "Document", type_key: e.type_key, type_name: e.type_key.replace(/_/g, " "), summary: e.summary, confidence: e.classification?.confidence ?? null, created_at: e.created_at }));
+      return structuredClone({ items, total: items.length });
+    },
+    intelJobs: async (_o, _c, status) => { const items = state.jobs.filter((j) => !status || j.status === status); return structuredClone({ items, total: items.length }); },
+    intelJobAction: async (_o, _c, id, action) => { const j = state.jobs.find((x) => x.id === id); if (!j) throw err("not_found", "Job not found.", 404); j.status = action === "cancel" ? "cancelled" : "queued"; return structuredClone(j); },
+    intelExtraction: async (_o, _c, id) => { const e = state.extractions.find((x) => x.id === id); if (!e) throw err("not_found", "Extraction not found.", 404); return structuredClone(e); },
+    intelOcr: async (_o, _c, _doc, from, to) => ({ id: "ocr-1", provider_key: "tesseract", engine_version: "mock", languages: ["eng"], page_count: 1, avg_confidence: 0.9, pages: from <= 1 && to >= 1 ? [{ page_no: 1, width: 100, height: 140, source: "ocr", is_blank: false, avg_confidence: 0.9, rotation_applied: 0, deskew_angle: 0, quality: null, text: "synthetic page text", blocks: [] }] : [] }),
+    intelReview: async (_o, _c, id, kind, target, action, payload) => {
+      rec(`intelReview:${kind}:${action}`); needAuth();
+      const e = state.extractions.find((x) => x.id === id); if (!e) throw err("not_found", "Extraction not found.", 404);
+      if (e.status !== "draft") throw err("conflict", "This extraction is already decided.", 409);
+      const status = ({ correct: "corrected", confirm: "confirmed", reject: "rejected", missing: "missing", unreadable: "unreadable" } as const)[action];
+      if (kind === "field") {
+        const f = e.fields.find((x) => x.field_key === target); if (!f) throw err("not_found", "Field not found.", 404);
+        if (action === "correct") { f.original_value ??= f.value; f.value = String(payload.value ?? ""); }
+        f.review_status = status;
+      } else if (kind === "transactions") {
+        const t = e.transactions?.find((x) => x.id === target); if (!t) throw err("not_found", "Row not found.", 404);
+        if (action === "correct") Object.assign(t, payload.patch as Partial<StatementTx>);
+        t.review_status = status;
+      } else {
+        const l = e.line_items.find((x) => x.id === target); if (!l) throw err("not_found", "Line not found.", 404);
+        if (action === "correct") Object.assign(l.values, payload.values as Record<string, string | null>);
+        l.review_status = status;
+      }
+      e.unresolved = { fields: e.fields.filter((f) => f.review_status === "needs_review").length, line_items: e.line_items.filter((l) => l.review_status === "needs_review").length, transactions: (e.transactions ?? []).filter((t) => t.review_status === "needs_review").length };
+      return {};
+    },
+    intelAddTransaction: async (_o, _c, id, data) => {
+      const e = state.extractions.find((x) => x.id === id); if (!e) throw err("not_found", "Extraction not found.", 404);
+      const t: StatementTx = { id: `tx-${(e.transactions?.length ?? 0) + 1}`, row_no: (e.transactions?.length ?? 0) + 1, page_no: null, bbox: null, source_text: null, tx_date: (data.tx_date as string) ?? null, value_date: null, description: (data.description as string) ?? null, reference: null, debit: (data.debit as string) ?? null, credit: (data.credit as string) ?? null, balance: (data.balance as string) ?? null, currency: null, tx_type: null, confidence: null, review_status: "corrected", manual: true, flags: ["manual"] };
+      (e.transactions ??= []).push(t); return structuredClone(t);
+    },
+    intelStatement: async () => ({}),
+    intelClassification: async (_o, _c, doc, action, typeKey) => { const e = state.extractions.find((x) => x.document_id === doc); if (e?.classification) { e.classification.review_status = "confirmed"; e.classification.needs_manual = false; if (action === "correct" && typeKey) e.classification.type_key = typeKey; } return {}; },
+    intelDecide: async (_o, _c, id, action, acknowledge) => {
+      rec(`intelDecide:${action}`); needAuth();
+      const e = state.extractions.find((x) => x.id === id); if (!e) throw err("not_found", "Extraction not found.", 404);
+      const open = e.unresolved.fields + e.unresolved.line_items + e.unresolved.transactions;
+      if (action === "approve" && open > 0) throw err("conflict", "Resolve every item that needs review before approving.", 409);
+      if (action === "approve" && e.validation?.issues?.some((i) => i.severity === "error") && !acknowledge) throw err("conflict", "Validation errors must be acknowledged before approving.", 409);
+      e.status = action === "approve" ? "approved" : "rejected"; e.approved_at = action === "approve" ? new Date().toISOString() : null; b.emit("processing-changed", {});
+      return {};
+    },
+    intelAccept: async (_o, _c, id, kind, sid) => { const e = state.extractions.find((x) => x.id === id); if (!e) throw err("not_found", "Extraction not found.", 404); (kind === "workspace" ? e.workspace_suggestions : e.metadata_suggestions).forEach((x) => { if (x.id === sid) x.status = "accepted"; }); return {}; },
+    intelSplit: async () => ({}),
+    intelPageImage: async (_o, _c, _d, page) => ({ page, data_base64: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==" }),
     on: async (event, handler) => { handlers.set(event, [...(handlers.get(event) ?? []), handler]); return () => handlers.set(event, (handlers.get(event) ?? []).filter((h) => h !== handler)); },
   };
   return b;
@@ -189,3 +250,17 @@ export function mockDoc(id: string, node: string, name: string, size = 1000, ext
 }
 
 export const DEMO_BANNER = "DEMO DATA — browser preview with a mock bridge. Sign in with any email and the password “correct”.";
+
+/** Synthetic draft invoice extraction for UI tests. Values are made up; nothing here was read from a document. */
+export function mockExtraction(id: string, doc: string, over: Partial<ExtractionView> = {}): ExtractionView {
+  const f = (key: string, label: string, value: string | null, status: ExtractedField["review_status"] = "extracted", kind = "text", confidence = 0.95, required = true): ExtractedField =>
+    ({ id: `f-${key}`, field_key: key, label, kind, required, value, original_value: null, confidence, page_no: 1, bbox: value ? [0.1, 0.1, 0.4, 0.14] : null, source_text: value, method: "rules", review_status: status, flags: null });
+  return {
+    id, document_id: doc, version_id: "v-1", extraction_no: 1, type_key: "tax_invoice", schema_key: "invoice", status: "draft", provider_key: "rules", model_version: "rules-1", validation: { ok: true, issues: [] },
+    summary: null, created_at: "2026-03-01T10:00:00Z", approved_at: null, row_version: 1,
+    fields: [f("invoice_number", "Invoice number", "INV-1001"), f("invoice_date", "Invoice date", "2026-02-15", "extracted", "date"), f("total", "Total", "115.000", "needs_review", "money", 0.55)],
+    line_items: [], line_fields: [{ key: "description", label: "Description", kind: "text" }, { key: "amount", label: "Amount", kind: "money" }],
+    classification: { id: "c-1", type_key: "tax_invoice", kind_key: "purchase_invoice", confidence: 0.92, method: "rules", evidence: null, alternatives: null, needs_manual: false, provider_key: "rules", review_status: "suggested", created_at: "2026-03-01T10:00:00Z" },
+    workspace_suggestions: [], metadata_suggestions: [], split_proposal: null, unresolved: { fields: 1, line_items: 0, transactions: 0 }, ...over,
+  };
+}

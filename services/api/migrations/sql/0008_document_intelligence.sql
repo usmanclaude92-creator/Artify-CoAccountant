@@ -71,6 +71,7 @@ CREATE TABLE processing_attempts (
   error_message   text,
   started_at      timestamptz NOT NULL DEFAULT now(),
   finished_at     timestamptz,
+  FOREIGN KEY (organization_id, company_id) REFERENCES companies (organization_id, id),
   FOREIGN KEY (organization_id, company_id, job_id) REFERENCES processing_jobs (organization_id, company_id, id),
   UNIQUE (job_id, attempt_no)
 );
@@ -90,6 +91,7 @@ CREATE TABLE ocr_results (
   avg_confidence  numeric(5, 2),
   full_text       text NOT NULL DEFAULT '',
   created_at      timestamptz NOT NULL DEFAULT now(),
+  FOREIGN KEY (organization_id, company_id) REFERENCES companies (organization_id, id),
   FOREIGN KEY (organization_id, company_id, job_id) REFERENCES processing_jobs (organization_id, company_id, id),
   FOREIGN KEY (organization_id, company_id, document_id) REFERENCES documents (organization_id, company_id, id),
   FOREIGN KEY (organization_id, company_id, version_id) REFERENCES document_versions (organization_id, company_id, id),
@@ -114,6 +116,7 @@ CREATE TABLE ocr_pages (
   text                text NOT NULL DEFAULT '',
   quality             jsonb NOT NULL DEFAULT '{}'::jsonb,
   processed_object_id uuid,
+  FOREIGN KEY (organization_id, company_id) REFERENCES companies (organization_id, id),
   FOREIGN KEY (organization_id, company_id, ocr_result_id) REFERENCES ocr_results (organization_id, company_id, id),
   FOREIGN KEY (organization_id, company_id, processed_object_id) REFERENCES storage_objects (organization_id, company_id, id),
   UNIQUE (organization_id, company_id, id),
@@ -130,6 +133,7 @@ CREATE TABLE ocr_blocks (
   confidence      numeric(5, 2),
   bbox            jsonb NOT NULL,  -- [x0, y0, x1, y1] normalised to 0..1 of the page
   words           jsonb NOT NULL DEFAULT '[]'::jsonb,  -- [[text, x0, x1, confidence], ...] for column assignment in tables
+  FOREIGN KEY (organization_id, company_id) REFERENCES companies (organization_id, id),
   FOREIGN KEY (organization_id, company_id, page_id) REFERENCES ocr_pages (organization_id, company_id, id),
   UNIQUE (page_id, block_no)
 );
@@ -155,6 +159,7 @@ CREATE TABLE document_classifications (
   reviewed_by     uuid REFERENCES users (id),
   reviewed_at     timestamptz,
   created_at      timestamptz NOT NULL DEFAULT now(),
+  FOREIGN KEY (organization_id, company_id) REFERENCES companies (organization_id, id),
   FOREIGN KEY (organization_id, company_id, job_id) REFERENCES processing_jobs (organization_id, company_id, id),
   FOREIGN KEY (organization_id, company_id, document_id) REFERENCES documents (organization_id, company_id, id),
   FOREIGN KEY (organization_id, company_id, version_id) REFERENCES document_versions (organization_id, company_id, id),
@@ -185,6 +190,7 @@ CREATE TABLE extractions (
   approved_by       uuid REFERENCES users (id),
   approved_at       timestamptz,
   row_version       integer NOT NULL DEFAULT 1,
+  FOREIGN KEY (organization_id, company_id) REFERENCES companies (organization_id, id),
   FOREIGN KEY (organization_id, company_id, job_id) REFERENCES processing_jobs (organization_id, company_id, id),
   FOREIGN KEY (organization_id, company_id, document_id) REFERENCES documents (organization_id, company_id, id),
   FOREIGN KEY (organization_id, company_id, version_id) REFERENCES document_versions (organization_id, company_id, id),
@@ -215,6 +221,7 @@ CREATE TABLE extracted_fields (
   flags           jsonb NOT NULL DEFAULT '[]'::jsonb,
   reviewed_by     uuid REFERENCES users (id),
   reviewed_at     timestamptz,
+  FOREIGN KEY (organization_id, company_id) REFERENCES companies (organization_id, id),
   FOREIGN KEY (organization_id, company_id, extraction_id) REFERENCES extractions (organization_id, company_id, id),
   UNIQUE (organization_id, company_id, id),
   UNIQUE (extraction_id, field_key)
@@ -234,6 +241,7 @@ CREATE TABLE extracted_line_items (
   review_status   text NOT NULL DEFAULT 'extracted' CHECK (review_status IN
                     ('extracted', 'needs_review', 'confirmed', 'corrected', 'missing', 'unreadable', 'rejected')),
   flags           jsonb NOT NULL DEFAULT '[]'::jsonb,
+  FOREIGN KEY (organization_id, company_id) REFERENCES companies (organization_id, id),
   FOREIGN KEY (organization_id, company_id, extraction_id) REFERENCES extractions (organization_id, company_id, id),
   UNIQUE (organization_id, company_id, id),
   UNIQUE (extraction_id, line_no)
@@ -256,6 +264,7 @@ CREATE TABLE bank_statements (
   opening_balance      numeric(20, 4),
   closing_balance      numeric(20, 4),
   validation           jsonb NOT NULL DEFAULT '{}'::jsonb,
+  FOREIGN KEY (organization_id, company_id) REFERENCES companies (organization_id, id),
   FOREIGN KEY (organization_id, company_id, extraction_id) REFERENCES extractions (organization_id, company_id, id),
   UNIQUE (organization_id, company_id, id),
   UNIQUE (extraction_id)
@@ -284,6 +293,7 @@ CREATE TABLE bank_statement_transactions (
                     ('extracted', 'needs_review', 'confirmed', 'corrected', 'missing', 'unreadable', 'rejected')),
   manual          boolean NOT NULL DEFAULT false,
   flags           jsonb NOT NULL DEFAULT '[]'::jsonb,
+  FOREIGN KEY (organization_id, company_id) REFERENCES companies (organization_id, id),
   FOREIGN KEY (organization_id, company_id, statement_id) REFERENCES bank_statements (organization_id, company_id, id),
   UNIQUE (organization_id, company_id, id),
   UNIQUE (statement_id, row_no)
@@ -303,6 +313,7 @@ CREATE TABLE workspace_suggestions (
   rule_id         uuid,
   evidence        jsonb NOT NULL DEFAULT '[]'::jsonb,
   status          text NOT NULL DEFAULT 'suggested' CHECK (status IN ('suggested', 'accepted', 'rejected', 'unavailable')),
+  FOREIGN KEY (organization_id, company_id) REFERENCES companies (organization_id, id),
   FOREIGN KEY (organization_id, company_id, extraction_id) REFERENCES extractions (organization_id, company_id, id),
   FOREIGN KEY (organization_id, company_id, node_id) REFERENCES workspace_nodes (organization_id, company_id, id),
   FOREIGN KEY (organization_id, company_id, category_id) REFERENCES document_categories (organization_id, company_id, id),
@@ -320,6 +331,7 @@ CREATE TABLE metadata_suggestions (
   evidence        jsonb NOT NULL DEFAULT '[]'::jsonb,
   problems        jsonb NOT NULL DEFAULT '[]'::jsonb,
   status          text NOT NULL DEFAULT 'suggested' CHECK (status IN ('suggested', 'accepted', 'rejected')),
+  FOREIGN KEY (organization_id, company_id) REFERENCES companies (organization_id, id),
   FOREIGN KEY (organization_id, company_id, extraction_id) REFERENCES extractions (organization_id, company_id, id),
   FOREIGN KEY (organization_id, company_id, field_id) REFERENCES custom_field_definitions (organization_id, company_id, id),
   UNIQUE (extraction_id, field_id)
@@ -339,6 +351,7 @@ CREATE TABLE field_corrections (
   reason          text,
   actor_id        uuid NOT NULL REFERENCES users (id),
   created_at      timestamptz NOT NULL DEFAULT now(),
+  FOREIGN KEY (organization_id, company_id) REFERENCES companies (organization_id, id),
   FOREIGN KEY (organization_id, company_id, extraction_id) REFERENCES extractions (organization_id, company_id, id)
 );
 CREATE INDEX field_corrections_by_extraction ON field_corrections (extraction_id, created_at);
@@ -356,6 +369,7 @@ CREATE TABLE split_proposals (
   decided_by      uuid REFERENCES users (id),
   decided_at      timestamptz,
   created_at      timestamptz NOT NULL DEFAULT now(),
+  FOREIGN KEY (organization_id, company_id) REFERENCES companies (organization_id, id),
   FOREIGN KEY (organization_id, company_id, job_id) REFERENCES processing_jobs (organization_id, company_id, id),
   FOREIGN KEY (organization_id, company_id, document_id) REFERENCES documents (organization_id, company_id, id),
   FOREIGN KEY (organization_id, company_id, version_id) REFERENCES document_versions (organization_id, company_id, id),

@@ -175,6 +175,21 @@ Billable storage is the sum of stored/verified storage objects, including archiv
 ### ADR-057 — Local folder mirror is derived, additive and id-keyed
 The Windows folder tree is computed from the workspace by node id, renamed/moved in place when the workspace changes, and never deletes or overwrites. Document copies are saved on demand with checksum verification and unique names. Bidirectional sync, bulk offline copies and detection of Explorer-side edits remain out of scope (D-7 stays open).
 
+### ADR-058 — Document intelligence is an asynchronous, resumable pipeline run by a system actor
+Processing is a job per document version (`processing_jobs`) with stage statuses, attempts, retries with backoff, timeouts, cancellation and a partial unique index allowing one active job per version; requests carry an idempotency key. Each stage commits in its own short transaction, so a crash resumes from stored OCR/extraction results instead of repeating or duplicating them. Production dispatch is the Celery task `artify.process_document` (sent by name to respect the layer contract); without Celery it runs in-process. The pipeline acts as a system actor and can never approve (ADR-059). Reprocessing creates new result versions and keeps the old.
+
+### ADR-059 — AI and rules output is a suggestion; approval is a person's act
+Classification, fields, bank rows, workspace locations, metadata values and split proposals are stored with provider, model/prompt version, confidence, evidence and review status. Approval requires `documents.approve_extraction` and `actor_type = user`; the database refuses an approved extraction without `approved_by`. Unresolved items block approval; validation errors need an explicit acknowledgement plus a note. Approved extractions are immutable. No accounting entries, reconciliation or filing happen without a person (invariant 6, refined). Missing values are `NULL` with a flag, never guessed.
+
+### ADR-060 — Provider-independent OCR and understanding; local first, external by consent
+`OcrProvider` and the understanding provider are small interfaces. Defaults are local (Tesseract; deterministic rules). An OpenAI-compatible HTTP provider is optional: configured only by server settings (key never stored, logged or returned), used only with organization consent and `feature.advanced_ai`, receives text rather than files, and its values must be found in the OCR text. Resolves the engineering part of D-5; the legal review of any external provider remains open.
+
+### ADR-061 — Bounding boxes refer to a stored, processed page image
+OCR runs on a preprocessed copy (orientation, deskew, denoise, contrast, sharpen); that copy is stored as a derived object and served by the API, and all boxes are normalised to it. Originals are never modified. Derived images are not billed as documents.
+
+### ADR-062 — Suggestions are scoped to the company's own workspace and the caller's permissions
+Location and metadata suggestions are generated from the company's active nodes, filing rules, categories and custom fields only; archived nodes are never offered; a suggestion the caller may not act on is reported as unavailable; accepting a suggestion goes through the normal move/update paths. Nothing is assumed from default category names and no folder is created automatically. A split is stored as a proposal and never executed in Phase 7.
+
 ## Outcomes of decisions taken at the start of Phase 1
 
 The product owner replied "Accept the recommendations and start Phase 1" on 2026-11-04, which settles:

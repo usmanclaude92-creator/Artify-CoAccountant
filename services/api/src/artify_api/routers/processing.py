@@ -301,7 +301,7 @@ def split(company_id: uuid.UUID, extraction_id: uuid.UUID, body: SplitDecision, 
 
 
 # ---------------------------------------------------------------- organization: monitoring and providers
-class UsageRow(BaseModel):
+class ProcessingUsageRow(BaseModel):
     key: str
     label: str
     used: int
@@ -309,7 +309,7 @@ class UsageRow(BaseModel):
     unlimited: bool
 
 
-class ProviderState(BaseModel):
+class ProcessingProviderState(BaseModel):
     kind: str
     key: str
     external: bool
@@ -320,7 +320,7 @@ class ProviderState(BaseModel):
     note: str | None
 
 
-class QueueRow(BaseModel):
+class ProcessingQueueRow(BaseModel):
     id: uuid.UUID
     document_id: uuid.UUID
     display_name: str
@@ -328,13 +328,13 @@ class QueueRow(BaseModel):
     company_id: uuid.UUID
 
 
-class FailedRow(QueueRow):
+class ProcessingFailedRow(ProcessingQueueRow):
     error_code: str | None
     error_message: str | None
     attempt_count: int
 
 
-class CompanyRow(BaseModel):
+class ProcessingCompanyRow(BaseModel):
     company_id: uuid.UUID
     name: str
     awaiting_review: int
@@ -342,17 +342,17 @@ class CompanyRow(BaseModel):
     jobs_30d: int
 
 
-class OverviewOut(BaseModel):
+class ProcessingOverviewOut(BaseModel):
     jobs_by_status: dict[str, int]
-    awaiting_review: list[QueueRow]
-    failed: list[FailedRow]
-    companies: list[CompanyRow]
-    usage: list[UsageRow]
-    providers: list[ProviderState]
+    awaiting_review: list[ProcessingQueueRow]
+    failed: list[ProcessingFailedRow]
+    companies: list[ProcessingCompanyRow]
+    usage: list[ProcessingUsageRow]
+    providers: list[ProcessingProviderState]
     window_days: int
 
 
-@router.get("/processing/overview", response_model=OverviewOut, operation_id="processing_overview")
+@router.get("/processing/overview", response_model=ProcessingOverviewOut, operation_id="processing_overview")
 def overview(ctx: Monitor) -> Any:
     """Counts and lists from real job records. Shows names and statuses only, never document content."""
     assert ctx.principal is not None

@@ -4,11 +4,11 @@ import type { Box, ExtractedField, ExtractionView, IntelLatest, ProcessingJob, R
 import { fmtDateTime } from "../lib/format";
 import { useApp } from "../state/app";
 
-const ACTIVE_JOB = ["queued", "preparing_pages", "ocr_processing", "ocr_completed", "classification", "extraction", "validation", "workspace_suggestion"];
+const ACTIVE_JOB = ["queued", "preparing_pages", "ocr_processing", "classifying", "extracting", "validating", "suggesting"];
 const JOB_LABEL: Record<string, string> = {
-  queued: "Queued", preparing_pages: "Preparing pages", ocr_processing: "Reading text (OCR)", ocr_completed: "Text recognised", classification: "Identifying document type",
-  extraction: "Extracting data", validation: "Validating", workspace_suggestion: "Suggesting filing", awaiting_review: "Awaiting accountant review", approved: "Approved",
-  failed: "Failed", cancelled: "Cancelled", needs_manual_processing: "Needs manual processing",
+  queued: "Queued", preparing_pages: "Preparing pages", ocr_processing: "Reading text (OCR)", classifying: "Identifying document type",
+  extracting: "Extracting data", validating: "Validating", suggesting: "Suggesting filing", awaiting_review: "Awaiting accountant review", approved: "Approved",
+  failed: "Failed", cancelled: "Cancelled", needs_manual: "Needs manual processing",
 };
 const STATUS_LABEL: Record<ReviewStatus, string> = { extracted: "Suggested", needs_review: "Needs review", confirmed: "Confirmed", corrected: "Corrected by you", missing: "Marked missing", unreadable: "Marked unreadable", rejected: "Rejected" };
 const STATUS_TONE: Record<ReviewStatus, Tone> = { extracted: "info", needs_review: "warning", confirmed: "success", corrected: "success", missing: "neutral", unreadable: "danger", rejected: "neutral" };
@@ -43,7 +43,7 @@ export function ProcessingQueue() {
     return () => { clearInterval(t); void off.then((f) => f()).catch(() => undefined); };
   }, [bridge, load]);
   if (!companyId) return <section className="d-page"><h1>Processing Queue</h1><Panel><p>Open a company first.</p><Button onClick={() => go("companies")}>Choose a company</Button></Panel></section>;
-  const running = jobs.filter((j) => ACTIVE_JOB.includes(j.status) || ["failed", "needs_manual_processing"].includes(j.status));
+  const running = jobs.filter((j) => ACTIVE_JOB.includes(j.status) || ["failed", "needs_manual"].includes(j.status));
   const act = async (id: string, a: "cancel" | "retry") => { try { await bridge.intelJobAction(orgId, companyId, id, a); load(); } catch (e) { const m = fail(e); if (m) setMsg(m); } };
   return (
     <section className="d-page" aria-labelledby="h-proc">
@@ -66,7 +66,7 @@ export function ProcessingQueue() {
           <thead><tr><th scope="col">Stage</th><th scope="col">Progress</th><th scope="col">Details</th><th scope="col"><span className="a-visually-hidden">Actions</span></th></tr></thead>
           <tbody>{running.map((j) => (
             <tr key={j.id}>
-              <td><StatusChip tone={j.status === "failed" ? "danger" : j.status === "needs_manual_processing" ? "warning" : "info"}>{JOB_LABEL[j.status] ?? j.status}</StatusChip></td>
+              <td><StatusChip tone={j.status === "failed" ? "danger" : j.status === "needs_manual" ? "warning" : "info"}>{JOB_LABEL[j.status] ?? j.status}</StatusChip></td>
               <td>{ACTIVE_JOB.includes(j.status) ? <progress max={100} value={j.progress} aria-label="Progress">{j.progress}%</progress> : "—"}</td>
               <td>{j.error_message ?? (j.pages_total ? `Page ${j.pages_done ?? 0} of ${j.pages_total}` : "")}{j.attempt_count > 1 ? ` · attempt ${j.attempt_count}` : ""}</td>
               <td className="d-actions">
@@ -99,6 +99,7 @@ export function Review() {
   const [images, setImages] = useState<Record<number, string>>({});
   const [active, setActive] = useState<string | null>(null);
   const [ack, setAck] = useState(false);
+  const [note, setNote] = useState("");
   const requested = useRef(new Set<number>());
 
   const load = useCallback((): Promise<void> => {
@@ -147,7 +148,8 @@ export function Review() {
   if (!reviewDoc) return <section className="d-page"><h1>Review</h1><Panel><p>Choose a document from the Processing Queue.</p><Button onClick={() => go("processing")}>Processing Queue</Button></Panel></section>;
   const decided = ex ? ex.status !== "draft" : false;
   const open = ex ? ex.unresolved.fields + ex.unresolved.line_items + ex.unresolved.transactions : 0;
-  const errors = (ex?.validation?.issues ?? []).filter((i) => i.severity === "error");
+  const issues = ex?.statement?.validation ?? ex?.validation ?? [];
+  const errors = issues.filter((i) => i.severity === "error");
   return (
     <section className="d-page" aria-labelledby="h-review">
       <div className="d-actions"><Button variant="secondary" className="a-btn--sm" onClick={() => go("processing")}>← Processing Queue</Button></div>
@@ -207,8 +209,8 @@ export function Review() {
               {ex.statement ? <Statement ex={ex} disabled={busy || decided} active={active} onFocus={focus} onAct={(id, a, patch) => void review("transactions", id, a, patch ? { patch } : {})}
                 onAdd={(d) => run("Row added. It is marked as manually entered.", () => bridge.intelAddTransaction(orgId, companyId, ex.id, d))}
                 onBalances={(p) => run("Statement balances updated.", () => bridge.intelStatement(orgId, companyId, ex.id, p))} /> : null}
-              {(ex.validation?.issues ?? []).length ? (
-                <><h2>Checks</h2><ul className="d-list">{(ex.validation?.issues ?? []).map((i, n) => <li key={n}><StatusChip tone={i.severity === "error" ? "danger" : i.severity === "warning" ? "warning" : "info"}>{i.severity}</StatusChip> {i.message}{i.difference ? ` (difference ${i.difference})` : ""}</li>)}</ul></>) : null}
+              {issues.length ? (
+                <><h2>Checks</h2><ul className="d-list">{issues.map((i, n) => <li key={n}><StatusChip tone={i.severity === "error" ? "danger" : i.severity === "warning" ? "warning" : "info"}>{i.severity}</StatusChip> {i.message}{i.data?.["difference"] ? ` (difference ${String(i.data["difference"])})` : ""}</li>)}</ul></>) : null}
               {ex.workspace_suggestions.length ? (
                 <><h2>Suggested location</h2><ul className="d-list">{ex.workspace_suggestions.map((s) => (
                   <li key={s.id}>{s.node_label ?? "—"}{s.category_name ? ` · ${s.category_name}` : ""} <span className="a-hint">{pct(s.confidence)}</span>{" "}
@@ -225,10 +227,11 @@ export function Review() {
           </div>
           {!decided ? (
             <div className="d-actions d-review__foot">
-              <Button disabled={busy || open > 0 || (errors.length > 0 && !ack)} onClick={() => { if (window.confirm("Approve this data? Approval is recorded under your name. No accounting entries are created.")) void run("Approved.", () => bridge.intelDecide(orgId, companyId, ex.id, "approve", ack, null)); }}>Approve</Button>
+              <Button disabled={busy || open > 0 || (errors.length > 0 && (!ack || !note.trim()))} onClick={() => { if (window.confirm("Approve this data? Approval is recorded under your name. No accounting entries are created.")) void run("Approved.", () => bridge.intelDecide(orgId, companyId, ex.id, "approve", ack, note.trim() || null)); }}>Approve</Button>
               <Button variant="secondary" disabled={busy} onClick={() => { if (window.confirm("Reject this extraction? The document and earlier results are kept.")) void run("Rejected.", () => bridge.intelDecide(orgId, companyId, ex.id, "reject", false, "Rejected in review")); }}>Reject</Button>
               {open > 0 ? <span className="a-hint">{open} item{open === 1 ? "" : "s"} still need{open === 1 ? "s" : ""} review.</span> : null}
-              {errors.length > 0 ? <label className="d-inline"><input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} /> I have reviewed the validation errors above</label> : null}
+              {errors.length > 0 ? <><label className="d-inline"><input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} /> I have reviewed the validation errors above</label>
+                <label className="d-inline">Why approve anyway?<input value={note} onChange={(e) => setNote(e.target.value)} /></label></> : null}
             </div>) : null}
           <div className="d-actions">
             <span className="a-hint">Run again (earlier results are kept):</span>

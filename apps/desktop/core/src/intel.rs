@@ -99,6 +99,7 @@ impl Desktop {
     }
 
     /// kind: field | line-items | transactions. `action` must be one of the review actions; `value`/`patch` carry the correction.
+    #[allow(clippy::too_many_arguments)]
     pub async fn intel_review(
         &self,
         org: &str,

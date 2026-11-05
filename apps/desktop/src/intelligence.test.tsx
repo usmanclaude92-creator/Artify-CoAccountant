@@ -67,12 +67,14 @@ describe("processing queue and review (Phase 7)", () => {
 
   it("requires acknowledging validation errors before approving", async () => {
     vi.spyOn(window, "confirm").mockReturnValue(true);
-    const ex = mockExtraction("e1", "d1", { unresolved: { fields: 0, line_items: 0, transactions: 0 }, validation: { ok: false, issues: [{ code: "totals_mismatch", severity: "error", message: "Subtotal plus tax does not equal the total.", difference: "0.500" }] } });
+    const ex = mockExtraction("e1", "d1", { unresolved: { fields: 0, line_items: 0, transactions: 0 }, validation: [{ code: "totals_mismatch", severity: "error", message: "Subtotal plus tax does not equal the total.", data: { difference: "0.500" } }] });
     ex.fields.forEach((f) => { f.review_status = "confirmed"; });
     const { user } = await openReview({ documents: docs(), extractions: [ex] });
     expect(screen.getByText(/Subtotal plus tax does not equal the total/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Approve" })).toBeDisabled();
     await user.click(screen.getByLabelText(/I have reviewed the validation errors/));
+    expect(screen.getByRole("button", { name: "Approve" })).toBeDisabled(); // a reason is also required
+    await user.type(screen.getByLabelText("Why approve anyway?"), "Supplier rounds the VAT line");
     expect(screen.getByRole("button", { name: "Approve" })).toBeEnabled();
   });
 
@@ -82,7 +84,7 @@ describe("processing queue and review (Phase 7)", () => {
       type_key: "bank_statement", schema_key: "bank_statement", fields: [], unresolved: { fields: 0, line_items: 0, transactions: 2 },
       statement: { id: "s1", bank_name: "Test Bank", account_holder: null, account_name: null, account_number_masked: "****1234", iban_masked: null, currency: "OMR", period_start: "2026-03-01", period_end: "2026-03-31", opening_balance: "100.000", closing_balance: "160.000", validation: null },
       transactions: [tx(1, "40.000", null, "60.000"), tx(2, null, "100.000", "160.000")],
-      validation: { ok: false, issues: [{ code: "balance_break", severity: "warning", message: "Row 2: the balance does not follow from the row above.", row_no: 2, difference: "5.000" }] },
+      validation: [{ code: "balance_break", severity: "warning", message: "Row 2: the balance does not follow from the row above.", data: { row_no: 2, difference: "5.000" } }],
     });
     const { bridge, user } = await openReview({ documents: docs(), extractions: [ex] });
     expect(screen.getByText("****1234")).toBeInTheDocument();

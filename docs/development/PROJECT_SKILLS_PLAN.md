@@ -34,7 +34,7 @@
 | `multi-company-configuration` | Phase 4 (**created**) | Never share config between companies; provenance vs dependency; fixtures for two-company tests | TS-WS-01/05/06, TS-ISO-03 |
 | `tauri-desktop-development` | Phase 5 (**created**) | Narrow command surface, credential vault, SQLite cache, watcher patterns, Windows path rules | TS-SYNC-03/06 |
 | `document-storage-and-sync` | Phase 6 (**created**) | Opaque keys, versions, change feed, idempotent uploads, conflict handling | TS-SYNC-* |
-| `financial-document-intelligence` | Phase 7 | Provider interfaces, extraction schemas by kind, provenance, never-invent-data, AI safety controls | TS-ACC-07, TS-SEC-05 |
+| `financial-document-intelligence` | Phase 7 (**created**) | Provider interfaces, extraction schemas by kind, provenance, never-invent-data, AI safety controls | TS-ACC-07, TS-SEC-05 |
 | `accounting-engine` | Phase 8 | Decimal rules, entry lifecycle, balance, immutability, approval actor rules, traceability | TS-ACC-* |
 | `vat-compliance` | Phase 8 | Jurisdiction-pack data model, effective dating, rounding policies, verification process for packs | TS-ACC-09 |
 | `financial-data-validation` | Phase 8 | Validator catalog, severity semantics, override rules | TS-ACC-* |

@@ -105,8 +105,8 @@ export interface StatementHeader {
   id: string; bank_name: string | null; account_holder: string | null; account_name: string | null; account_number_masked: string | null; iban_masked: string | null; currency: string | null;
   period_start: string | null; period_end: string | null; opening_balance: string | null; closing_balance: string | null; validation: Validation | null;
 }
-export interface ValidationIssue { code: string; severity: "error" | "warning" | "info"; message: string; row_no?: number | null; field_key?: string | null; difference?: string | null }
-export interface Validation { ok?: boolean; issues?: ValidationIssue[]; [k: string]: unknown }
+export interface ValidationIssue { code: string; severity: "error" | "warning" | "info"; message: string; data?: Record<string, unknown> }
+export type Validation = ValidationIssue[];
 export interface WorkspaceSuggestion { id: string; rank: number; node_id: string | null; node_label: string | null; category_id: string | null; category_name: string | null; confidence: number | null; method: string; evidence: unknown; status: string; you_can_file_here: boolean }
 export interface MetadataSuggestion { id: string; field_id: string; field_key: string; label: string; value: unknown; confidence: number | null; evidence: unknown; problems: string[] | null; status: string }
 export interface SplitProposal { id: string; segments: { from_page: number; to_page: number; type_key?: string | null }[]; evidence: unknown; status: string }

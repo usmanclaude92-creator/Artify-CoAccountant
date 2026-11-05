@@ -42,6 +42,7 @@ const NAV: NavItem[] = [
   { label: "My Companies", path: "/companies", perm: "companies.list" },
   { label: "Workspace Templates", path: "/workspace-templates", perm: "companies.list" },
   { label: "Documents & Storage", path: "/documents", perm: "storage.manage" },
+  { label: "Document Processing", path: "/processing", perm: "processing.monitor" },
   { label: "Team Members", path: "/team", perm: "members.read" },
   { label: "Accountants", path: "/accountants", perm: "members.read" },
   { label: "Client Assignments", path: "/assignments", perm: "members.read" },

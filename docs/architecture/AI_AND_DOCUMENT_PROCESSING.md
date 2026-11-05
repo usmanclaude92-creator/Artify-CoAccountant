@@ -70,3 +70,5 @@ Provider outage → retries with backoff → `needs_attention` queue; manual dat
 ## 8. Usage metering
 
 Each processing run emits a `usage_records` row (units by provider/step) feeding `quota.ai_units_per_month`, per-tenant cost visibility in Super Admin, and Control Center usage pages.
+
+> **Implementation status (Phase 7):** OCR, classification, extraction, bank statements, review and suggestions are implemented as described in [docs/ai/](../ai/OCR_ENGINE.md); this document remains the design background. Items not built are listed in the [Phase 7 report](../development/PHASE_7_COMPLETION_REPORT.md).

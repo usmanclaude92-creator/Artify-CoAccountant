@@ -10,6 +10,8 @@ Skills are written against real code, so each is created in the phase where that
 
 **Created in Phase 6 (10 of 17):** `document-storage-and-sync`.
 
-**Not yet created** (later phases): frontend-design, financial-document-intelligence, accounting-engine, vat-compliance, financial-data-validation, excel-template-engine, flutter-mobile-development.
+**Created in Phase 7 (11 of 17):** `financial-document-intelligence`.
+
+**Not yet created** (later phases): frontend-design, accounting-engine, vat-compliance, financial-data-validation, excel-template-engine, flutter-mobile-development.
 
 No third-party or community skills are installed.

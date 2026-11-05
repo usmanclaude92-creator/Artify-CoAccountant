@@ -231,7 +231,7 @@ export function createMockBridge(opts: MockOptions = {}): MockBridge {
       const e = state.extractions.find((x) => x.id === id); if (!e) throw err("not_found", "Extraction not found.", 404);
       const open = e.unresolved.fields + e.unresolved.line_items + e.unresolved.transactions;
       if (action === "approve" && open > 0) throw err("conflict", "Resolve every item that needs review before approving.", 409);
-      if (action === "approve" && e.validation?.issues?.some((i) => i.severity === "error") && !acknowledge) throw err("conflict", "Validation errors must be acknowledged before approving.", 409);
+      if (action === "approve" && (e.statement?.validation ?? e.validation ?? []).some((i) => i.severity === "error") && !acknowledge) throw err("conflict", "Validation errors must be acknowledged before approving.", 409);
       e.status = action === "approve" ? "approved" : "rejected"; e.approved_at = action === "approve" ? new Date().toISOString() : null; b.emit("processing-changed", {});
       return {};
     },
@@ -256,7 +256,7 @@ export function mockExtraction(id: string, doc: string, over: Partial<Extraction
   const f = (key: string, label: string, value: string | null, status: ExtractedField["review_status"] = "extracted", kind = "text", confidence = 0.95, required = true): ExtractedField =>
     ({ id: `f-${key}`, field_key: key, label, kind, required, value, original_value: null, confidence, page_no: 1, bbox: value ? [0.1, 0.1, 0.4, 0.14] : null, source_text: value, method: "rules", review_status: status, flags: null });
   return {
-    id, document_id: doc, version_id: "v-1", extraction_no: 1, type_key: "tax_invoice", schema_key: "invoice", status: "draft", provider_key: "rules", model_version: "rules-1", validation: { ok: true, issues: [] },
+    id, document_id: doc, version_id: "v-1", extraction_no: 1, type_key: "tax_invoice", schema_key: "invoice", status: "draft", provider_key: "rules", model_version: "rules-1", validation: [],
     summary: null, created_at: "2026-03-01T10:00:00Z", approved_at: null, row_version: 1,
     fields: [f("invoice_number", "Invoice number", "INV-1001"), f("invoice_date", "Invoice date", "2026-02-15", "extracted", "date"), f("total", "Total", "115.000", "needs_review", "money", 0.55)],
     line_items: [], line_fields: [{ key: "description", label: "Description", kind: "text" }, { key: "amount", label: "Amount", kind: "money" }],

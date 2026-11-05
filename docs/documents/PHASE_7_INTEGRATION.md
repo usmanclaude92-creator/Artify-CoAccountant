@@ -1,5 +1,7 @@
 # Phase 7 Integration Points
 
+> **Implemented in Phase 7** — see [docs/ai/](../ai/HUMAN_REVIEW_WORKFLOW.md) and ADR-058..062. The notes below are the original contract; the processing tables reference `(organization_id, company_id, document_id, version_id)` and AI units were not metered (OCR pages and documents are).
+
 Phase 7 (document processing: OCR, classification suggestions) can start from these contracts without changing Phase 6:
 
 * **Input**: a `document_versions` row (id, `storage_object_id`, `sha256`, `mime_type`) — stream the bytes with `StorageBackend.open_range` or the content endpoint. Versions are immutable, so a result can always name the exact version it analysed.

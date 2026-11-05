@@ -48,6 +48,16 @@ def _ready(conn) -> bool:  # type: ignore[no-untyped-def]
     return version == _head() and roles == 3
 
 
+def _prepare_hosted_owner(conn) -> None:  # type: ignore[no-untyped-def]
+    """Managed Postgres (e.g. Supabase) does not give the schema owner SUPERUSER, but the migrations hand objects to the
+    definer role (`ALTER ... OWNER TO artify_definer`), and PostgreSQL only allows that when the new owner may create objects
+    in the schema. Create the NOLOGIN group roles first (the migrations accept existing roles) and allow that one grant."""
+    for role in ("artify_app", "artify_platform", "artify_dispatcher", "artify_definer"):
+        if conn.execute(text("SELECT 1 FROM pg_roles WHERE rolname = :r"), {"r": role}).first() is None:
+            conn.exec_driver_sql(f"CREATE ROLE {role} NOLOGIN NOSUPERUSER NOBYPASSRLS")
+    conn.exec_driver_sql("GRANT CREATE ON SCHEMA public TO artify_definer")
+
+
 def _create_roles(conn) -> None:  # type: ignore[no-untyped-def]
     for login, group, env in ROLES:
         pw = os.environ.get(env, "")
@@ -110,6 +120,9 @@ def ensure_bootstrapped() -> None:
                 lock_conn.commit()
                 _log("applying migrations")
                 import argparse
+
+                with eng.begin() as c:
+                    _prepare_hosted_owner(c)
 
                 cli.cmd_migrate(argparse.Namespace())
                 with eng.begin() as c:

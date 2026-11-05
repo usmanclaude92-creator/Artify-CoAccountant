@@ -96,6 +96,53 @@ def _create_roles(conn) -> None:  # type: ignore[no-untyped-def]
             conn.exec_driver_sql(f"ALTER ROLE {login} PASSWORD '{pw}'")
 
 
+def _asgi_post(app, path: str, body: dict) -> tuple[int, bytes]:  # type: ignore[no-untyped-def]
+    """Call the app in-process through plain ASGI (no HTTP client library needed in the function bundle)."""
+    import asyncio
+    import json as _json
+
+    raw = _json.dumps(body).encode()
+
+    async def run() -> tuple[int, bytes]:
+        sent = False
+        out: dict = {"status": 0, "body": b""}
+
+        async def receive():  # type: ignore[no-untyped-def]
+            nonlocal sent
+            if not sent:
+                sent = True
+                return {"type": "http.request", "body": raw, "more_body": False}
+            return {"type": "http.disconnect"}
+
+        async def send(message):  # type: ignore[no-untyped-def]
+            if message["type"] == "http.response.start":
+                out["status"] = message["status"]
+            elif message["type"] == "http.response.body":
+                out["body"] += message.get("body", b"")
+
+        scope = {
+            "type": "http",
+            "asgi": {"version": "3.0"},
+            "http_version": "1.1",
+            "method": "POST",
+            "scheme": "https",
+            "path": path,
+            "raw_path": path.encode(),
+            "query_string": b"",
+            "headers": [
+                (b"host", b"bootstrap.local"),
+                (b"content-type", b"application/json"),
+                (b"content-length", str(len(raw)).encode()),
+            ],
+            "client": ("127.0.0.1", 0),
+            "server": ("bootstrap.local", 443),
+        }
+        await app(scope, receive, send)
+        return out["status"], out["body"]
+
+    return asyncio.run(run())
+
+
 def _demo_owner() -> None:
     email = os.environ.get("ARTIFY_BOOTSTRAP_DEMO_EMAIL")
     password = os.environ.get("ARTIFY_BOOTSTRAP_DEMO_PASSWORD")
@@ -106,30 +153,29 @@ def _demo_owner() -> None:
             return
     from artify_api import mailer as mailer_mod
     from artify_api.main import app
-    from fastapi.testclient import TestClient
 
     mem = mailer_mod.MemoryMailer()
     mailer_mod.set_mailer(mem)
     try:
-        with TestClient(app) as client:
-            r = client.post(
-                "/api/v1/auth/signup",
-                json={
-                    "email": email,
-                    "password": password,
-                    "display_name": "Demo Owner",
-                    "organization_name": os.environ.get("ARTIFY_BOOTSTRAP_DEMO_ORG", "Artify Demo Accounting"),
-                    "organization_type": "accounting_firm",
-                    "country": "OM",
-                    "default_currency": "OMR",
-                },
-            )
-            if r.status_code != 202:
-                raise RuntimeError(f"demo signup failed: {r.status_code} {r.text[:200]}")
-            token = mem.last("verify_email", email).context["token"]
-            v = client.post("/api/v1/auth/verify-email", json={"token": token})
-            if v.status_code != 204:
-                raise RuntimeError(f"demo verification failed: {v.status_code}")
+        status, body = _asgi_post(
+            app,
+            "/api/v1/auth/signup",
+            {
+                "email": email,
+                "password": password,
+                "display_name": "Demo Owner",
+                "organization_name": os.environ.get("ARTIFY_BOOTSTRAP_DEMO_ORG", "Artify Demo Accounting"),
+                "organization_type": "accounting_firm",
+                "country": "OM",
+                "default_currency": "OMR",
+            },
+        )
+        if status != 202:
+            raise RuntimeError(f"demo signup failed: {status} {body[:200]!r}")
+        token = mem.last("verify_email", email).context["token"]
+        status, _ = _asgi_post(app, "/api/v1/auth/verify-email", {"token": token})
+        if status != 204:
+            raise RuntimeError(f"demo verification failed: {status}")
     finally:
         mailer_mod.set_mailer(None)
     _log("demo owner created")

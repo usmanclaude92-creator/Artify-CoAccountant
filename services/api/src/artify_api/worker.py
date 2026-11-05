@@ -19,6 +19,7 @@ celery_app.conf.task_reject_on_worker_lost = True
 celery_app.conf.imports = (
     "artify_api.processing_tasks",
     "artify_api.excel_tasks",
+    "artify_api.event_tasks",
 )  # registers artify.process_document without importing it here
 
 
@@ -34,9 +35,3 @@ def run_in_tenant_context(org_id: str, company_id: str | None, fn: Callable[[Con
     )
     with transaction(app_engine(), ctx) as conn:
         return fn(conn)
-
-
-@celery_app.task(name="artify.process_event")  # type: ignore[untyped-decorator]
-def process_event(event: dict[str, Any]) -> str:
-    """Phase 1 skeleton: acknowledges events. Real handlers arrive with the features that emit them."""
-    return f"handled:{event.get('event_type')}"

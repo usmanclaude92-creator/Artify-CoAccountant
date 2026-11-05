@@ -25,6 +25,10 @@ pub const SUPPORTED_EXTENSIONS: [&str; 15] =
     ["pdf", "jpg", "jpeg", "png", "tif", "tiff", "bmp", "heic", "heif", "doc", "docx", "xls", "xlsx", "csv", "txt"];
 const MAX_STAGE_PER_CALL: usize = 200;
 const MAX_ATTEMPTS: i64 = 5;
+/// Files at least this big are sent in resumable chunks (smaller ones in a single request); chunks are at most this big and
+/// never bigger than the server allows (`chunk_max_bytes` of the upload session).
+const CHUNKED_FROM: u64 = 8 * 1024 * 1024;
+const CHUNK_TARGET: u64 = 8 * 1024 * 1024;
 const NOT_RETRYABLE: [&str; 6] = ["quarantined", "malware_detected", "source_missing", "source_changed", "cancelled", "duplicate_document"];
 
 #[derive(Debug, Clone, Serialize)]
@@ -540,7 +544,7 @@ impl Desktop {
                 }
                 "uploaded" => {} // bytes already received by the server: only confirmation is missing
                 "awaiting_upload" | "uploading" => {
-                    if let Some(out) = self.send_bytes(user, &mut row, &path, &base, &org, cancel).await? {
+                    if let Some(out) = self.send_bytes(user, &mut row, &path, &base, &org, cancel, &op).await? {
                         return Ok(out);
                     }
                 }
@@ -581,6 +585,7 @@ impl Desktop {
     }
 
     /// Stream the bytes. `Ok(None)`: sent, continue to confirmation. `Ok(Some(outcome))`: this item is finished/deferred.
+    #[allow(clippy::too_many_arguments)]
     async fn send_bytes(
         &self,
         user: &str,
@@ -589,6 +594,7 @@ impl Desktop {
         base: &str,
         org: &str,
         cancel: &Arc<AtomicBool>,
+        op: &Value,
     ) -> Result<Option<Outcome>> {
         let op_id = row.server_op_id.clone().unwrap_or_default();
         self.set(user, row, "uploading", None, None)?;
@@ -597,8 +603,17 @@ impl Desktop {
             let sent = sent.clone();
             Arc::new(move |n| sent.store(n, Ordering::Relaxed))
         };
-        let url = format!("{base}/{op_id}/content");
-        let put = self.api.put_file(&url, Some(org), path, row.size as u64, cancel.clone(), progress);
+        // Big files go in consecutive chunks the server can resume (it counts the bytes it holds); small files in one request.
+        let chunk_max = op.get("chunk_max_bytes").and_then(Value::as_u64).unwrap_or(0);
+        let put = async {
+            if chunk_max > 0 && row.size as u64 >= CHUNKED_FROM {
+                let held = op.get("received_bytes").and_then(Value::as_u64).unwrap_or(0);
+                self.send_chunks(&format!("{base}/{op_id}"), org, path, row.size as u64, held, chunk_max, cancel, progress.clone()).await
+            } else {
+                let url = format!("{base}/{op_id}/content");
+                self.api.put_file(&url, Some(org), path, row.size as u64, cancel.clone(), progress.clone()).await
+            }
+        };
         tokio::pin!(put);
         let mut tick = tokio::time::interval(Duration::from_millis(300));
         let res = loop {
@@ -649,6 +664,62 @@ impl Desktop {
                 }
             }
         }
+    }
+
+    /// Resumable transfer: PATCH consecutive chunks starting where the server says it is. A 409 `offset_mismatch` carries the
+    /// offset the server really holds (it may have lost staging, or an earlier chunk's answer was lost): continue from there.
+    /// Gives up (retryable) after a few corrections in a row so a confused server cannot keep the loop spinning.
+    #[allow(clippy::too_many_arguments)]
+    async fn send_chunks(
+        &self,
+        op_base: &str,
+        org: &str,
+        path: &std::path::Path,
+        size: u64,
+        mut offset: u64,
+        chunk_max: u64,
+        cancel: &Arc<AtomicBool>,
+        progress: Arc<dyn Fn(u64) + Send + Sync>,
+    ) -> Result<crate::api::Response> {
+        let chunk = chunk_max.clamp(1, CHUNK_TARGET);
+        let mut corrections = 0;
+        let mut last: Option<crate::api::Response> = None;
+        while offset < size {
+            if cancel.load(Ordering::Relaxed) {
+                return Err(AppError::new("cancelled", "The upload was cancelled."));
+            }
+            let len = chunk.min(size - offset);
+            let base_offset = offset;
+            let p2 = progress.clone();
+            let chunk_progress: Arc<dyn Fn(u64) + Send + Sync> = Arc::new(move |n| p2(base_offset + n));
+            let url = format!("{op_base}/chunk?offset={offset}");
+            match self.api.patch_file_range(&url, Some(org), path, offset, len, cancel.clone(), chunk_progress).await {
+                Ok(r) => {
+                    offset += len;
+                    corrections = 0;
+                    last = Some(r);
+                }
+                Err(e) if e.status == Some(409) && e.code == "offset_mismatch" => {
+                    corrections += 1;
+                    let held = e.detail.as_ref().and_then(|d| d.get("received_bytes")).and_then(Value::as_u64);
+                    match held {
+                        Some(h) if corrections <= 5 && h <= size => {
+                            offset = h;
+                            progress(h);
+                        }
+                        _ => {
+                            return Err(AppError::new(
+                                "upload_out_of_step",
+                                "The server and this computer disagree about how much was sent.",
+                            )
+                            .retryable())
+                        }
+                    }
+                }
+                Err(e) => return Err(e),
+            }
+        }
+        last.ok_or_else(|| AppError::new("upload_out_of_step", "Nothing was left to send.").retryable())
     }
 
     fn fail_from(&self, user: &str, row: &QueueRow, e: &AppError) -> Result<Outcome> {

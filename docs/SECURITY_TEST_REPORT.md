@@ -17,6 +17,7 @@ Code at the Phase 12 branch head, tested on a single development machine against
 | Upload safety | Type sniffing, size limits, archive/macro refusal for workbooks, path-traversal names, EICAR-style test pattern via the scanner interface (stub scanner). | `test_p6_*`, `test_p9_*` |
 | Injection | Parameterised SQL everywhere; filter/sort fields are whitelists (reports are governed datasets, not SQL). Covered by route tests with hostile input; not by a fuzzer. | `test_p8`, `test_p9` |
 | Money and approvals | AI cannot approve; approvals need `actor_type = user` plus permission; maker–checker enforced in application and database. | `test_p7`, `test_p8`, `test_p10` |
+| Conflicts, resumable uploads, notifications, audit chain (Phase 12, continued) | Conflicts: a client cannot invent one, hidden folders hide theirs, resolved rows are immutable, only the finder or `sync.resolve` holders decide. Uploads: the database is the authority over staging bytes, other companies get 404, cancel removes staging. Notifications: private per person, generic text, delivery state not editable by a user context. Audit chain: edited event, deleted event, removed seal are detected; the request role cannot seal. | `test_p12_conflicts.py`, `test_p12_resumable.py`, `test_p12_notifications.py`, `test_p12_audit_chain.py` |
 | Sync feed (Phase 12) | Feed and preflight never reveal other companies, other organizations, forbidden record kinds or hidden folders; a device clock cannot move a cursor; malformed cursors are 422. | `test_p12_sync.py` |
 | Browser | Security headers present; axe accessibility checks; sign-in/up flows. | Playwright suite (last run Phase 10: 33 passed) |
 | Dependencies | `pip-audit` and `pnpm audit --prod`: no known vulnerabilities at the Phase 10/11 runs. Re-run before release. | tooling |
@@ -44,10 +45,10 @@ The API suite result at the Phase 12 head is in the [completion report](developm
 | Id | Finding | Severity | Status |
 |---|---|---|---|
 | S-1 | No external penetration test. | High | Open |
-| S-2 | Audit log is trigger-protected but not hash-chained or externally anchored. | Medium | Open |
+| S-2 | Audit log was trigger-protected but not tamper-evident. | Medium | **Partly closed:** hash chain + verify implemented and tested (6 tests incl. edit, delete and seal-removal detection); head hash not yet exported externally; platform audit log not chained ([AUDIT_LOG_INTEGRITY](AUDIT_LOG_INTEGRITY.md)). |
 | S-3 | No certificate pinning or root detection on mobile. | Medium | Open (documented in [mobile/SECURITY_AND_PRIVACY](mobile/SECURITY_AND_PRIVACY.md)) |
 | S-4 | Rate-limit values never tuned under load. | Medium | Open |
-| S-5 | Notifications not delivered, so security-relevant alerts (new device, failed sign-ins) reach users only through the in-app audit views. | Medium | Open |
+| S-5 | Notifications were not delivered. | Medium | **Partly closed:** in-app and e-mail delivery built; push to phones not built; no new-device/failed-sign-in alert type exists yet (only task and closing events). |
 | S-6 | No Phase 12 security defect was found in the new sync routes (isolation, permission and cursor tests pass). | — | Closed |
 
 ## 6. Encryption — what is and is not protected

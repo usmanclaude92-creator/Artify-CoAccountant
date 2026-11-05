@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app_services.dart';
+import '../../core/network/api_error.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/common.dart';
 import 'notification_center.dart';
@@ -43,7 +44,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   Card(
                     margin: const EdgeInsets.only(bottom: 8),
                     child: ListTile(
-                      leading: Icon(switch (n.kind) { NoticeKind.uploadCompleted => Icons.cloud_done_outlined, NoticeKind.uploadFailed => Icons.error_outline, NoticeKind.quarantined => Icons.gpp_maybe_outlined, NoticeKind.documentEvent => Icons.description_outlined }),
+                      leading: Icon(switch (n.kind) { NoticeKind.uploadCompleted => Icons.cloud_done_outlined, NoticeKind.uploadFailed => Icons.error_outline, NoticeKind.quarantined => Icons.gpp_maybe_outlined, NoticeKind.documentEvent => Icons.description_outlined, NoticeKind.serverNotification => Icons.assignment_outlined }),
                       title: Text(n.title, style: TextStyle(fontWeight: nc.isUnread(n) ? FontWeight.w700 : FontWeight.w400)),
                       subtitle: Text('${n.detail}\n${fmtWhen(n.at)}'),
                       isThreeLine: true,
@@ -69,10 +70,57 @@ class NotificationPrefsScreen extends StatelessWidget {
         body: ListView(children: [
           SwitchListTile(title: const Text('Upload results'), subtitle: const Text('Verified, failed or quarantined uploads from this phone'), value: nc.showUploadNotices, onChanged: nc.setShowUploadNotices),
           SwitchListTile(title: const Text('Document updates'), subtitle: const Text('Processing results and workspace changes reported by the server'), value: nc.showServerNotices, onChanged: nc.setShowServerNotices),
+          const _EmailPref(),
           ListTile(leading: const Icon(Icons.notifications_off_outlined), title: const Text('Push alerts'), subtitle: Text(services.push.isAvailable ? 'On' : 'Not available yet. No push service has been set up for this app.')),
           const ListTile(leading: Icon(Icons.lock_outline), title: Text('Lock-screen privacy'), subtitle: Text('Notices never contain amounts, supplier or customer names or document content.')),
         ]),
       ),
     );
   }
+}
+
+/// Whether the server also e-mails the person about assignments and closings. The in-app notice stays either way.
+class _EmailPref extends StatefulWidget {
+  const _EmailPref();
+  @override
+  State<_EmailPref> createState() => _EmailPrefState();
+}
+
+class _EmailPrefState extends State<_EmailPref> {
+  bool? _on;
+  String? _error;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_on == null && _error == null) _load();
+  }
+
+  AppServices get _services => context.findAncestorWidgetOfExactType<NotificationPrefsScreen>()!.services;
+
+  Future<void> _load() async {
+    try {
+      final j = await _services.api.getJson('/notifications/preferences');
+      if (mounted) setState(() => _on = j['email_enabled'] as bool? ?? true);
+    } on ApiError catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    }
+  }
+
+  Future<void> _set(bool v) async {
+    try {
+      await _services.api.putJson('/notifications/preferences', {'email_enabled': v});
+      if (mounted) setState(() => _on = v);
+    } on ApiError catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => SwitchListTile(
+        title: const Text('E-mail about tasks and closings'),
+        subtitle: Text(_error ?? 'Assignments, reviews and closing results are also sent to your e-mail address. The notice stays here either way.'),
+        value: _on ?? true,
+        onChanged: _on == null ? null : _set,
+      );
 }

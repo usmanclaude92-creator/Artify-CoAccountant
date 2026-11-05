@@ -3,6 +3,7 @@
 
 mod acct_commands;
 mod bk_commands;
+mod sync_commands;
 mod commands;
 mod doc_commands;
 mod intel_commands;
@@ -129,6 +130,9 @@ pub fn run() {
             doc_commands::mirror_open,
             acct_commands::acct_call,
             bk_commands::bk_call,
+            sync_commands::cloud_sync_pull,
+            sync_commands::cloud_sync_status,
+            sync_commands::cloud_sync_call,
             xl_commands::xl_call,
             xl_commands::xl_upload_pick,
             xl_commands::xl_export_save,

@@ -314,14 +314,50 @@ impl ApiClient {
         cancel: Arc<AtomicBool>,
         progress: Arc<dyn Fn(u64) + Send + Sync>,
     ) -> Result<Response> {
+        self.send_file(Method::PUT, path, org, file, 0, size, cancel, progress).await
+    }
+
+    /// Resumable upload: stream `len` bytes of `file` starting at `start` as the body of a PATCH (one chunk). Progress counts
+    /// bytes of this chunk only. The server decides where the chunk belongs (`?offset=` in `path`) and answers 409
+    /// `offset_mismatch` with the offset it holds when the two disagree.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn patch_file_range(
+        &self,
+        path: &str,
+        org: Option<&str>,
+        file: &Path,
+        start: u64,
+        len: u64,
+        cancel: Arc<AtomicBool>,
+        progress: Arc<dyn Fn(u64) + Send + Sync>,
+    ) -> Result<Response> {
+        self.send_file(Method::PATCH, path, org, file, start, len, cancel, progress).await
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    async fn send_file(
+        &self,
+        method: Method,
+        path: &str,
+        org: Option<&str>,
+        file: &Path,
+        start: u64,
+        len: u64,
+        cancel: Arc<AtomicBool>,
+        progress: Arc<dyn Fn(u64) + Send + Sync>,
+    ) -> Result<Response> {
+        use tokio::io::{AsyncReadExt, AsyncSeekExt};
         let mut refreshed = false;
         loop {
             let (token, generation) = self.access();
             let token = token.ok_or_else(AppError::session_expired)?;
-            let f = tokio::fs::File::open(file).await.map_err(AppError::from)?;
+            let mut f = tokio::fs::File::open(file).await.map_err(AppError::from)?;
+            if start > 0 {
+                f.seek(std::io::SeekFrom::Start(start)).await.map_err(AppError::from)?;
+            }
             let sent = Arc::new(AtomicU64::new(0));
             let (c2, p2, s2) = (cancel.clone(), progress.clone(), sent.clone());
-            let stream = ReaderStream::with_capacity(f, 256 * 1024).map(move |chunk| {
+            let stream = ReaderStream::with_capacity(f.take(len), 256 * 1024).map(move |chunk| {
                 if c2.load(Ordering::Relaxed) {
                     return Err(std::io::Error::new(std::io::ErrorKind::Interrupted, "cancelled"));
                 }
@@ -331,11 +367,11 @@ impl ApiClient {
             });
             let mut req = self
                 .transfer_http
-                .put(format!("{}{}", self.cfg.base_url, path))
+                .request(method.clone(), format!("{}{}", self.cfg.base_url, path))
                 .bearer_auth(&token)
                 .header(header::ACCEPT, "application/json, application/problem+json")
                 .header(header::CONTENT_TYPE, "application/octet-stream")
-                .header(header::CONTENT_LENGTH, size)
+                .header(header::CONTENT_LENGTH, len)
                 .body(reqwest::Body::wrap_stream(stream));
             if let Some(o) = org {
                 req = req.header("X-Organization-Id", o);

@@ -21,7 +21,7 @@ Status of every prerequisite for putting the product in front of paying customer
 | Independent penetration test | ✘ |
 | Dependency scans clean | ◐ (Python/JS clean at last run; Rust not scanned) |
 | Per-tenant encryption decision (D-4) | ✘ |
-| Audit log tamper-evidence (hash chain) | ✘ |
+| Audit log tamper-evidence (hash chain) | ◐ built and tested; head hash not exported externally; platform log not chained |
 | Secrets rotation and incident-response drills | ✘ |
 | Privacy policy, terms, DPA, sub-processor list (D-11) | ✘ |
 | Retention and erasure values (D-8) and purge workflow | ✘ |
@@ -44,9 +44,9 @@ Status of every prerequisite for putting the product in front of paying customer
 |---|---|
 | Billing provider (D-2), invoices, renewals | ✘ (manual records only; nothing simulated) |
 | Subscription enforcement | ✔ server-side entitlements; ◐ no renewal scheduler |
-| Notifications delivered (e-mail/push) | ✘ |
-| Sync clients on the change feed, conflict resolution UI | ✘ |
-| Resumable uploads | ✘ |
+| Notifications delivered (e-mail/push) | ◐ in-app + e-mail built (stub mailer only); push ✘ |
+| Sync clients on the change feed, conflict resolution | ◐ built on server, desktop and phone, tested with simulated servers; Control Center page, automatic preflight, closing-validation input ✘ |
+| Resumable uploads | ◐ built and tested; needs a shared staging volume across replicas; never run over a real network |
 | Tax pack verified by a professional | ✘ |
 | OCR/AI quality on real documents | ✘ (synthetic only; AI provider only against a stub) |
 | Onboarding guide | ✔ [CUSTOMER_ONBOARDING_GUIDE](CUSTOMER_ONBOARDING_GUIDE.md) |
@@ -62,7 +62,7 @@ Status of every prerequisite for putting the product in front of paying customer
 
 ## Readiness classification
 
-* **A — Development Complete: NO.** Phases 0–11 are delivered for review. Phase 12's *development* tasks are only partly done: the sync change feed and preflight, a restore check, a latency baseline, the consistency-chain test and the documentation exist; the client wiring to the feed, conflict resolution, resumable uploads, tenant key management, notification delivery, and every release build do not (see sections A–E).
+* **A — Development Complete: NO.** Phases 0–11 are delivered for review. Phase 12's *development* tasks are only partly done: the sync change feed and preflight, conflict recording and resolution, resumable uploads, notification delivery (in-app and e-mail), the audit hash chain, client wiring on desktop and phone, a restore check, a latency baseline, the consistency-chain test and the documentation exist; push notifications, tenant key management, the Control Center conflicts page, external anchoring of the audit head, and every release build do not (see sections A–E).
 * **B — Ready for Staging: no.** Needs a staging environment (D-3), migrations rehearsed there, the clients wired to the change feed, and at least the Windows and Android builds produced.
 * **C — Production Deployment Ready: no.**
 * **D — Commercial Launch Ready: no.** Do not describe the product as launch-ready until sections B, C and E are ✔.

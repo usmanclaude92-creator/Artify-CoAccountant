@@ -22,7 +22,7 @@ from typing import Any
 
 from sqlalchemy import Connection, text
 
-from artify_api import audit, entitlements, scanner, storage
+from artify_api import audit, entitlements, scanner, storage, upload_staging
 from artify_api import workspace as ws
 from artify_api import workspace_config as wc
 from artify_api.context import RequestCtx
@@ -535,9 +535,11 @@ def op_view(r: Any) -> dict[str, Any]:
         "id", "batch_id", "target_document_id", "status", "original_filename", "declared_size", "declared_sha256",
         "node_id", "category_id", "display_name", "duplicate_policy", "error_code", "error_message", "attempts",
         "expires_at", "created_at", "updated_at", "completed_at", "result_document_id", "result_version_id",
-        "received_size", "scan_status", "verified_mime", "change_reason", "idempotency_key",
+        "received_size", "scan_status", "verified_mime", "change_reason", "idempotency_key", "received_bytes",
     )  # fmt: skip
-    return {k: d.get(k) for k in keys}
+    out = {k: d.get(k) for k in keys}
+    out["chunk_max_bytes"] = get_settings().upload_chunk_max_bytes
+    return out
 
 
 def _op_row(ctx: RequestCtx, op_id: uuid.UUID, *, lock: bool = False) -> Any:
@@ -755,30 +757,81 @@ def _safe_name(filename: str) -> str:
         raise FileNotAccepted(exc.message, extra={"reason": exc.code}) from exc
 
 
+def _check_receivable(ctx: RequestCtx, acc: ws.Access, row: Any) -> None:
+    if row.expires_at < _now() and row.status in ("awaiting_upload", "uploading"):
+        ctx.conn.execute(
+            text("UPDATE document_upload_operations SET status = 'expired', updated_at = now() WHERE id = :i"),
+            {"i": row.id},
+        )
+        upload_staging.discard(row.id)
+        raise Conflict("This upload session expired. Start the upload again.", extra={"status": "expired"})
+    if row.status not in ("awaiting_upload", "uploading"):
+        raise Conflict(f"This upload is {row.status} and cannot receive content.", extra={"status": row.status})
+    acc.require("upload", str(row.node_id))  # permissions may have changed since registration
+    _node_ok_for_filing(ctx.conn, ctx.company_id, row.node_id)  # type: ignore[arg-type]
+
+
 def begin_content(ctx: RequestCtx, acc: ws.Access, op_id: uuid.UUID) -> tuple[dict[str, Any], bool]:
     """Lock the session and move it to `uploading`. Returns (operation, already_received): when the content was
     already received (a retry after a lost response) the caller must not read the body again."""
     row = _op_row(ctx, op_id, lock=True)
     if row.status in ("uploaded", "verifying", "completed"):
         return op_view(row), True
-    if row.expires_at < _now() and row.status in ("awaiting_upload", "uploading"):
-        ctx.conn.execute(
-            text("UPDATE document_upload_operations SET status = 'expired', updated_at = now() WHERE id = :i"),
-            {"i": op_id},
-        )
-        raise Conflict("This upload session expired. Start the upload again.", extra={"status": "expired"})
-    if row.status not in ("awaiting_upload", "uploading"):
-        raise Conflict(f"This upload is {row.status} and cannot receive content.", extra={"status": row.status})
-    acc.require("upload", str(row.node_id))  # permissions may have changed since registration
-    _node_ok_for_filing(ctx.conn, ctx.company_id, row.node_id)  # type: ignore[arg-type]
+    _check_receivable(ctx, acc, row)
     ctx.conn.execute(
         text(
             "UPDATE document_upload_operations SET status = 'uploading', attempts = attempts + 1, error_code = NULL,"
-            " error_message = NULL, updated_at = now() WHERE id = :i"
+            " error_message = NULL, received_bytes = 0, updated_at = now() WHERE id = :i"
         ),
         {"i": op_id},
     )
+    upload_staging.discard(op_id)  # a whole-file PUT replaces any partial resumable upload
     return op_view(_op_row(ctx, op_id)), False
+
+
+def begin_chunk(ctx: RequestCtx, acc: ws.Access, op_id: uuid.UUID, offset: int) -> tuple[str, dict[str, Any]]:
+    """Lock the session for one chunk. Returns (state, operation): `received` (everything is already here),
+    `mismatch` (the client must continue from `received_bytes`) or `ready` (append at `offset`)."""
+    row = _op_row(ctx, op_id, lock=True)
+    if row.status in ("uploaded", "verifying", "completed"):
+        return "received", op_view(row)
+    _check_receivable(ctx, acc, row)
+    held = row.received_bytes
+    actual = upload_staging.size(op_id)
+    if actual > held:  # written but never committed: the database is the authority
+        upload_staging.truncate(op_id, held)
+    elif actual < held:  # staging lost: continue from what really exists
+        held = actual
+    if row.status == "awaiting_upload" or held != row.received_bytes:
+        ctx.conn.execute(
+            text(
+                "UPDATE document_upload_operations SET status = 'uploading', received_bytes = :b, error_code = NULL,"
+                " error_message = NULL, attempts = attempts + CASE WHEN status = 'awaiting_upload' THEN 1 ELSE 0 END,"
+                " updated_at = now() WHERE id = :i"
+            ),
+            {"b": held, "i": op_id},
+        )
+    view = op_view(_op_row(ctx, op_id))
+    return ("ready" if offset == held else "mismatch"), view
+
+
+def finish_chunk(ctx: RequestCtx, acc: ws.Access, op_id: uuid.UUID, offset: int, length: int) -> Outcome:
+    """Record `length` bytes appended at `offset`. When the last byte arrived the whole file is hashed and goes through the
+    same validation as a one-shot upload."""
+    row = _op_row(ctx, op_id, lock=True)
+    received = offset + length
+    ctx.conn.execute(
+        text("UPDATE document_upload_operations SET received_bytes = :b, updated_at = now() WHERE id = :i"),
+        {"b": received, "i": op_id},
+    )
+    if received < row.declared_size:
+        return Outcome(200, op_view(_op_row(ctx, op_id)))
+    path = upload_staging.path_for(op_id)
+    try:
+        out = finish_content(ctx, acc, op_id, path, received, upload_staging.sha256_of(path))
+    finally:
+        upload_staging.discard(op_id)
+    return out
 
 
 def _fail(
@@ -792,10 +845,11 @@ def _fail(
     sha: str,
     extra: dict[str, Any] | None = None,
 ) -> Outcome:
+    upload_staging.discard(row.id)
     ctx.conn.execute(
         text(
             "UPDATE document_upload_operations SET status = :s, error_code = :c, error_message = :m, received_size = :sz,"
-            " received_sha256 = :h, updated_at = now() WHERE id = :i"
+            " received_sha256 = :h, received_bytes = 0, updated_at = now() WHERE id = :i"
         ),
         {"s": status, "c": code, "m": message, "sz": size, "h": sha, "i": row.id},
     )
@@ -1086,8 +1140,11 @@ def cancel_upload(ctx: RequestCtx, op_id: uuid.UUID) -> dict[str, Any]:
     if row.status in ("cancelled", "expired"):
         return op_view(row)
     _discard_object(ctx, row)
+    upload_staging.discard(row.id)
     ctx.conn.execute(
-        text("UPDATE document_upload_operations SET status = 'cancelled', updated_at = now() WHERE id = :i"),
+        text(
+            "UPDATE document_upload_operations SET status = 'cancelled', received_bytes = 0, updated_at = now() WHERE id = :i"
+        ),
         {"i": row.id},
     )
     log_event(
@@ -1112,7 +1169,7 @@ def retry_upload(ctx: RequestCtx, op_id: uuid.UUID) -> dict[str, Any]:
     ctx.conn.execute(
         text(
             "UPDATE document_upload_operations SET status = 'awaiting_upload', error_code = NULL, error_message = NULL,"
-            " storage_object_id = NULL, updated_at = now() WHERE id = :i"
+            " storage_object_id = NULL, received_bytes = 0, updated_at = now() WHERE id = :i"
         ),
         {"i": row.id},
     )
@@ -1802,6 +1859,7 @@ def reconcile_storage(ctx: RequestCtx, *, repair: bool, min_age_seconds: int) ->
                 text("UPDATE document_upload_operations SET status = 'expired', updated_at = now() WHERE id = :i"),
                 {"i": e.id},
             )
+            upload_staging.discard(e.id)
         entitlements.refresh_counter(conn, org, "quota.storage_bytes")
     summary = {
         "repair": repair,

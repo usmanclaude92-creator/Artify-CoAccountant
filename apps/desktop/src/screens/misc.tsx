@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Alert, Button, Panel, StatusChip } from "@artify/ui";
-import type { EventRow, SyncStatus } from "../bridge/types";
+import type { CloudSyncStatus, ConflictResolution, EventRow, SyncConflict, SyncStatus } from "../bridge/types";
 import { fmtDateTime, ROLE_LABEL } from "../lib/format";
 import { useApp } from "../state/app";
 
@@ -67,10 +67,75 @@ export function Sync() {
           <div className="d-actions"><Button onClick={() => void refresh()} disabled={busy || !company}>{busy ? "Synchronizing…" : "Synchronize now"}</Button></div>
           {!company ? <p className="a-hint">Open a company to synchronize its workspace.</p> : null}
           {msg ? <Alert tone="info">{msg}</Alert> : null}
-          <p className="a-hint">While a company is open, the app checks every minute for a newer workspace configuration. Document upload and offline capture queues arrive with document management.</p>
+          <p className="a-hint">While a company is open, the app checks every minute for a newer workspace configuration.</p>
         </Panel>
       ) : <p role="status">Loading…</p>}
+      {company && org ? <CloudSync org={org.id} company={company.id} /> : null}
     </section>
+  );
+}
+
+const STATE_LABEL: Record<CloudSyncStatus["state"], string> = { pending: "Pending", uploading: "Uploading", failed: "Failed", conflict_detected: "Conflict detected", synchronized: "Synchronized" };
+const STATE_TONE: Record<CloudSyncStatus["state"], "success" | "danger" | "warning" | "neutral"> = { pending: "neutral", uploading: "neutral", failed: "danger", conflict_detected: "warning", synchronized: "success" };
+
+/** Phase 12: what the server confirmed. "Synchronized" appears only when the server says there is nothing open. */
+function CloudSync({ org, company }: { org: string; company: string }) {
+  const { bridge, fail } = useApp();
+  const [st, setSt] = useState<CloudSyncStatus | null>(null);
+  const [conflicts, setConflicts] = useState<SyncConflict[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const load = useCallback(() => {
+    bridge.cloudSyncStatus(org, company).then(setSt).catch(fail);
+    bridge.cloudSync<{ items: SyncConflict[] }>(org, company, "conflicts", { query: { state: "open" } }).then((l) => setConflicts(l.items)).catch(fail);
+  }, [bridge, org, company, fail]);
+  useEffect(load, [load]);
+  const check = async () => {
+    setBusy(true); setMsg(null);
+    try {
+      const r = await bridge.cloudSyncPull(org, company);
+      setMsg(r.caught_up ? `Checked with the server: ${r.items} change(s) read.` : "More changes remain; check again to continue.");
+    } catch (e) { const m = fail(e); if (m) setMsg(m); } finally { setBusy(false); load(); }
+  };
+  const decide = async (c: SyncConflict, resolution: ConflictResolution, note?: string) => {
+    setMsg(null);
+    try {
+      const r = await bridge.cloudSync<SyncConflict>(org, company, "conflict_resolve", { id: c.id, body: { resolution, note } });
+      setMsg(r.next_base_revision != null ? `Decision recorded. Send your change on top of server revision ${r.next_base_revision}.` : "Decision recorded. The server copy is kept.");
+    } catch (e) { const m = fail(e); if (m) setMsg(m); } finally { load(); }
+  };
+  return (
+    <section aria-labelledby="h-cloud-sync"><Panel className="grid-gap">
+      <h2 id="h-cloud-sync">Cloud synchronization</h2>
+      {st ? (
+        <>
+          <p><StatusChip tone={STATE_TONE[st.state]}>{STATE_LABEL[st.state]}</StatusChip> <span>{st.label}</span></p>
+          <dl className="a-dl">
+            <dt>Last check with the server</dt><dd>{fmtDateTime(st.last_pull_at)}</dd>
+            <dt>Files waiting / uploading / failed</dt><dd>{st.waiting_uploads} / {st.uploading} / {st.failed_uploads}</dd>
+            <dt>Open conflicts (counted by the server)</dt><dd>{st.open_conflicts ?? "Not confirmed"}</dd>
+            <dt>Known to this computer</dt><dd>{st.known_items.length ? st.known_items.map(([k, n]) => `${n} ${k}`).join(" · ") : "Nothing yet"}</dd>
+          </dl>
+          <div className="d-actions"><Button onClick={() => void check()} disabled={busy}>{busy ? "Checking…" : "Check with the server"}</Button></div>
+        </>
+      ) : <p role="status">Loading…</p>}
+      {msg ? <Alert tone="info">{msg}</Alert> : null}
+      {conflicts.length > 0 ? (
+        <ul aria-label="Open conflicts" className="grid-gap">
+          {conflicts.map((c) => (
+            <li key={c.id}>
+              <strong>{c.item_kind}</strong> — {c.conflict_type === "locked" ? "this record is locked on the server" : "the server has a newer version"} (your copy: revision {c.base_revision ?? "?"}, server: {c.server_revision ?? "?"}).
+              <div className="d-actions">
+                <Button variant="secondary" onClick={() => void decide(c, "keep_server")}>Keep the server copy</Button>
+                {c.conflict_type === "stale" ? <Button variant="secondary" onClick={() => void decide(c, "apply_local", "Apply my change on top of the newer version")}>Apply my change on the new version</Button> : null}
+                <Button variant="secondary" onClick={() => void decide(c, "discarded", "Not needed any more")}>Discard my change</Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      <p className="a-hint">“Synchronized” is shown only when this computer has read the server’s changes, nothing is waiting or failed, and the server reports no open conflicts. Resolving a conflict records your decision; it does not change the record.</p>
+    </Panel></section>
   );
 }
 

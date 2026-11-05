@@ -39,6 +39,20 @@ export interface SyncStatus {
   company: { last_success_at: string | null; last_attempt_at: string | null; last_error: string | null; last_version: number | null } | null;
   cached_workspace_version: number | null; pending: { pending: number; in_progress: number; failed: number };
 }
+// ---------------------------------------------------------------- cloud synchronization (Phase 12)
+export type CloudSyncState = "pending" | "uploading" | "failed" | "conflict_detected" | "synchronized";
+export interface CloudSyncStatus {
+  state: CloudSyncState; label: string; waiting_uploads: number; uploading: number; failed_uploads: number; open_conflicts: number | null;
+  last_pull_at: string | null; last_error: string | null; caught_up: boolean; known_items: [string, number][];
+}
+export interface CloudPullSummary { pages: number; items: number; caught_up: boolean; restarted: boolean; server_time: string | null }
+export type SyncOp = "status" | "conflicts" | "conflict_report" | "conflict" | "conflict_resolve" | "check";
+export type ConflictResolution = "keep_server" | "apply_local" | "merged" | "discarded";
+export interface SyncConflict {
+  id: string; item_kind: string; item_id: string; client_id: string; conflict_type: "stale" | "locked"; base_revision: number | null; server_revision: number | null;
+  local_summary: Record<string, unknown>; server_summary: Record<string, unknown>; state: "open" | "resolved"; resolution: ConflictResolution | null; resolution_note: string | null;
+  detected_at: string; resolved_at: string | null; current?: { state: string; revision: number | null; reason: string | null }; next_base_revision?: number | null;
+}
 export interface EventRow { id: number; ts: string; level: string; kind: string; message: string; read: boolean }
 export interface UpdateStatus { configured: boolean; available: boolean; version: string | null; message: string }
 export type Settings = Record<"theme" | "language" | "start_on_login" | "default_company_id" | "notifications" | "update_channel", string>;
@@ -264,6 +278,9 @@ export interface Bridge {
   devicesList(org: string): Promise<ServerDevice[]>;
   deviceRevoke(org: string, deviceId: string): Promise<void>;
   syncStatus(company: string | null): Promise<SyncStatus>;
+  cloudSyncPull(org: string, company: string): Promise<CloudPullSummary>;
+  cloudSyncStatus(org: string, company: string): Promise<CloudSyncStatus>;
+  cloudSync<T = unknown>(org: string, company: string, op: SyncOp, args?: { id?: string; query?: Record<string, string>; body?: unknown }): Promise<T>;
   notificationsList(): Promise<EventRow[]>;
   notificationsRead(): Promise<void>;
   diagnosticsExport(): Promise<string>;

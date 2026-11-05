@@ -20,6 +20,11 @@ class UploadService {
   static const baseBackoff = Duration(seconds: 10);
   static const maxBackoff = Duration(minutes: 15);
 
+  /// Files at least this big go in resumable chunks (smaller ones in one request); a chunk is never bigger than this or than
+  /// the server's `chunk_max_bytes`.
+  static const chunkedFrom = 8 * 1024 * 1024;
+  static const chunkTarget = 8 * 1024 * 1024;
+
   Future<void> run(QueueItem item) async {
     final base = '/companies/${item.companyId}/documents/uploads';
     try {
@@ -55,9 +60,14 @@ class UploadService {
           if (!await file.exists()) {
             throw const ApiError(status: 410, code: 'local_file_missing', message: 'The saved copy of this document is no longer on the device.');
           }
-          final Uint8List bytes = await file.readAsBytes();
-          final sent = await api.putBytes('$base/${item.serverOperationId}/content', bytes, org: item.organizationId);
-          status = (sent['operation'] is Map ? (sent['operation'] as Map)['status'] : sent['status']) as String? ?? 'uploaded';
+          final chunkMax = (op['chunk_max_bytes'] as num?)?.toInt() ?? 0;
+          if (chunkMax > 0 && item.size >= chunkedFrom) {
+            status = await _sendChunks(item, base, file, (op['received_bytes'] as num?)?.toInt() ?? 0, chunkMax);
+          } else {
+            final Uint8List bytes = await file.readAsBytes();
+            final sent = await api.putBytes('$base/${item.serverOperationId}/content', bytes, org: item.organizationId);
+            status = (sent['operation'] is Map ? (sent['operation'] as Map)['status'] : sent['status']) as String? ?? 'uploaded';
+          }
           item.progress = 0.8;
         }
         item.state = UploadState.verifying;
@@ -80,6 +90,45 @@ class UploadService {
     } on ApiError catch (e) {
       await _record(item, e);
     }
+  }
+
+  /// Resumable transfer: consecutive chunks from the offset the server says it holds. A 409 `offset_mismatch` carries the real
+  /// offset (staging lost, or an earlier answer was lost): continue from there. After a few corrections in a row it gives up
+  /// (retryable) so a confused server cannot keep the loop spinning. Returns the operation status of the last answer.
+  Future<String?> _sendChunks(QueueItem item, String base, File file, int offset, int chunkMax) async {
+    final size = item.size;
+    final chunk = chunkMax < chunkTarget ? chunkMax : chunkTarget;
+    final raf = await file.open();
+    var corrections = 0;
+    String? status;
+    try {
+      while (offset < size) {
+        final len = (size - offset) < chunk ? size - offset : chunk;
+        await raf.setPosition(offset);
+        final bytes = await raf.read(len);
+        try {
+          final r = await api.patchBytes('$base/${item.serverOperationId}/chunk', bytes, query: {'offset': '$offset'}, org: item.organizationId);
+          status = (r['operation'] is Map ? (r['operation'] as Map)['status'] : r['status']) as String? ?? 'uploading';
+          offset += len;
+          corrections = 0;
+          item.progress = 0.15 + 0.65 * (offset / size);
+          await queue.update(item);
+        } on ApiError catch (e) {
+          final held = (e.extra['received_bytes'] as num?)?.toInt();
+          if (e.status == 409 && e.code == 'offset_mismatch' && held != null && held <= size && ++corrections <= 5) {
+            offset = held;
+            continue;
+          }
+          if (e.status == 409 && e.code == 'offset_mismatch') {
+            throw const ApiError(status: 503, code: 'upload_out_of_step', message: 'The server and this phone disagree about how much was sent. It will try again.');
+          }
+          rethrow;
+        }
+      }
+    } finally {
+      await raf.close();
+    }
+    return status ?? 'uploaded';
   }
 
   Future<void> _record(QueueItem item, ApiError e) async {

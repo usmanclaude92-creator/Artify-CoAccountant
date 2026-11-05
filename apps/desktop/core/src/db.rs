@@ -70,6 +70,17 @@ pub const MIGRATIONS: &[(i64, &str)] = &[
             rel_path TEXT NOT NULL, sha256 TEXT NOT NULL, saved_at TEXT NOT NULL,
             PRIMARY KEY (user_id, company_id, document_id, version_no));",
     ),
+    (
+        3,
+        "CREATE TABLE sync_feed (
+            user_id TEXT NOT NULL, company_id TEXT NOT NULL, cursor TEXT, last_pull_at TEXT, last_error TEXT,
+            pulled_total INTEGER NOT NULL DEFAULT 0, caught_up INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (user_id, company_id));
+         CREATE TABLE sync_items (
+            user_id TEXT NOT NULL, company_id TEXT NOT NULL, kind TEXT NOT NULL, item_id TEXT NOT NULL,
+            revision INTEGER NOT NULL, status TEXT, changed_at TEXT,
+            PRIMARY KEY (user_id, company_id, kind, item_id));",
+    ),
 ];
 
 pub fn latest_version() -> i64 {
@@ -700,12 +711,100 @@ impl Db {
         Ok(())
     }
 
+    // ------------------------------------------------------------ change-feed checkpoint (Phase 12)
+    pub fn feed_get(&self, user: &str, company: &str) -> Result<FeedState> {
+        Ok(self
+            .conn
+            .query_row(
+                "SELECT cursor, last_pull_at, last_error, pulled_total, caught_up FROM sync_feed WHERE user_id = ?1 AND company_id = ?2",
+                params![user, company],
+                |r| {
+                    Ok(FeedState {
+                        cursor: r.get(0)?,
+                        last_pull_at: r.get(1)?,
+                        last_error: r.get(2)?,
+                        pulled_total: r.get(3)?,
+                        caught_up: r.get::<_, i64>(4)? != 0,
+                    })
+                },
+            )
+            .optional()?
+            .unwrap_or_default())
+    }
+
+    /// Store one page of the feed and its checkpoint in ONE transaction: the cursor only advances together with the items it
+    /// covers, so a crash in between re-reads the page (items are idempotent by kind + id + revision) and never skips one.
+    pub fn feed_save_page(&mut self, user: &str, company: &str, cursor: Option<&str>, items: &[FeedItem], caught_up: bool) -> Result<()> {
+        let tx = self.conn.transaction()?;
+        for i in items {
+            tx.execute(
+                "INSERT INTO sync_items (user_id, company_id, kind, item_id, revision, status, changed_at) VALUES (?1,?2,?3,?4,?5,?6,?7)
+                 ON CONFLICT (user_id, company_id, kind, item_id) DO UPDATE SET revision = excluded.revision, status = excluded.status,
+                 changed_at = excluded.changed_at WHERE excluded.revision >= sync_items.revision",
+                params![user, company, i.kind, i.id, i.revision, i.status, i.changed_at],
+            )?;
+        }
+        tx.execute(
+            "INSERT INTO sync_feed (user_id, company_id, cursor, last_pull_at, last_error, pulled_total, caught_up) VALUES (?1,?2,?3,?4,NULL,?5,?6)
+             ON CONFLICT (user_id, company_id) DO UPDATE SET cursor = COALESCE(excluded.cursor, sync_feed.cursor), last_pull_at = excluded.last_pull_at,
+             last_error = NULL, pulled_total = sync_feed.pulled_total + ?5, caught_up = excluded.caught_up",
+            params![user, company, cursor, now(), items.len() as i64, caught_up as i64],
+        )?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    pub fn feed_record_error(&self, user: &str, company: &str, error: &str) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO sync_feed (user_id, company_id, last_error) VALUES (?1,?2,?3)
+             ON CONFLICT (user_id, company_id) DO UPDATE SET last_error = excluded.last_error, caught_up = 0",
+            params![user, company, error],
+        )?;
+        Ok(())
+    }
+
+    /// Forget the checkpoint (the server said the cursor is invalid): the next pull starts from the beginning.
+    pub fn feed_reset(&self, user: &str, company: &str) -> Result<()> {
+        self.conn.execute("DELETE FROM sync_feed WHERE user_id = ?1 AND company_id = ?2", params![user, company])?;
+        Ok(())
+    }
+
+    pub fn feed_item_revision(&self, user: &str, company: &str, kind: &str, id: &str) -> Result<Option<i64>> {
+        Ok(self
+            .conn
+            .query_row(
+                "SELECT revision FROM sync_items WHERE user_id = ?1 AND company_id = ?2 AND kind = ?3 AND item_id = ?4",
+                params![user, company, kind, id],
+                |r| r.get(0),
+            )
+            .optional()?)
+    }
+
+    pub fn feed_counts(&self, user: &str, company: &str) -> Result<Vec<(String, i64)>> {
+        let mut st = self
+            .conn
+            .prepare("SELECT kind, count(*) FROM sync_items WHERE user_id = ?1 AND company_id = ?2 GROUP BY kind ORDER BY kind")?;
+        let rows = st.query_map(params![user, company], |r| Ok((r.get(0)?, r.get(1)?)))?;
+        Ok(rows.collect::<std::result::Result<Vec<_>, _>>()?)
+    }
+
     // ------------------------------------------------------------ wipe
     /// Remove every cached item that belongs to `user` (logout, revoked device, expired session). Pending operations are
     /// KEPT unless `include_pending` is set: unsent work is never discarded silently. Settings stay (they are preferences).
     pub fn wipe_user_cache(&mut self, user: &str, include_pending: bool) -> Result<()> {
         let tx = self.conn.transaction()?;
-        for t in ["accounts", "organizations", "companies", "workspace_cache", "sync_state", "device", "mirror_nodes", "mirror_files"] {
+        for t in [
+            "accounts",
+            "organizations",
+            "companies",
+            "workspace_cache",
+            "sync_state",
+            "device",
+            "mirror_nodes",
+            "mirror_files",
+            "sync_feed",
+            "sync_items",
+        ] {
             tx.execute(&format!("DELETE FROM {t} WHERE user_id = ?1"), params![user])?;
         }
         tx.execute("DELETE FROM events WHERE user_id = ?1", params![user])?;
@@ -732,6 +831,22 @@ pub struct CachedWorkspace {
     pub etag: Option<String>,
     pub fetched_at: String,
     pub data: serde_json::Value,
+}
+#[derive(Debug, Clone, Serialize, Default, PartialEq, Eq)]
+pub struct FeedState {
+    pub cursor: Option<String>,
+    pub last_pull_at: Option<String>,
+    pub last_error: Option<String>,
+    pub pulled_total: i64,
+    pub caught_up: bool,
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FeedItem {
+    pub kind: String,
+    pub id: String,
+    pub revision: i64,
+    pub status: Option<String>,
+    pub changed_at: Option<String>,
 }
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct SyncState {

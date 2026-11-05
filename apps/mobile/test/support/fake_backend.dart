@@ -28,6 +28,20 @@ class FakeBackend {
   bool logoutFails = false;
   final Set<String> forbiddenCompanies = {};
 
+  // ---- Phase 12: synchronization, resumable uploads, notifications
+  List<List<Map<String, dynamic>>> feedPages = [];
+  bool badCursor = false; // the next pull's cursor is refused once
+  bool feedFails = false;
+  bool syncStatusFails = false;
+  final List<Map<String, dynamic>> conflicts = [];
+  int chunkMax = 4 * 1024 * 1024;
+  final List<(int, int)> chunkCalls = []; // (offset, length)
+  int? dropChunkAnswerAt; // apply the chunk at this offset, then lose the answer (connection drops)
+  int? forgetBytesAt; // answer 409 offset_mismatch with received_bytes = 0 at this offset (server lost staging)
+  List<Map<String, dynamic>> notifications = [];
+  bool emailEnabled = true;
+  final List<String> feedCursors = [];
+
   // ---- data
   List<Map<String, dynamic>> memberships = [
     {'organization_id': 'org-1', 'organization_name': 'Gulf Accounting Partners', 'organization_status': 'active', 'organization_role': 'accountant', 'company_roles': <String, String>{}},
@@ -98,6 +112,18 @@ class FakeBackend {
     if (r.method == 'GET' && path == '/me') {
       return _json(200, {'user_id': 'u-1', 'email': 'sara@example.com', 'display_name': 'Sara Preparer', 'locale': 'en', 'mfa_enabled': true, 'session_mfa_verified': true, 'memberships': memberships, 'permissions': []});
     }
+    if (r.method == 'GET' && path == '/notifications') return _json(200, {'items': notifications, 'total': notifications.length, 'unread': notifications.where((n) => n['read_at'] == null).length});
+    if (r.method == 'POST' && path == '/notifications/read-all') {
+      for (final n in notifications) {
+        n['read_at'] ??= '2026-03-02T09:00:00Z';
+      }
+      return _json(200, {'marked': notifications.length});
+    }
+    if (r.method == 'GET' && path == '/notifications/preferences') return _json(200, {'email_enabled': emailEnabled});
+    if (r.method == 'PUT' && path == '/notifications/preferences') {
+      emailEnabled = (jsonDecode(r.body) as Map<String, dynamic>)['email_enabled'] as bool;
+      return _json(200, {'email_enabled': emailEnabled});
+    }
     if (r.method == 'POST' && path == '/devices') {
       return _json(201, {'id': 'dev-1', 'platform': 'android', 'name': 'Android phone', 'status': 'active'});
     }
@@ -126,7 +152,7 @@ class FakeBackend {
         final key = b['idempotency_key'] as String;
         final existing = opsByKey[key];
         if (existing != null) return _json(200, existing);
-        final op = {'id': 'op-${ops.length + 1}', 'status': 'awaiting_upload', 'original_filename': b['filename'], 'declared_size': b['size'], 'node_id': b['node_id'], 'result_document_id': null, 'idempotency_key': key, 'metadata': b['metadata']};
+        final op = {'id': 'op-${ops.length + 1}', 'status': 'awaiting_upload', 'original_filename': b['filename'], 'declared_size': b['size'], 'node_id': b['node_id'], 'result_document_id': null, 'idempotency_key': key, 'metadata': b['metadata'], 'chunk_max_bytes': chunkMax, 'received_bytes': 0};
         opsByKey[key] = op;
         ops[op['id'] as String] = op;
         return _json(201, op);
@@ -146,6 +172,57 @@ class FakeBackend {
         final op = ops[put.group(1)!]!;
         op['status'] = 'uploaded';
         return _json(200, op);
+      }
+      final chunk = RegExp(r'^documents/uploads/([^/]+)/chunk$').firstMatch(rest);
+      if (r.method == 'PATCH' && chunk != null) {
+        final op = ops[chunk.group(1)!]!;
+        final offset = int.parse(r.url.queryParameters['offset']!);
+        final held = op['received_bytes'] as int;
+        if (forgetBytesAt == offset) {
+          forgetBytesAt = null;
+          op['received_bytes'] = 0;
+          return _problem(409, 'offset_mismatch', 'The server holds a different number of bytes.', extra: {'received_bytes': 0, 'declared_size': op['declared_size']});
+        }
+        if (offset != held) return _problem(409, 'offset_mismatch', 'The server holds a different number of bytes.', extra: {'received_bytes': held, 'declared_size': op['declared_size']});
+        chunkCalls.add((offset, r.bodyBytes.length));
+        op['received_bytes'] = held + r.bodyBytes.length;
+        op['status'] = op['received_bytes'] == op['declared_size'] ? 'uploaded' : 'uploading';
+        if (dropChunkAnswerAt == offset) {
+          dropChunkAnswerAt = null;
+          throw http.ClientException('connection lost after the server stored the chunk');
+        }
+        return _json(200, op);
+      }
+      if (r.method == 'GET' && rest == 'sync/changes') {
+        if (feedFails) return _problem(503, 'unavailable', 'Try later.');
+        final cursor = r.url.queryParameters['cursor'];
+        feedCursors.add(cursor ?? '');
+        if (badCursor && cursor != null) {
+          badCursor = false;
+          return _problem(422, 'invalid_cursor', 'That cursor is not valid.');
+        }
+        final k = cursor == null ? 0 : int.parse(cursor.substring(1));
+        final items = k < feedPages.length ? feedPages[k] : <Map<String, dynamic>>[];
+        return _json(200, {'items': items, 'next_cursor': 'C${k + 1}', 'has_more': k + 1 < feedPages.length, 'server_time': '2026-03-02T09:00:00Z', 'kinds': ['document']});
+      }
+      if (r.method == 'GET' && rest == 'sync/status') {
+        if (syncStatusFails) return _problem(503, 'unavailable', 'Try later.');
+        return _json(200, {'open_conflicts': conflicts.where((c) => c['state'] == 'open').length, 'by_kind': {}, 'server_time': '2026-03-02T09:00:00Z'});
+      }
+      if (r.method == 'GET' && rest == 'sync/conflicts') {
+        return _json(200, {'items': conflicts.where((c) => r.url.queryParameters['state'] == null || c['state'] == r.url.queryParameters['state']).toList(), 'total': conflicts.length});
+      }
+      final resolve = RegExp(r'^sync/conflicts/([^/]+)/resolve$').firstMatch(rest);
+      if (r.method == 'POST' && resolve != null) {
+        final c = conflicts.where((x) => x['id'] == resolve.group(1)).firstOrNull;
+        if (c == null) return _problem(404, 'not_found', 'Conflict not found.');
+        final b = jsonDecode(r.body) as Map<String, dynamic>;
+        final res = b['resolution'] as String;
+        if ((res == 'apply_local' || res == 'merged') && c['conflict_type'] == 'locked') return _problem(409, 'locked', 'The record is locked; local changes cannot be applied.');
+        if ((res == 'apply_local' || res == 'merged') && ((b['note'] as String?) ?? '').trim().length < 5) return _problem(422, 'note_required', 'Explain the decision (at least 5 characters).');
+        c['state'] = 'resolved';
+        c['resolution'] = res;
+        return _json(200, {...c, 'next_base_revision': (res == 'apply_local' || res == 'merged') ? c['server_revision'] : null});
       }
       final done = RegExp(r'^documents/uploads/([^/]+)/complete$').firstMatch(rest);
       if (r.method == 'POST' && done != null) {

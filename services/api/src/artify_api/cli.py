@@ -1,4 +1,4 @@
-"""Operations CLI:  artify-api migrate | seed | bootstrap-dev | create-platform-admin | dispatch-outbox | reconcile"""
+"""Operations CLI:  artify-api migrate | seed | bootstrap-dev | create-platform-admin | dispatch-outbox | seal-audit | reconcile"""
 
 from __future__ import annotations
 
@@ -99,18 +99,49 @@ def cmd_reconcile(_: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_dispatch_outbox(_: argparse.Namespace) -> int:
-    from artify_api.outbox import dispatch_pending
-    from artify_api.worker import process_event
+def cmd_seal_audit(args: argparse.Namespace) -> int:
+    """Extend every organization's tamper-evident audit chain with events written since the last run."""
+    import time
 
-    n = dispatch_pending(
-        lambda ev: process_event.delay(
-            {k: (str(v) if v is not None else None) for k, v in ev.items() if k != "payload"}
-            | {"payload": ev["payload"]}
-        )
-    )
-    print(f"dispatched {n} event(s)")
-    return 0
+    from artify_api.db import DbContext, dispatcher_engine, transaction
+
+    while True:
+        total = 0
+        while True:
+            with transaction(dispatcher_engine(), DbContext()) as conn:
+                n = conn.execute(text("SELECT app.audit_seal(:n)"), {"n": args.batch}).scalar_one()
+            total += n
+            if n < args.batch:
+                break
+        print(f"sealed {total} audit event(s)", flush=True)
+        if not args.loop:
+            return 0
+        time.sleep(args.loop)
+
+
+def cmd_dispatch_outbox(args: argparse.Namespace) -> int:
+    """Move pending outbox events to the worker (Celery), or with --inline handle them in this process (no broker needed:
+    notifications and e-mail are delivered here). --loop N repeats every N seconds until interrupted."""
+    import time
+
+    from artify_api.event_tasks import handle_event, process_event
+    from artify_api.outbox import dispatch_pending
+
+    def send(ev: dict) -> None:  # type: ignore[type-arg]
+        event = {k: (str(v) if v is not None else None) for k, v in ev.items() if k != "payload"} | {
+            "payload": ev["payload"]
+        }
+        if args.inline:
+            handle_event(event)
+        else:
+            process_event.delay(event)
+
+    while True:
+        n = dispatch_pending(send)
+        print(f"dispatched {n} event(s)", flush=True)
+        if not args.loop:
+            return 0
+        time.sleep(args.loop)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -122,7 +153,16 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--name", required=True)
     p.add_argument("--role", choices=PLATFORM_ROLES, default="platform_owner")
     p.set_defaults(fn=cmd_create_platform_admin)
-    sub.add_parser("dispatch-outbox").set_defaults(fn=cmd_dispatch_outbox)
+    p = sub.add_parser("seal-audit")
+    p.add_argument("--batch", type=int, default=1000, help="events per database call (1-10000)")
+    p.add_argument("--loop", type=int, default=0, metavar="SECONDS", help="keep running, polling every SECONDS")
+    p.set_defaults(fn=cmd_seal_audit)
+    p = sub.add_parser("dispatch-outbox")
+    p.add_argument(
+        "--inline", action="store_true", help="handle events in this process instead of queueing them to Celery"
+    )
+    p.add_argument("--loop", type=int, default=0, metavar="SECONDS", help="keep running, polling every SECONDS")
+    p.set_defaults(fn=cmd_dispatch_outbox)
     sub.add_parser("reconcile").set_defaults(fn=cmd_reconcile)
     sub.add_parser("migrate").set_defaults(fn=cmd_migrate)
     sub.add_parser("bootstrap-dev").set_defaults(fn=cmd_bootstrap_dev)

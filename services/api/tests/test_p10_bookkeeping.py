@@ -1297,9 +1297,15 @@ def test_every_workflow_step_is_audited_and_notified(books, owner_engine) -> Non
         "bookkeeping.closing.closed",
         "bookkeeping.closing.reopened",
     } <= outbox
-    assert not any(
-        "amount" in p or "100" in p.split("business_date")[0] for p in payloads
-    )  # notifications carry ids and dates, never amounts
+    # notifications carry ids and dates, never amounts: no money-like key, and no value that looks like a decimal amount
+    # (a random id may contain the digits "100", so values are inspected, not searched as text)
+    import json
+    import re
+
+    for raw in payloads:
+        data = json.loads(raw)
+        assert not any(k in data for k in ("amount", "gross", "net", "total", "tax"))
+        assert not any(isinstance(v, str) and re.fullmatch(r"-?\d+\.\d+", v) for v in data.values())
     assert t
 
 

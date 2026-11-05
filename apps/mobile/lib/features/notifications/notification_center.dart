@@ -6,16 +6,19 @@ import '../documents/documents_repository.dart';
 import '../upload/upload_models.dart';
 import '../upload/upload_queue.dart';
 
-enum NoticeKind { uploadCompleted, uploadFailed, quarantined, documentEvent }
+enum NoticeKind { uploadCompleted, uploadFailed, quarantined, documentEvent, serverNotification }
 
 class Notice {
-  const Notice({required this.id, required this.kind, required this.title, required this.detail, required this.at, this.documentId});
+  const Notice({required this.id, required this.kind, required this.title, required this.detail, required this.at, this.documentId, this.readOnServer = false});
   final String id;
   final NoticeKind kind;
   final String title;
   final String detail;
   final DateTime at;
   final String? documentId;
+
+  /// A server notification the person already read (here or on another device).
+  final bool readOnServer;
 }
 
 /// What the phone can honestly tell the user today, built from real records: the upload queue (this device) and the
@@ -69,12 +72,17 @@ class NotificationCenter extends ChangeNotifier {
     return out;
   }
 
-  int unread(String companyId) => notices(companyId).where((n) => !_seen.contains(n.id)).length;
-  bool isUnread(Notice n) => !_seen.contains(n.id);
+  int unread(String companyId) => notices(companyId).where(isUnread).length;
+  bool isUnread(Notice n) => !n.readOnServer && !_seen.contains(n.id);
 
   Future<void> markAllRead(String companyId) async {
     await prefs.setStringList(_kSeen, {..._seen, ...notices(companyId).map((n) => n.id)}.toList());
     notifyListeners();
+    try {
+      await docs.api.postJson('/notifications/read-all'); // best effort: the local "seen" list already covers this device
+    } on ApiError {
+      // offline: the server copy is marked the next time
+    }
   }
 
   /// Fetches the company's recent document events. Failures keep the previous list and say so.
@@ -87,12 +95,34 @@ class NotificationCenter extends ChangeNotifier {
         if (d == null) continue;
         list.add(Notice(id: 'e-${e['id']}', kind: NoticeKind.documentEvent, title: d.$1, detail: d.$2, at: DateTime.parse(e['created_at'] as String), documentId: e['document_id'] as String?));
       }
+      list.addAll(await _personal());
       serverNotices = list;
       error = null;
     } on ApiError catch (e) {
       error = e.isNetwork ? 'Showing what is on this device; the server cannot be reached.' : e.message;
     }
     notifyListeners();
+  }
+
+  /// The person's own notifications from the server (task assignments, closing results). The server writes generic text only;
+  /// a failure here never hides the rest.
+  Future<List<Notice>> _personal() async {
+    try {
+      final j = await docs.api.getJson('/notifications', query: {'limit': '30'});
+      return [
+        for (final e in (j['items'] as List? ?? const []))
+          Notice(
+            id: 'n-${(e as Map)['id']}',
+            kind: NoticeKind.serverNotification,
+            title: e['title'] as String,
+            detail: (e['body'] as String?) ?? '',
+            at: DateTime.parse(e['created_at'] as String),
+            readOnServer: e['read_at'] != null,
+          ),
+      ];
+    } on ApiError {
+      return const [];
+    }
   }
 
   /// Only generic wording: the event type, never the document's name or content.

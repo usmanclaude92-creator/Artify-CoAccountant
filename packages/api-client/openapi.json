@@ -3504,6 +3504,57 @@
         "title": "ConfigurationOut",
         "type": "object"
       },
+      "ConflictIn": {
+        "properties": {
+          "base_revision": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Revision"
+          },
+          "client_id": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Client Id",
+            "type": "string"
+          },
+          "id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "workspace",
+              "document",
+              "transaction",
+              "closing",
+              "export"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "local_summary": {
+            "additionalProperties": true,
+            "title": "Local Summary",
+            "type": "object"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "client_id"
+        ],
+        "title": "ConflictIn",
+        "type": "object"
+      },
       "ContactIn": {
         "properties": {
           "address": {
@@ -10522,6 +10573,19 @@
         "title": "PlatformMe",
         "type": "object"
       },
+      "PrefsIn": {
+        "properties": {
+          "email_enabled": {
+            "title": "Email Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "email_enabled"
+        ],
+        "title": "PrefsIn",
+        "type": "object"
+      },
       "PreviewIn": {
         "properties": {
           "category_id": {
@@ -11652,6 +11716,37 @@
           "definition"
         ],
         "title": "ReportValidateIn",
+        "type": "object"
+      },
+      "ResolveIn": {
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "resolution": {
+            "enum": [
+              "keep_server",
+              "apply_local",
+              "merged",
+              "discarded"
+            ],
+            "title": "Resolution",
+            "type": "string"
+          }
+        },
+        "required": [
+          "resolution"
+        ],
+        "title": "ResolveIn",
         "type": "object"
       },
       "RestoreIn": {
@@ -24972,6 +25067,88 @@
         ]
       }
     },
+    "/api/v1/companies/{company_id}/documents/uploads/{op_id}/chunk": {
+      "patch": {
+        "description": "Resumable upload: send the file in consecutive chunks (raw body). Ask `GET …/uploads/{op}` for `received_bytes` after\nany interruption and continue from there. A wrong `offset` answers 409 `offset_mismatch` with the offset to use. When the\nlast byte arrives the whole file is hashed and validated exactly like a one-shot upload; until the final answer the\nupload is not a success (and is never a document before `complete`). Optional `X-Chunk-SHA256` checks the chunk itself.",
+        "operationId": "documents_upload_chunk",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "op_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Op Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Byte offset of this chunk; must equal `received_bytes`",
+            "in": "query",
+            "name": "offset",
+            "required": true,
+            "schema": {
+              "description": "Byte offset of this chunk; must equal `received_bytes`",
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-chunk-sha256",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Chunk-Sha256"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Documents Upload Chunk"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upload Chunk",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
     "/api/v1/companies/{company_id}/documents/uploads/{op_id}/complete": {
       "post": {
         "description": "Verify the stored object and create the document (or the new version). Idempotent: completing twice returns the\nsame result. The upload is a success only when this call returns 200.",
@@ -30380,6 +30557,317 @@
         ]
       }
     },
+    "/api/v1/companies/{company_id}/sync/conflicts": {
+      "get": {
+        "operationId": "sync_conflicts",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "open",
+                    "resolved"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "State"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "workspace",
+                    "document",
+                    "transaction",
+                    "closing",
+                    "export"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Sync Conflicts"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Conflicts",
+        "tags": [
+          "sync"
+        ]
+      },
+      "post": {
+        "description": "A client reports that it could not write an item. The server verifies the claim; `no_conflict` if the item is current.",
+        "operationId": "sync_conflict_record",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConflictIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Sync Conflict Record"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Record Conflict",
+        "tags": [
+          "sync"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/sync/conflicts/{conflict_id}": {
+      "get": {
+        "operationId": "sync_conflict",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "conflict_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Conflict Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Sync Conflict"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Conflict",
+        "tags": [
+          "sync"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/sync/conflicts/{conflict_id}/resolve": {
+      "post": {
+        "description": "Record the decision. It does not write the record: apply_local/merged return `next_base_revision` to send with the write.",
+        "operationId": "sync_conflict_resolve",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "conflict_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Conflict Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Sync Conflict Resolve"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Resolve Conflict",
+        "tags": [
+          "sync"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/sync/status": {
+      "get": {
+        "description": "Open conflicts the caller can see, counted by kind. Server-derived (unlike the numbers a device reports about itself).",
+        "operationId": "sync_status",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Sync Status"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Status",
+        "tags": [
+          "sync"
+        ]
+      }
+    },
     "/api/v1/companies/{company_id}/workspace": {
       "get": {
         "description": "The caller's view of one company's workspace: only nodes they may view, with what they may do on each.",
@@ -33536,6 +34024,196 @@
         ]
       }
     },
+    "/api/v1/notifications": {
+      "get": {
+        "operationId": "notifications_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "unread",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Unread",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Notifications List"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Notifications",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications/preferences": {
+      "get": {
+        "operationId": "notifications_preferences",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Notifications Preferences"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Prefs",
+        "tags": [
+          "notifications"
+        ]
+      },
+      "put": {
+        "operationId": "notifications_preferences_set",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrefsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Notifications Preferences Set"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Prefs",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications/read-all": {
+      "post": {
+        "operationId": "notifications_read_all",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Notifications Read All"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Read All",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications/{notification_id}/read": {
+      "post": {
+        "operationId": "notifications_read",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "notification_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Notification Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Notifications Read"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Mark Read",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
     "/api/v1/orgs": {
       "get": {
         "operationId": "organizations_list",
@@ -34154,6 +34832,52 @@
           }
         },
         "summary": "List Audit Events",
+        "tags": [
+          "organizations"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/audit-integrity": {
+      "get": {
+        "description": "Recompute the organization's audit hash chain (Phase 12). `ok` is true when every sealed event still matches its seal and\nthe chain is unbroken. `head_hash` should be copied to a place outside the database to detect removal of the newest seals.\n`unsealed_recent` counts events of the last 7 days the sealing job has not reached yet (they are not yet protected).",
+        "operationId": "organizations_audit_integrity",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Organizations Audit Integrity",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Audit Integrity",
         "tags": [
           "organizations"
         ]

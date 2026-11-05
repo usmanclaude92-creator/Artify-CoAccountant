@@ -22,6 +22,13 @@ With `ARTIFY_ENVIRONMENT=staging|production` the API refuses to start (`settings
 
 Also set: `cors_origins` (explicit list), `processing_mode=celery`, `log_format=json`, `understanding_provider` (`rules` unless an AI provider contract and key exist), pool sizes after load testing. Secrets come from the platform secret store, never from the repository or image.
 
+## 3a. Processes and settings added in Phase 12
+
+* **Outbox dispatcher** — `artify-api dispatch-outbox --loop 2` (Celery) or `--inline` (no broker); without it no notification or e-mail is ever created.
+* **Audit sealer** — `artify-api seal-audit --loop 30`; alert when `unsealed_recent` of `GET /orgs/{org}/audit-integrity` keeps growing; run the integrity check on a schedule and **copy the `head_hash` to a store outside the database**.
+* **Upload staging** — `storage_tmp_dir` must be a persistent volume **shared by all API replicas** (resumable uploads); `upload_chunk_max_bytes` (default 16 MiB) is a technical request guard. Clean-up of abandoned staging files happens when a session is cancelled, fails, completes or is expired by the storage reconcile job.
+* **Migrations 0013–0016** (conflicts, resumable uploads, notifications, audit chain) are additive; the sealing function is owned by the definer role and executable only by the dispatcher role — verify the grants after restoring a database onto a new server.
+
 ## 4. Order of deployment
 
 1. Provision database, Redis, bucket, SMTP; create roles. 2. Run migrations as a one-shot job; confirm `alembic current` equals head. 3. Deploy API and worker; check `/api/v1/health` and `/api/v1/health/ready`. 4. Create the first platform administrator with the CLI (`artify-api create-platform-admin`) — never ship a default account. 5. Deploy the web app with its API base URL configured (see `apps/web` settings). 6. Smoke test: sign in, create an organization and company, upload a synthetic document, run OCR, create and approve a transaction, export, close a day. 7. Register monitoring and alerts (§7). 8. Take the first backup and perform the restore drill ([BACKUP_AND_DISASTER_RECOVERY](BACKUP_AND_DISASTER_RECOVERY.md)).

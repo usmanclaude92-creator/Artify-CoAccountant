@@ -69,6 +69,10 @@ def _allowed_kinds(ctx: RequestCtx, wanted: list[str] | None) -> list[str]:
     return out
 
 
+def now_iso() -> str:
+    return datetime.now(UTC).isoformat()
+
+
 def changes(
     ctx: RequestCtx, *, cursor: str | None, limit: int, kinds: list[str] | None, overlap_seconds: int = 0
 ) -> dict[str, Any]:

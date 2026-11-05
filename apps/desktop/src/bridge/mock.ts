@@ -2,7 +2,7 @@
  * In-memory bridge for unit tests and for `VITE_BRIDGE=mock pnpm dev` (browser preview without Rust). It is NEVER selected
  * in a production build, and the dev preview shows a permanent "demo data" banner.
  */
-import type { BkChecklist, BkClosing, BkDay, BkException, BkIssue, BkOp, BkResult, BkTask, XlCustomReport, XlAnalysis, XlCatalogue, XlExport, XlMapping, XlOp, XlTemplate, XlValidation, AcctAccount, AcctContact, AcctIssue, AcctOp, AcctTaxCode, AcctTxn, AcctTxnRow, AppError, Assignment, Bridge, DocDetail, ExtractionView, ExtractedField, ProcessingJob, StatementTx, DocQuery, QueueItem, StagedFile, CompanyDetail, CompanyView, EventRow, Identity, LocalDevice, Organization, RefreshOutcome, RootReport, ServerDevice, Settings, SyncStatus, WorkspaceData, WorkspaceView, WsNode } from "./types";
+import type { CloudPullSummary, CloudSyncStatus, SyncConflict, SyncOp, BkChecklist, BkClosing, BkDay, BkException, BkIssue, BkOp, BkResult, BkTask, XlCustomReport, XlAnalysis, XlCatalogue, XlExport, XlMapping, XlOp, XlTemplate, XlValidation, AcctAccount, AcctContact, AcctIssue, AcctOp, AcctTaxCode, AcctTxn, AcctTxnRow, AppError, Assignment, Bridge, DocDetail, ExtractionView, ExtractedField, ProcessingJob, StatementTx, DocQuery, QueueItem, StagedFile, CompanyDetail, CompanyView, EventRow, Identity, LocalDevice, Organization, RefreshOutcome, RootReport, ServerDevice, Settings, SyncStatus, WorkspaceData, WorkspaceView, WsNode } from "./types";
 
 export function node(id: string, parent: string | null, name: string, extra: Partial<WsNode> = {}): WsNode {
   return { id, parent_id: parent, node_type: parent ? "folder" : "section", key: id, name, display_name: null, description: "", position: 0, depth: 1, is_active: true, archived_at: null, ...extra };
@@ -55,10 +55,14 @@ export interface MockOptions {
   bkTasks?: BkTask[];
   bkChecklists?: BkChecklist[];
   bkSubmittedByOther?: boolean;
+  /** open synchronization conflicts the mock server holds (Phase 12) */
+  syncConflicts?: SyncConflict[];
+  /** the mock server cannot be asked for its conflict count */
+  syncStatusUnavailable?: boolean;
 }
 export type MockBridge = Bridge & {
   calls: string[];
-  state: { bk: { issues: BkIssue[]; exceptions: BkException[]; tasks: BkTask[]; checklists: BkChecklist[]; closing: BkClosing | null; previous: BkClosing[] }; xl: { reports: XlCustomReport[]; templates: XlTemplate[]; mappings: XlMapping[]; exports: XlExport[]; saved: string[] }; acct: { txns: AcctTxn[]; accounts: AcctAccount[]; taxCodes: AcctTaxCode[]; contacts: AcctContact[] }; extractions: ExtractionView[]; jobs: ProcessingJob[]; docs: DocDetail[]; queue: QueueItem[]; opts: MockOptions; settings: Settings; workspaces: Record<string, WorkspaceData>; companies: Record<string, CompanyView[]>; signedIn: boolean; devices: ServerDevice[]; root: string | null };
+  state: { sync: { conflicts: SyncConflict[]; pulled: boolean; pulls: number }; bk: { issues: BkIssue[]; exceptions: BkException[]; tasks: BkTask[]; checklists: BkChecklist[]; closing: BkClosing | null; previous: BkClosing[] }; xl: { reports: XlCustomReport[]; templates: XlTemplate[]; mappings: XlMapping[]; exports: XlExport[]; saved: string[] }; acct: { txns: AcctTxn[]; accounts: AcctAccount[]; taxCodes: AcctTaxCode[]; contacts: AcctContact[] }; extractions: ExtractionView[]; jobs: ProcessingJob[]; docs: DocDetail[]; queue: QueueItem[]; opts: MockOptions; settings: Settings; workspaces: Record<string, WorkspaceData>; companies: Record<string, CompanyView[]>; signedIn: boolean; devices: ServerDevice[]; root: string | null };
   emit(event: string, payload?: unknown): void;
 };
 
@@ -71,6 +75,7 @@ export function createMockBridge(opts: MockOptions = {}): MockBridge {
   const calls: string[] = [];
   const state = {
     opts, xl: { reports: [] as XlCustomReport[], templates: structuredClone(opts.xlTemplates ?? []), mappings: [] as XlMapping[], exports: structuredClone(opts.xlExports ?? []), saved: [] as string[] }, acct: structuredClone({ txns: opts.acctTransactions ?? [], accounts: opts.acctAccounts ?? [], taxCodes: opts.acctTaxCodes ?? [], contacts: opts.acctContacts ?? [] }), extractions: structuredClone(opts.extractions ?? []), jobs: [] as ProcessingJob[], docs: structuredClone(opts.documents ?? []), queue: [] as QueueItem[], signedIn: false, root: opts.storageRoot ?? null,
+    sync: { conflicts: structuredClone(opts.syncConflicts ?? []), pulled: false, pulls: 0 },
     bk: { issues: structuredClone(opts.bkIssues ?? []), exceptions: [] as BkException[], tasks: structuredClone(opts.bkTasks ?? []), checklists: structuredClone(opts.bkChecklists ?? []), closing: null as BkClosing | null, previous: [] as BkClosing[] },
     settings: { theme: "system", language: "en", start_on_login: "false", default_company_id: "", notifications: "true", update_channel: "stable" } as Settings,
     workspaces: structuredClone(opts.workspaces ?? DEMO_WORKSPACES) as Record<string, WorkspaceData>,
@@ -123,6 +128,31 @@ export function createMockBridge(opts: MockOptions = {}): MockBridge {
     deviceEnsure: async (): Promise<LocalDevice> => { rec("deviceEnsure"); down(); const d: ServerDevice = { id: "dev-1", platform: "windows", name: "ACCOUNTING-PC-01", app_version: "0.1.0", status: "active", registered_at: new Date().toISOString(), last_seen_at: new Date().toISOString() }; state.devices = [d]; return { device_id: d.id, name: d.name, app_version: "0.1.0", registered_at: d.registered_at ?? "", last_seen_at: d.last_seen_at ?? null, status: "active" }; },
     devicesList: async () => structuredClone(state.devices),
     deviceRevoke: async (_o, id) => { rec("deviceRevoke"); state.devices = state.devices.map((d) => (d.id === id ? { ...d, status: "revoked" } : d)); },
+    cloudSyncPull: async (): Promise<CloudPullSummary> => { rec("cloudSyncPull"); needAuth(); if (opts.offline) throw err("network_unavailable", "The server could not be reached.", undefined, true); state.sync.pulled = true; state.sync.pulls += 1; return { pages: 1, items: 3, caught_up: true, restarted: false, server_time: new Date().toISOString() }; },
+    cloudSyncStatus: async (): Promise<CloudSyncStatus> => {
+      rec("cloudSyncStatus"); needAuth();
+      const open = opts.syncStatusUnavailable || opts.offline ? null : state.sync.conflicts.filter((c) => c.state === "open").length;
+      const base = { waiting_uploads: 0, uploading: 0, failed_uploads: 0, open_conflicts: open, last_pull_at: state.sync.pulled ? new Date().toISOString() : null, last_error: null, caught_up: state.sync.pulled, known_items: [["document", 2]] as [string, number][] };
+      if (open && open > 0) return { ...base, state: "conflict_detected", label: "Some changes conflict with newer versions on the server. Review them." };
+      if (!state.sync.pulled) return { ...base, state: "pending", label: "Not yet checked against the server." };
+      if (open === null) return { ...base, state: "pending", label: "The server could not confirm the state." };
+      return { ...base, state: "synchronized", label: "Everything is confirmed by the server." };
+    },
+    cloudSync: async <T,>(_o: string, _c: string, op: SyncOp, args?: { id?: string; query?: Record<string, string>; body?: unknown }): Promise<T> => {
+      rec(`cloudSync:${op}`); needAuth();
+      const K = state.sync;
+      if (op === "conflicts") return { items: K.conflicts.filter((c) => !args?.query?.state || c.state === args.query.state), total: K.conflicts.length } as T;
+      if (op === "conflict_resolve") {
+        const c = K.conflicts.find((x) => x.id === args?.id);
+        if (!c) throw err("not_found", "Conflict not found.", 404);
+        const b = (args?.body ?? {}) as { resolution: SyncConflict["resolution"]; note?: string };
+        if ((b.resolution === "apply_local" || b.resolution === "merged") && c.conflict_type === "locked") throw err("locked", "The record is locked; local changes cannot be applied.", 409);
+        if ((b.resolution === "apply_local" || b.resolution === "merged") && (b.note ?? "").trim().length < 5) throw err("note_required", "Explain the decision (at least 5 characters).", 422);
+        c.state = "resolved"; c.resolution = b.resolution ?? null; c.resolution_note = b.note ?? null; c.resolved_at = new Date().toISOString();
+        return { ...c, next_base_revision: b.resolution === "apply_local" || b.resolution === "merged" ? c.server_revision : null } as T;
+      }
+      throw err("unknown_action", "Unknown synchronization action.");
+    },
     syncStatus: async (): Promise<SyncStatus> => ({ connectivity: { state: opts.offline ? "offline" : "online", last_checked_at: new Date().toISOString() }, api_configured: true, company: { last_success_at: opts.offline ? null : new Date().toISOString(), last_attempt_at: new Date().toISOString(), last_error: opts.offline ? "network_unavailable" : null, last_version: 5 }, cached_workspace_version: 5, pending: { pending: 0, in_progress: 0, failed: 0 } }),
     notificationsList: async () => opts.notifications ?? [],
     notificationsRead: async () => undefined,

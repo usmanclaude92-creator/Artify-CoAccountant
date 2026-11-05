@@ -74,6 +74,12 @@ services:
     depends_on:
       migrate: { condition: service_completed_successfully }
       redis: { condition: service_healthy }
+  audit-sealer:                             # extends the tamper-evident audit chain (Phase 12)
+    image: artify-api:dev
+    command: ["sh", "-c", "while true; do artify-api seal-audit; sleep 30; done"]
+    environment: *api-env
+    depends_on:
+      migrate: { condition: service_completed_successfully }
 volumes:
   pgdata:
   miniodata:

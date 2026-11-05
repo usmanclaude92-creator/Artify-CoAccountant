@@ -35,6 +35,10 @@ export const tauriBridge: Bridge = {
   devicesList: (org) => call("devices_list", { org }),
   deviceRevoke: (org, deviceId) => call("device_revoke", { org, deviceId }),
   syncStatus: (company) => call("sync_status", { company }),
+  cloudSyncPull: (org, company) => call("cloud_sync_pull", { org, company }),
+  cloudSyncStatus: (org, company) => call("cloud_sync_status", { org, company }),
+  cloudSync: <T,>(org: string, company: string, op: string, args?: { id?: string; query?: Record<string, string>; body?: unknown }) =>
+    call<T>("cloud_sync_call", { org, company, op, arg: args?.id ?? null, query: Object.entries(args?.query ?? {}), body: args?.body ?? null }),
   notificationsList: () => call("notifications_list"),
   notificationsRead: () => call("notifications_read"),
   diagnosticsExport: () => call("diagnostics_export"),

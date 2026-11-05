@@ -70,7 +70,10 @@ class Settings(BaseSettings):
     storage_s3_access_key_id: SecretStr | None = None  # falls back to the SDK credential chain when unset
     storage_s3_secret_access_key: SecretStr | None = None
     storage_s3_sse: str | None = None  # e.g. "AES256" or "aws:kms"
-    storage_tmp_dir: str | None = None  # upload staging (defaults to the system temp dir)
+    storage_tmp_dir: str | None = (
+        None  # upload staging (defaults to the system temp dir); shared volume when several replicas run
+    )
+    upload_chunk_max_bytes: int = 16 * 1024 * 1024  # technical guard for one resumable chunk request, not a plan limit
     # System ceilings: a plan's `limit.file_size_bytes` can lower but never exceed these.
     max_file_size_ceiling_bytes: int = 200 * 1024**2
     max_import_batch_files: int = 200

@@ -533,4 +533,25 @@ def list_audit_events(
     return [AuditEventOut(**r) for r in rows]
 
 
+@router.get("/orgs/{org_id}/audit-integrity", operation_id="organizations_audit_integrity")
+def audit_integrity(
+    org_id: uuid.UUID, ctx: Annotated[RequestCtx, Depends(Requires("audit.read"))]
+) -> dict[str, object]:
+    """Recompute the organization's audit hash chain (Phase 12). `ok` is true when every sealed event still matches its seal and
+    the chain is unbroken. `head_hash` should be copied to a place outside the database to detect removal of the newest seals.
+    `unsealed_recent` counts events of the last 7 days the sealing job has not reached yet (they are not yet protected)."""
+    v = ctx.conn.execute(text("SELECT * FROM app.audit_verify(:o)"), {"o": org_id}).mappings().one()
+    unsealed = ctx.conn.execute(
+        text(
+            "SELECT count(*) FROM audit_events e WHERE e.organization_id = :o AND e.created_at > now() - interval '7 days'"
+            " AND NOT EXISTS (SELECT 1 FROM audit_seals s WHERE s.audit_event_id = e.id)"
+        ),
+        {"o": org_id},
+    ).scalar_one()
+    return {
+        "ok": v["ok"], "checked": v["checked"], "first_bad_seq": v["first_bad_seq"], "reason": v["reason"],
+        "head_seq": v["head_seq"], "head_hash": v["head_hash"] or None, "unsealed_recent": unsealed,
+    }  # fmt: skip
+
+
 __all__ = ["INVITABLE_COMPANY_ROLES", "Field", "_create_invitation", "router"]

@@ -38,6 +38,7 @@ PERMISSIONS: tuple[Permission, ...] = (
     _P("assignments.read", "company", "List accountant assignments"),
     _P("assignments.manage", "company", "Assign / unassign accountants"),
     _P("devices.manage_own", "member", "Register and revoke the caller's own devices"),
+    _P("notifications.read_own", "member", "Read the caller's own notifications and choose how they are delivered"),
     _P("support_grants.manage", "organization", "Approve, deny and revoke Artify support-access requests"),
     _P("organization.settings.update", "organization", "Edit organization contact, regional and notification settings"),
     _P("member_profiles.manage", "organization", "Edit team members' professional profiles"),
@@ -137,6 +138,7 @@ PERMISSIONS: tuple[Permission, ...] = (
         "Override a critical validation failure that is not an integrity check, with an explanation",
     ),
     _P("bookkeeping.monitor", "organization", "See daily closing status across the organization's companies"),
+    _P("sync.resolve", "company", "Decide synchronization conflicts found by other people's devices"),
     _P("storage.manage", "organization", "Review storage usage and run storage reconciliation"),
     # ---- platform realm (Artify Super Admin) ----
     _P("platform.self.read", "platform", "Read own platform-admin profile"),
@@ -206,6 +208,7 @@ SYSTEM_ROLES: dict[str, tuple[str, str, frozenset[str]]] = {
                 "assignments.read",
                 "assignments.manage",
                 "devices.manage_own",
+                "notifications.read_own",
                 "workspace.read",
                 "workspace.manage",
                 "workspace_templates.manage",
@@ -243,6 +246,7 @@ SYSTEM_ROLES: dict[str, tuple[str, str, frozenset[str]]] = {
                 "bookkeeping.close.review",
                 "bookkeeping.close.approve",
                 "bookkeeping.close.reopen",
+                "sync.resolve",
                 "bookkeeping.close.override",
                 "bookkeeping.monitor",
             }
@@ -260,6 +264,7 @@ SYSTEM_ROLES: dict[str, tuple[str, str, frozenset[str]]] = {
                 "company_members.read",
                 "assignments.read",
                 "devices.manage_own",
+                "notifications.read_own",
                 "workspace.read",
                 "documents.read",
                 "documents.process",
@@ -285,6 +290,7 @@ SYSTEM_ROLES: dict[str, tuple[str, str, frozenset[str]]] = {
                 "bookkeeping.close.prepare",
                 "bookkeeping.close.review",
                 "bookkeeping.close.approve",
+                "sync.resolve",
             }
         ),
     ),
@@ -299,6 +305,7 @@ SYSTEM_ROLES: dict[str, tuple[str, str, frozenset[str]]] = {
                 "company_members.read",
                 "assignments.read",
                 "devices.manage_own",
+                "notifications.read_own",
                 "workspace.read",
                 "documents.read",
                 "documents.process",
@@ -324,6 +331,7 @@ SYSTEM_ROLES: dict[str, tuple[str, str, frozenset[str]]] = {
                 "companies.list",
                 "companies.read",
                 "devices.manage_own",
+                "notifications.read_own",
                 "workspace.read",
                 "documents.read",
                 "documents.process",
@@ -340,6 +348,7 @@ SYSTEM_ROLES: dict[str, tuple[str, str, frozenset[str]]] = {
                 "companies.list",
                 "companies.read",
                 "devices.manage_own",
+                "notifications.read_own",
                 "workspace.read",
                 "documents.read",
                 "documents.process",
@@ -368,20 +377,34 @@ SYSTEM_ROLES: dict[str, tuple[str, str, frozenset[str]]] = {
         "company",
         "Company owner",
         frozenset(
-            {"companies.list", "companies.read", "company_members.read", "company_members.manage", "devices.manage_own"}
+            {
+                "companies.list",
+                "companies.read",
+                "company_members.read",
+                "company_members.manage",
+                "devices.manage_own",
+                "notifications.read_own",
+            }
         ),
     ),
     "company_admin": (
         "company",
         "Company administrator",
         frozenset(
-            {"companies.list", "companies.read", "company_members.read", "company_members.manage", "devices.manage_own"}
+            {
+                "companies.list",
+                "companies.read",
+                "company_members.read",
+                "company_members.manage",
+                "devices.manage_own",
+                "notifications.read_own",
+            }
         ),
     ),
     "company_employee": (
         "company",
         "Company employee",
-        frozenset({"companies.list", "companies.read", "devices.manage_own"}),
+        frozenset({"companies.list", "companies.read", "devices.manage_own", "notifications.read_own"}),
     ),
 }
 

@@ -27,7 +27,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from artify_api import documents as D
-from artify_api import storage
+from artify_api import storage, upload_staging
 from artify_api.context import RequestCtx, Requires
 from artify_api.errors import Forbidden, Unprocessable
 from artify_api.settings import get_settings
@@ -134,6 +134,61 @@ async def upload_content(company_id: uuid.UUID, op_id: uuid.UUID, request: Reque
                 h.update(chunk)
                 f.write(chunk)
         outcome = await run_in_threadpool(D.finish_content, ctx, acc, op_id, tmp, n, h.hexdigest())
+    return JSONResponse(jsonable_encoder(outcome.body), status_code=outcome.status)
+
+
+@router.patch("/companies/{company_id}/documents/uploads/{op_id}/chunk", operation_id="documents_upload_chunk")
+async def upload_chunk(
+    company_id: uuid.UUID,
+    op_id: uuid.UUID,
+    request: Request,
+    ctx: Upload,
+    offset: Annotated[int, Query(ge=0, description="Byte offset of this chunk; must equal `received_bytes`")],
+    x_chunk_sha256: Annotated[str | None, Header()] = None,
+) -> Any:
+    """Resumable upload: send the file in consecutive chunks (raw body). Ask `GET …/uploads/{op}` for `received_bytes` after
+    any interruption and continue from there. A wrong `offset` answers 409 `offset_mismatch` with the offset to use. When the
+    last byte arrives the whole file is hashed and validated exactly like a one-shot upload; until the final answer the
+    upload is not a success (and is never a document before `complete`). Optional `X-Chunk-SHA256` checks the chunk itself."""
+    acc = await run_in_threadpool(D.doc_access, ctx)
+    state, op = await run_in_threadpool(D.begin_chunk, ctx, acc, op_id, offset)
+    if state == "received":
+        return op
+    if state == "mismatch":
+        return JSONResponse(
+            {"code": "offset_mismatch", "title": "Continue from the server's offset", "status": 409,
+             "detail": "The server holds a different number of bytes; continue from its offset.", "received_bytes": op["received_bytes"],
+             "declared_size": op["declared_size"], "operation": jsonable_encoder(op)},
+            status_code=409,
+        )  # fmt: skip
+    settings = get_settings()
+    remaining = int(op["declared_size"]) - offset
+    cap = min(remaining, settings.upload_chunk_max_bytes)
+    path = upload_staging.path_for(op_id)
+    h = hashlib.sha256()
+    n = 0
+    too_big = False
+    with path.open("ab") as f:
+        async for block in request.stream():
+            n += len(block)
+            if n > cap:
+                too_big = True
+                break
+            h.update(block)
+            f.write(block)
+    if too_big or n == 0 or (x_chunk_sha256 and x_chunk_sha256.lower() != h.hexdigest()):
+        await run_in_threadpool(upload_staging.truncate, op_id, offset)
+        code = "chunk_checksum_mismatch" if (not too_big and n and x_chunk_sha256) else "chunk_size_invalid"
+        msg = (
+            "The chunk does not match its checksum; send it again."
+            if code == "chunk_checksum_mismatch"
+            else f"A chunk must be 1 to {cap} bytes and must not run past the announced size."
+        )
+        return JSONResponse(
+            {"code": code, "title": "Chunk rejected", "status": 422, "detail": msg, "received_bytes": offset},
+            status_code=422,
+        )
+    outcome = await run_in_threadpool(D.finish_chunk, ctx, acc, op_id, offset, n)
     return JSONResponse(jsonable_encoder(outcome.body), status_code=outcome.status)
 
 

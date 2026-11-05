@@ -57,6 +57,9 @@ class ApiClient {
   Future<Map<String, dynamic>> patchJson(String path, Object body) async =>
       _decode(await _send('PATCH', path, body: jsonEncode(body)));
 
+  Future<Map<String, dynamic>> putJson(String path, Object body) async =>
+      _decode(await _send('PUT', path, body: jsonEncode(body)));
+
   Future<Map<String, dynamic>> deleteJson(String path) async => _decode(await _send('DELETE', path));
 
   /// `GET` that exposes the ETag/304 contract used by the workspace configuration.
@@ -72,6 +75,11 @@ class ApiClient {
   /// `PUT` of a file body (the upload protocol's content step).
   Future<Map<String, dynamic>> putBytes(String path, Uint8List bytes, {Duration? timeout, String? org}) async =>
       _decode(await _send('PUT', path, bodyBytes: bytes, json: false, extra: {'Content-Type': 'application/octet-stream', ...?_orgHeader(org)}, timeout: timeout ?? const Duration(minutes: 5)));
+
+  /// `PATCH` of one chunk of a resumable upload (`?offset=` says where it belongs; the server answers 409 `offset_mismatch`
+  /// with the offset it really holds when the two disagree).
+  Future<Map<String, dynamic>> patchBytes(String path, Uint8List bytes, {Map<String, String>? query, Duration? timeout, String? org}) async =>
+      _decode(await _send('PATCH', path, query: query, bodyBytes: bytes, json: false, extra: {'Content-Type': 'application/octet-stream', ...?_orgHeader(org)}, timeout: timeout ?? const Duration(minutes: 5)));
 
   Map<String, dynamic> _decode(http.Response r) {
     if (r.bodyBytes.isEmpty) return <String, dynamic>{};

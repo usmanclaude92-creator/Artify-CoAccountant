@@ -131,3 +131,10 @@ Phase 4 adds `workspace.read`, `workspace.manage`, `workspace.permissions.manage
 ## 9. Phase 10 additions (daily bookkeeping and closing)
 
 Eleven permissions: `bookkeeping.read`, `.work`, `.tasks.manage`, `.checklists.manage`, `.policy.manage`, `.close.prepare`, `.close.review`, `.close.approve`, `.close.reopen`, `.close.override` (company scope) and `bookkeeping.monitor` (organization scope). The full role table, the per-company role restrictions and the independence rules are in [`../bookkeeping/PERMISSIONS_AND_POLICY.md`](../bookkeeping/PERMISSIONS_AND_POLICY.md). Invariant (test-enforced): every role holding `bookkeeping.read` also holds `accounting.read`; `staff` and `document_operator` hold no bookkeeping permission. Platform roles hold none.
+
+## Phase 12 additions
+
+| Permission | Scope | Meaning | Roles (system) |
+|---|---|---|---|
+| `sync.resolve` | company | Decide synchronization conflicts found by other people's devices (the finder can always decide their own) | firm owner, practice administrator, practice manager, accountant |
+| `notifications.read_own` | member | Read the caller's own notifications and choose how they are delivered | every role |

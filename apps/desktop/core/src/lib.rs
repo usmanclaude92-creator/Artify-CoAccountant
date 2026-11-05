@@ -13,6 +13,7 @@ pub mod queue;
 pub mod seal;
 pub mod settings;
 pub mod storage;
+pub mod sync;
 pub mod vault;
 pub mod workspace;
 pub mod xl;

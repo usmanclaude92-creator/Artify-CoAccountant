@@ -11,6 +11,7 @@ import 'package:artify_mobile/features/auth/auth_repository.dart';
 import 'package:artify_mobile/features/documents/documents_repository.dart';
 import 'package:artify_mobile/features/notifications/notification_center.dart';
 import 'package:artify_mobile/features/orgs/org_controller.dart';
+import 'package:artify_mobile/features/sync/sync_service.dart';
 import 'package:artify_mobile/features/upload/queue_runner.dart';
 import 'package:artify_mobile/features/upload/upload_queue.dart';
 import 'package:artify_mobile/features/upload/upload_service.dart';
@@ -80,6 +81,7 @@ Future<Harness> harness({FakeBackend? backend, bool hasBiometrics = true}) async
     runner: runner,
     docs: docs,
     notices: NotificationCenter(queue: queue, docs: docs, prefs: prefs),
+    sync: SyncService(api: api, queue: queue, dir: Directory('${root.path}/sync')),
     connectivity: net,
     biometrics: bio,
     push: NoPushRegistrar(),

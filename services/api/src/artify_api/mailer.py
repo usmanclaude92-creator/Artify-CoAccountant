@@ -70,6 +70,10 @@ _TEMPLATES: dict[str, tuple[str, str]] = {
         "Artify support is requesting access to {organization}",
         "An Artify support administrator has asked for time-limited access to {organization}.\n\nReason given: {reason}\n\nNothing is shared unless you approve. Review the request in Support access:\n{base}/support-access\n\nYou can deny or revoke access at any time.\n",
     ),
+    "notification": (
+        "{title}",
+        "{title}\n\nOpen Artify Co-Accountant to see the details:\n{base}\n\nYou can turn these e-mails off in your notification settings; the notification stays in the app.\n",
+    ),
     "signup_existing_account": (
         "Sign-up attempt for an existing account",
         "Someone tried to create an Artify account with this email address, which already has one.\n\nSign in: {base}/login\nForgot your password: {base}/forgot-password\n\nIf this was not you, no action is needed.\n",

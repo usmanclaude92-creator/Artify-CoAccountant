@@ -35,33 +35,37 @@ Up to 200 `{kind, id, base_revision?}` items. The answer lists, per item, `kind`
 | `locked` | Cannot be changed: transaction approved/posted/reversed, its business day closed, its accounting period closed; closing closed/reopened/cancelled; exports always. | Do not upload; show the reason; use the correction workflow. |
 | `missing` | Not found **or not visible to this caller** (indistinguishable on purpose). | Remove from the queue; ask the user. |
 
-## 4. Client status vocabulary
+## 4. Conflicts — `/sync/conflicts`, `/sync/status`
 
-`Pending → Queued → Uploading / Downloading → Processing → Synchronized`, with `Failed`, `Conflict Detected`, `Requires Review` and `Cancelled` as terminal or parked states. Mapping to what exists today:
+A client that could not write an item reports it (`POST /sync/conflicts` with kind, id, its `client_id`, the revision it started from and a small local summary). **The server verifies the claim** with the same check as §3: a current copy is `422 no_conflict`, an invisible item is 404, a stale or locked one is stored in the immutable `sync_conflicts` table (one open conflict per item and device; reporting again is idempotent). `GET /sync/conflicts`, `GET /sync/conflicts/{id}` list and read them, limited to what the caller may still see. `GET /sync/status` returns the server's own count of open conflicts. `POST /sync/conflicts/{id}/resolve` records the decision (`keep_server`, `apply_local`, `merged`, `discarded`) with the resolver, time and note, and writes an audit event; a resolved conflict can never change. Resolving **does not write the record**: `apply_local`/`merged` return `next_base_revision` and the client sends its change through the normal endpoint on top of it. Rules per data type and who may decide: [CONFLICT_RESOLUTION_GUIDE](CONFLICT_RESOLUTION_GUIDE.md).
 
-| Status | Where it exists today |
+## 5. Resumable uploads
+
+`PATCH /companies/{id}/documents/uploads/{op}/chunk?offset=N` (raw body) appends a chunk; `GET …/uploads/{op}` returns `received_bytes` and `chunk_max_bytes`. A wrong offset answers `409 offset_mismatch` with the offset the server really holds; an optional `X-Chunk-SHA256` checks one chunk. The last chunk triggers the same hashing, type, size, malware and quota checks as a one-shot upload, and nothing is a document before `complete`. The database column `received_bytes` is the authority; the bytes wait in a per-session staging file (`storage_tmp_dir`), which in a multi-replica deployment **must be a shared volume** — otherwise a resume on another replica finds no file, the server says `received_bytes = 0`, and the client restarts from zero (safe, slower). Desktop and phone use chunks for files of 8 MiB and over; smaller files use the single request.
+
+## 6. Client status vocabulary and what the clients do
+
+`Pending → Uploading → Synchronized`, with `Failed` and `Conflict Detected`. Both clients fold the same inputs in one pure function, and **"Synchronized" appears only when**: nothing is waiting or failed in the local queue, the change feed was read to its end without error, and the server's own count of open conflicts is zero. If the server cannot be asked the answer is "Pending — the server could not confirm", never "Synchronized".
+
+| Client | What exists |
 |---|---|
-| Pending / Queued / Uploading / Failed / Cancelled | Desktop import queue (Phase 6) and mobile file-journal queue (Phase 11), each persisted locally with idempotency keys. |
-| Processing | Server processing status of the document (Phase 7), fetched on demand. |
-| Synchronized | Shown only after `POST …/complete` returns the stored document (ADR-081). |
-| Downloading | Desktop on-demand file copy with checksum verification (Phase 6). |
-| Conflict Detected / Requires Review | **Not implemented in clients.** The server can now say `stale`/`locked`; no screen consumes it. |
+| Desktop (`core/src/sync.rs`, Synchronization page) | feed pull with a transactional checkpoint (SQLite `sync_feed`, `sync_items`), restart on a refused cursor, status fold, conflict list and resolve through a fixed allow-listed command, chunked upload with resume. Unit/integration tests; UI tests with the mock bridge. |
+| Phone (`features/sync`, Settings → Synchronization) | the same, with a file checkpoint per company, plus server notifications and the e-mail preference. |
+| Control Center | none of the new screens (the endpoints exist). |
 
-## 5. What is NOT built (honest list)
+## 7. What is NOT built (honest list)
 
-* Desktop and mobile do not yet call `/sync/changes` or `/sync/check`; they are the next step (H-1 in the audit).
-* No `sync_conflicts` table, no resolve UI, no conflict history (H-2).
-* No byte-range resumable uploads (H-3); a retry re-sends the whole file safely.
-* No tombstone retention or purge job (D-8 values undecided).
-* No device wipe/revocation signal to a running client beyond session revocation, which the client discovers on its next request.
-* No server push (websocket/SSE); clients poll.
-* Selective sync exists only as "which folders you can see"; there is no per-device include/exclude setting.
-* The bookkeeping sync report is still client-declared and is labelled as such in the closing validation.
+* Conflicts are *reported by the client when its own write is refused or its preflight says stale/locked*; the apps do not yet call `/sync/check` automatically before every queued change, so detection depends on those call sites being added feature by feature.
+* No merge editor: "apply my change on the new version" only records the decision and gives the new base revision; the user re-applies the edit.
+* The Control Center has no conflicts page; the Daily Closing validation still uses device-declared sync counts (the server count is available at `/sync/status` but not yet part of validation).
+* No tombstone retention or purge job (D-8 values undecided); no server push (clients poll); no per-device selective sync setting.
+* Resumable staging is not shared across replicas unless the operator provides a shared volume (§5); no background upload while an app is closed.
+* The Tauri shell, installers and mobile apps were not built or run on a device.
 
-## 6. Offline rules
+## 8. Offline rules
 
 Whatever a client queued while offline is submitted through the same endpoints as online work. Therefore: an approval needs a user with the permission at submit time; a transaction dated in a closed accounting period is refused (`period_closed`); a document or exception change on a closed business day is refused by the database trigger; an AI result can never be approved by a queued request without a human actor. The client must treat any 403/409/422 on a queued item as `Requires Review`, not retry it blindly.
 
-## 7. Security
+## 9. Security
 
-The feed adds no new table and no write path. It runs under the caller's RLS context with the same `Requires("workspace.read", company=True)` gate; cross-company and cross-organization requests return 404 (tested with two organizations). A feed page contains ids, revisions and short summaries, so a lost cursor leaks nothing the caller could not list anyway.
+The change feed and the preflight add no table and no write path. The conflict routes add one company-scoped table (`sync_conflicts`, forced RLS, composite foreign key to the company, update/delete refused after resolution by a trigger). Every route runs under the caller's RLS context with the same `Requires("workspace.read", company=True)` gate; cross-company and cross-organization requests return 404, and a conflict about a folder the caller can no longer see disappears from their list (tested with two organizations and a restricted workspace). A feed page contains ids, revisions and short summaries, so a lost cursor leaks nothing the caller could not list anyway.

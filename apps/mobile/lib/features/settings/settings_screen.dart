@@ -7,6 +7,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/common.dart';
 import '../notifications/notifications_screen.dart';
 import '../orgs/org_screens.dart';
+import '../sync/sync_screen.dart';
 import '../upload/queue_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -71,6 +72,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ListTile(leading: const Icon(Icons.business_center_outlined), title: const Text('Switch company'), onTap: s.orgs.leaveCompany),
         const Divider(),
         SwitchListTile(secondary: const Icon(Icons.fingerprint), title: const Text('Lock with fingerprint, face or passcode'), subtitle: Text(_bioAvailable ? 'Asks again when you come back to the app. You stay signed in; this only protects the phone.' : 'No fingerprint, face or passcode is set up on this phone.'), value: _bio, onChanged: _bioAvailable ? _toggleBio : null),
+        if (company != null) ListTile(leading: const Icon(Icons.sync), title: const Text('Synchronization'), subtitle: const Text('What the server has confirmed'), onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => SyncScreen(services: s)))),
         ListTile(leading: const Icon(Icons.notifications_outlined), title: const Text('Notifications'), onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => NotificationsScreen(services: s)))),
         ListTile(leading: const Icon(Icons.cloud_upload_outlined), title: const Text('Upload queue'), subtitle: Text('${s.queue.items.where((i) => i.isActive).length} waiting · ${fmtBytes(_queueBytes)} stored on this phone'), onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => QueueScreen(services: s)))),
         ListTile(leading: const Icon(Icons.storage_outlined), title: const Text('Storage on this phone'), subtitle: Text('Queued documents ${fmtBytes(_queueBytes)} · scans and previews ${fmtBytes(_cacheBytes)}'), trailing: TextButton(onPressed: () async {

@@ -13,6 +13,7 @@ import 'features/auth/auth_repository.dart';
 import 'features/documents/documents_repository.dart';
 import 'features/notifications/notification_center.dart';
 import 'features/orgs/org_controller.dart';
+import 'features/sync/sync_service.dart';
 import 'features/upload/queue_runner.dart';
 import 'features/upload/upload_queue.dart';
 import 'features/upload/upload_service.dart';
@@ -31,6 +32,7 @@ class AppServices {
     required this.runner,
     required this.docs,
     required this.notices,
+    required this.sync,
     required this.connectivity,
     required this.biometrics,
     required this.push,
@@ -50,6 +52,7 @@ class AppServices {
   final QueueRunner runner;
   final DocumentsRepository docs;
   final NotificationCenter notices;
+  final SyncService sync;
   final ConnectivityService connectivity;
   final BiometricService biometrics;
   final PushRegistrar push;
@@ -85,6 +88,7 @@ class AppServices {
       runner: runner,
       docs: docs,
       notices: NotificationCenter(queue: queue, docs: docs, prefs: prefs),
+      sync: SyncService(api: api, queue: queue, dir: Directory('${support.path}/sync')),
       connectivity: connectivity,
       biometrics: biometrics,
       push: NoPushRegistrar(),
@@ -100,6 +104,7 @@ class AppServices {
     runner.pause();
     await queue.wipe();
     await workspace.clear();
+    await sync.wipe();
     if (await scanDir.exists()) await scanDir.delete(recursive: true);
     if (await cacheDir.exists()) await cacheDir.delete(recursive: true);
     orgs.clear();

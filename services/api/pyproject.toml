@@ -70,19 +70,20 @@ type = "layers"
 layers = [
   "artify_api.main | artify_api.cli",
   "artify_api.routers",
-  "artify_api.idempotency | artify_api.auth_provider | artify_api.seed",
+  "artify_api.idempotency | artify_api.auth_provider | artify_api.seed | artify_api.processing_tasks",
+  "artify_api.processing",
   "artify_api.workspace_templates | artify_api.documents",
   "artify_api.workspace_config",
   "artify_api.workspace",
   "artify_api.context | artify_api.auth_service",
   "artify_api.entitlements | artify_api.outbox | artify_api.audit | artify_api.policy | artify_api.mailer | artify_api.ratelimit | artify_api.worker",
-  "artify_api.db | artify_api.security | artify_api.storage | artify_api.scanner",
-  "artify_api.workspace_templates_data",
-  "artify_api.errors | artify_api.ids | artify_api.auth_types | artify_api.permissions | artify_api.logging_config | artify_api.settings | artify_api.workspace_engine | artify_api.file_safety",
+  "artify_api.db | artify_api.security | artify_api.storage | artify_api.scanner | artify_api.ocr_engine | artify_api.understanding",
+  "artify_api.workspace_templates_data | artify_api.doc_extract",
+  "artify_api.errors | artify_api.ids | artify_api.auth_types | artify_api.permissions | artify_api.logging_config | artify_api.settings | artify_api.workspace_engine | artify_api.file_safety | artify_api.doc_taxonomy",
 ]
 
 [[tool.importlinter.contracts]]
 name = "Authorization policy and permission catalog stay pure (no web framework, no database)"
 type = "forbidden"
-source_modules = ["artify_api.policy", "artify_api.permissions", "artify_api.workspace_engine", "artify_api.workspace_templates_data", "artify_api.file_safety"]
+source_modules = ["artify_api.policy", "artify_api.permissions", "artify_api.workspace_engine", "artify_api.workspace_templates_data", "artify_api.file_safety", "artify_api.doc_extract", "artify_api.doc_taxonomy"]
 forbidden_modules = ["sqlalchemy", "fastapi", "artify_api.db"]

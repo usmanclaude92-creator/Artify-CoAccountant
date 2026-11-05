@@ -376,7 +376,7 @@ def classify(
         elif top_key == "invoice":
             type_key = "invoice"
     kind = types[type_key].kind if type_key in types else None
-    if kind is None and (type_key, direction) in DIRECTIONAL_KIND:
+    if kind is None and direction is not None and (type_key, direction) in DIRECTIONAL_KIND:
         kind = DIRECTIONAL_KIND[(type_key, direction)]
     if type_key in ("sales_invoice", "purchase_invoice"):
         kind = type_key
@@ -464,6 +464,10 @@ def find_label(pages: Sequence[Page], labels: Sequence[str], below: bool = True,
             if hits and first_only:
                 return hits
     return hits
+
+
+def _first(hits: list[Hit]) -> Hit | None:
+    return hits[0] if hits else None
 
 
 def _text_field(key: str, hit: Hit | None, base: float = 0.9, take_first_token: bool = False) -> Found:
@@ -602,6 +606,7 @@ _COL_NAMES = {
 def _line_items(pages: Sequence[Page]) -> tuple[list[LineItem], list[Issue]]:
     items: list[LineItem] = []
     issues: list[Issue] = []
+    n = 0  # one running line number for the whole document (tables may continue over pages)
     for p in pages:
         lines = list(p.lines)
         for hi, ln in enumerate(lines):
@@ -609,7 +614,6 @@ def _line_items(pages: Sequence[Page]) -> tuple[list[LineItem], list[Issue]]:
             hits = [c for c, pat in _COL_NAMES.items() if re.search(pat, low)]
             if "description" in hits and len(hits) >= 3:
                 cols = _header_columns(ln)
-                n = 0
                 for row in lines[hi + 1 :]:
                     t = normalize(row.text)
                     if re.match(r"(?i)\s*(sub\s*-?total|total|vat|tax|net\b|grand|amount due|balance)", t):
@@ -852,13 +856,10 @@ def extract_invoice(pages: Sequence[Page], customer_first_tax: bool = False) -> 
     )
     flds["invoice_date"] = _date_field(
         "invoice_date",
-        (
-            find_label(pages, ["invoice date", "date of issue", "issue date", "date", "تاريخ الفاتورة", "التاريخ"])
-            or [None]
-        )[0],
+        _first(find_label(pages, ["invoice date", "date of issue", "issue date", "date", "تاريخ الفاتورة", "التاريخ"])),
     )
     flds["due_date"] = _date_field(
-        "due_date", (find_label(pages, ["due date", "payment due", "pay by", "تاريخ الاستحقاق"]) or [None])[0]
+        "due_date", _first(find_label(pages, ["due date", "payment due", "pay by", "تاريخ الاستحقاق"]))
     )
     flds["po_reference"] = _id_field("po_reference", pages, ["p\\.?o\\.?", "purchase order", "order ref"], 0.85)
     flds["currency"] = _currency(pages)
@@ -916,7 +917,7 @@ def extract_invoice(pages: Sequence[Page], customer_first_tax: bool = False) -> 
             break
     flds["vat_rate"] = rate
     flds["payment_terms"] = _text_field(
-        "payment_terms", (find_label(pages, ["payment terms", "terms of payment", "terms"]) or [None])[0], 0.85
+        "payment_terms", _first(find_label(pages, ["payment terms", "terms of payment", "terms"])), 0.85
     )
     pay = [
         ln for ln in _all_lines(pages) if re.search(r"(?i)\biban\b|account (?:no|number)|bank\s*:|swift|bic\b", ln.text)
@@ -959,7 +960,7 @@ def validate_totals(
             )
         )
         for k in (net_key, vat_key, gross_key):
-            flds[k].flags.append("totals_mismatch")  # type: ignore[index]
+            flds[k].flags.append("totals_mismatch")
     rate = _dec(flds["vat_rate"].value) if "vat_rate" in flds else None
     if net is not None and vat is not None and rate is not None:
         exp = net * rate / Decimal(100)
@@ -972,7 +973,7 @@ def validate_totals(
                     {"expected": money_str(exp), "found": money_str(vat)},
                 )
             )
-            flds["vat_amount"].flags.append("vat_rate_mismatch")  # type: ignore[index]
+            flds["vat_amount"].flags.append("vat_rate_mismatch")
     amounts = [_dec(i.values.get("amount")) for i in items]
     if items and all(a is not None for a in amounts) and net is not None:
         s = sum((a for a in amounts if a is not None), Decimal(0))
@@ -1089,11 +1090,11 @@ def extract_adjustment_note(pages: Sequence[Page]) -> Extraction:
     if "customer_name" in parties:
         f["customer_name"] = parties["customer_name"]
     f["issue_date"] = _date_field(
-        "issue_date", (find_label(pages, ["issue date", "date of issue", "date", "التاريخ"]) or [None])[0]
+        "issue_date", _first(find_label(pages, ["issue date", "date of issue", "date", "التاريخ"]))
     )
     f["currency"] = _currency(pages)
     f["reason"] = _text_field(
-        "reason", (find_label(pages, ["reason for (?:credit|debit|adjustment)", "reason", "سبب"]) or [None])[0], 0.85
+        "reason", _first(find_label(pages, ["reason for (?:credit|debit|adjustment)", "reason", "سبب"])), 0.85
     )
     f["net_adjustment"] = _amount_field(
         "net_adjustment", ["sub\\s*-?total", "net(?: amount)?", "net adjustment", "amount before (?:vat|tax)"], pages
@@ -1214,13 +1215,13 @@ def parse_bank_statement(pages: Sequence[Page]) -> Extraction:
     for ln in lines:
         t = normalize(ln.text)
         if re.search(r"(?i)period|from|statement date|للفترة", t):
-            ds = [
+            parsed = [
                 parse_date(m.group(0))
                 for m in re.finditer(
                     r"\d{4}-\d{2}-\d{2}|\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2,4}|\d{1,2} [A-Za-z]{3,9} \d{4}", t
                 )
             ]
-            ds = [d for d in ds if d[0]]
+            ds = [d for d in parsed if d[0]]
             if len(ds) >= 2:
                 fl = sorted({x for d in ds[:2] for x in d[1]})
                 f["period_start"] = Found(
@@ -1273,11 +1274,11 @@ def parse_bank_statement(pages: Sequence[Page]) -> Extraction:
     issues = tissues
     if txs:
         if "period_start" not in f:
-            ds = [t.tx_date for t in txs if t.tx_date]
-            if ds:
+            dates = [t.tx_date for t in txs if t.tx_date]
+            if dates:
                 f["period_start"] = Found(
                     "period_start",
-                    min(ds),
+                    min(dates),
                     0.5,
                     txs[0].page,
                     txs[0].bbox,
@@ -1287,7 +1288,7 @@ def parse_bank_statement(pages: Sequence[Page]) -> Extraction:
                 )
                 f["period_end"] = Found(
                     "period_end",
-                    max(ds),
+                    max(dates),
                     0.5,
                     txs[-1].page,
                     txs[-1].bbox,
@@ -1600,11 +1601,16 @@ def suggest_splits(pages: Sequence[Page], per_page_types: Mapping[int, str] | No
 
 
 def candidate_for_field(pages: Sequence[Page], key: str, label: str) -> tuple[str, Line] | None:
-    """Raw text next to a label that matches a company-defined field (by label or key). The service validates it."""
-    for lab in {re.escape(label), re.escape(key.replace("_", " "))}:
-        hits = find_label(pages, [lab], below=False)
-        if hits:
-            return hits[0].value.strip(), hits[0].line
+    """Raw text printed after a label that matches a company-defined field (by label or key). The label must START the
+    line and be followed by ':' or '-' so a word inside another field's value (e.g. "Cost Center: Warehouse 9") is not
+    mistaken for a label. The service validates the value against the field's rules."""
+    for lab in dict.fromkeys((re.escape(label), re.escape(key.replace("_", " ")))):
+        pat = re.compile(rf"(?i)^\s*{lab}\s*[:：\-]\s*(?P<v>\S.*)$")
+        for p in pages:
+            for ln in p.lines:
+                m = pat.match(normalize(ln.text))
+                if m:
+                    return m.group("v").strip(), ln
     return None
 
 

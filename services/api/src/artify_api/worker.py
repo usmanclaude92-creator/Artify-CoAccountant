@@ -16,6 +16,9 @@ from artify_api.settings import get_settings
 celery_app = Celery("artify", broker=get_settings().redis_url, backend=None)
 celery_app.conf.task_acks_late = True
 celery_app.conf.task_reject_on_worker_lost = True
+celery_app.conf.imports = (
+    "artify_api.processing_tasks",
+)  # registers artify.process_document without importing it here
 
 
 def run_in_tenant_context(org_id: str, company_id: str | None, fn: Callable[[Connection], Any]) -> Any:

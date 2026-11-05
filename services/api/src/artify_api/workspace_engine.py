@@ -725,6 +725,7 @@ _BASE_ACTIONS: dict[str, tuple[str, ...]] = {
     "documents.read": ("view",),
     "documents.upload": ("upload",),
     "documents.manage": ("edit", "rename", "move", "archive"),
+    "documents.review": ("edit",),
     "documents.delete": ("delete",),
 }
 READ_ONLY_CEILING = frozenset({"view"})

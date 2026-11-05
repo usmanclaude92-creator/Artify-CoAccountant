@@ -61,6 +61,15 @@ PERMISSIONS: tuple[Permission, ...] = (
     _P("documents.manage", "company", "Rename, re-file, edit metadata, duplicate, archive and restore documents"),
     _P("documents.delete", "company", "Move documents to the deleted items and restore them"),
     _P("documents.purge", "company", "Permanently delete documents (never while on retention hold)"),
+    _P("documents.process", "company", "Start, retry, cancel and reprocess OCR and extraction for a document"),
+    _P("documents.review", "company", "Review extracted data: correct, confirm, reject, mark missing or unreadable"),
+    _P("documents.approve_extraction", "company", "Approve reviewed extraction results (a person, never the system)"),
+    _P(
+        "processing.monitor",
+        "organization",
+        "See document processing status, failures and usage across the organization",
+    ),
+    _P("ai_providers.manage", "organization", "Choose OCR/AI providers and record consent for external processing"),
     _P("storage.manage", "organization", "Review storage usage and run storage reconciliation"),
     # ---- platform realm (Artify Super Admin) ----
     _P("platform.self.read", "platform", "Read own platform-admin profile"),
@@ -134,6 +143,10 @@ SYSTEM_ROLES: dict[str, tuple[str, str, frozenset[str]]] = {
                 "workspace.manage",
                 "workspace_templates.manage",
                 "documents.read",
+                "documents.process",
+                "documents.review",
+                "documents.approve_extraction",
+                "processing.monitor",
                 "documents.upload",
                 "documents.manage",
                 "documents.delete",
@@ -155,6 +168,9 @@ SYSTEM_ROLES: dict[str, tuple[str, str, frozenset[str]]] = {
                 "devices.manage_own",
                 "workspace.read",
                 "documents.read",
+                "documents.process",
+                "documents.review",
+                "documents.approve_extraction",
                 "documents.upload",
                 "documents.manage",
             }
@@ -173,6 +189,8 @@ SYSTEM_ROLES: dict[str, tuple[str, str, frozenset[str]]] = {
                 "devices.manage_own",
                 "workspace.read",
                 "documents.read",
+                "documents.process",
+                "documents.review",
                 "documents.upload",
             }
         ),
@@ -188,6 +206,7 @@ SYSTEM_ROLES: dict[str, tuple[str, str, frozenset[str]]] = {
                 "devices.manage_own",
                 "workspace.read",
                 "documents.read",
+                "documents.process",
                 "documents.upload",
             }
         ),
@@ -203,6 +222,7 @@ SYSTEM_ROLES: dict[str, tuple[str, str, frozenset[str]]] = {
                 "devices.manage_own",
                 "workspace.read",
                 "documents.read",
+                "documents.process",
                 "documents.upload",
             }
         ),

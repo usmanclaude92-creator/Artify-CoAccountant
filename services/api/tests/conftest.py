@@ -35,6 +35,7 @@ def _url(user: str, password: str | None) -> str:
 OWNER_URL = _url(PGUSER, os.environ.get("PGPASSWORD"))
 os.environ.update(
     {
+        "ARTIFY_PROCESSING_RETRY_BACKOFF_SECONDS": "0",
         "ARTIFY_STORAGE_LOCAL_ROOT": tempfile.mkdtemp(prefix="artify-test-storage-"),
         "ARTIFY_DATABASE_URL_APP": _url("artify_app_login", "dev-only-app"),
         "ARTIFY_DATABASE_URL_PLATFORM": _url("artify_platform_login", "dev-only-platform"),

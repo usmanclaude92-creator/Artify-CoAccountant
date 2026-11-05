@@ -95,6 +95,7 @@ _DOC_BASE_KEYS = (
     "documents.read",
     "documents.upload",
     "documents.manage",
+    "documents.review",
     "documents.delete",
     "workspace.manage",
     "workspace.permissions.manage",

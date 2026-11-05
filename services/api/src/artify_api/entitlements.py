@@ -59,6 +59,39 @@ DEFINITIONS: tuple[Definition, ...] = (
         "Documents entering processing per period",
     ),
     _D("quota.storage_bytes", "organization", "bigint", "metered", "bytes", "Stored bytes"),
+    _D("quota.ocr_pages_per_month", "organization", "bigint", "metered", "pages", "Pages read by OCR per period"),
+    _D(
+        "quota.ai_extractions_per_month",
+        "organization",
+        "bigint",
+        "metered",
+        "extractions",
+        "Documents run through extraction per period",
+    ),
+    _D(
+        "quota.bank_statements_per_month",
+        "organization",
+        "bigint",
+        "metered",
+        "statements",
+        "Bank statements processed per period",
+    ),
+    _D(
+        "limit.processing_concurrency",
+        "organization",
+        "int",
+        "hard",
+        "jobs",
+        "Document processing jobs running at the same time",
+    ),
+    _D(
+        "feature.advanced_ai",
+        "organization",
+        "bool",
+        "flag",
+        None,
+        "External AI providers for document understanding (subject to tenant consent)",
+    ),
     _D("limit.file_size_bytes", "organization", "bigint", "hard", "bytes", "Largest single file accepted for upload"),
     _D("quota.ai_units_per_month", "organization", "bigint", "metered", "units", "Metered AI/OCR units per period"),
     _D("feature.custom_roles", "organization", "bool", "flag", None, "Organization-defined custom roles"),
@@ -73,8 +106,16 @@ COUNT_LIMITS = frozenset(
     {"limit.companies", "limit.users", "limit.accountants", "limit.devices", "limit.workspace_templates"}
 )
 # Metered quotas (Phase 6): measured by the same database function and enforced by `guard_quota`.
-QUOTAS = frozenset({"quota.storage_bytes", "quota.documents_per_month"})
-MEASURABLE = COUNT_LIMITS | QUOTAS
+QUOTAS = frozenset(
+    {
+        "quota.storage_bytes",
+        "quota.documents_per_month",
+        "quota.ocr_pages_per_month",
+        "quota.ai_extractions_per_month",
+        "quota.bank_statements_per_month",
+    }
+)
+MEASURABLE = COUNT_LIMITS | QUOTAS | {"limit.processing_concurrency"}
 # Company-scope workspace limits are measured per company through RLS-protected counts (see workspace_usage below).
 COMPANY_MEASURES: dict[str, str] = {
     "limit.workspace_sections_per_company": "SELECT count(*) FROM workspace_nodes WHERE company_id = :c AND node_type = 'section' AND archived_at IS NULL",
@@ -194,6 +235,22 @@ def guard_quota(conn: Connection, org_id: uuid.UUID, key: str, delta: int) -> No
     current = measure(conn, org_id, key)
     if not limit.unlimited and current + delta > (limit.value or 0):
         raise EntitlementExceeded(key=key, limit=limit.value or 0, current=current, requested=delta)
+
+
+def guard_concurrency(conn: Connection, org_id: uuid.UUID) -> None:
+    """Refuse to start another processing job while the plan's concurrent-job limit is reached (queued jobs count)."""
+    status = subscription_status(conn, org_id)
+    if status in (None, "suspended"):
+        raise SubscriptionRestricted(
+            "The subscription is suspended or missing; this action is not available.",
+            extra={"subscription_status": status},
+        )
+    limit = effective_limit(conn, org_id, "limit.processing_concurrency")
+    current = measure(conn, org_id, "limit.processing_concurrency")
+    if not limit.unlimited and current + 1 > (limit.value or 0):
+        raise EntitlementExceeded(
+            key="limit.processing_concurrency", limit=limit.value or 0, current=current, requested=1
+        )
 
 
 def max_file_size(conn: Connection, org_id: uuid.UUID, system_ceiling: int) -> int:

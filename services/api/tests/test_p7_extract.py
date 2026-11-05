@@ -1,6 +1,7 @@
 """Phase 7 pure-logic tests: money/date parsing, classification, invoice/receipt/note extraction and bank statements.
 Fixtures are synthetic monospace layouts (word x-positions follow the character columns, like a table in a real page)."""
 
+# ruff: noqa: RUF001  (Arabic-Indic digits are deliberate test inputs)
 from __future__ import annotations
 
 import re

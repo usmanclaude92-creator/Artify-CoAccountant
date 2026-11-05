@@ -72,6 +72,21 @@ class Settings(BaseSettings):
     max_file_size_ceiling_bytes: int = 200 * 1024**2
     max_import_batch_files: int = 200
     upload_session_ttl_seconds: int = 24 * 3600
+    # Document intelligence (Phase 7). OCR runs locally by default; cloud providers are opt-in per organization (consent flag).
+    ocr_provider: str = "tesseract"
+    tesseract_cmd: str = "tesseract"
+    ocr_timeout_seconds: int = 120
+    ocr_render_dpi: int = 200
+    ocr_max_pages: int = 200
+    ocr_default_languages: list[str] = Field(default_factory=lambda: ["eng"])
+    understanding_provider: str = "rules"  # rules (deterministic, local) | http (OpenAI-compatible JSON API, opt-in)
+    ai_http_base_url: str | None = None
+    ai_http_model: str | None = None
+    ai_http_api_key: SecretStr | None = None  # server-side only; never returned by any API, never logged
+    ai_http_timeout_seconds: int = 60
+    processing_mode: Literal["celery", "background"] = "background"  # celery in production; in-process otherwise
+    processing_retry_backoff_seconds: float = 2.0
+    processing_max_attempts: int = 3
     # Antivirus: "none" means files are validated but NOT scanned, and the product says so.
     scanner_backend: Literal["none", "clamav"] = "none"
     clamd_host: str = "localhost"

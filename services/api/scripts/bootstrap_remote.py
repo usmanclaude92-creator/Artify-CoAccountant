@@ -45,7 +45,8 @@ def _ready(conn) -> bool:  # type: ignore[no-untyped-def]
             "SELECT count(*) FROM pg_roles WHERE rolname IN ('artify_app_login','artify_platform_login','artify_dispatcher_login')"
         )
     ).scalar()
-    return version == _head() and roles == 3
+    seeded = conn.execute(text("SELECT obj_description('app'::regnamespace, 'pg_namespace')")).scalar()
+    return version == _head() and roles == 3 and seeded == f"seeded:{_head()}"
 
 
 def _prepare_hosted_owner(conn) -> None:  # type: ignore[no-untyped-def]
@@ -56,6 +57,31 @@ def _prepare_hosted_owner(conn) -> None:  # type: ignore[no-untyped-def]
         if conn.execute(text("SELECT 1 FROM pg_roles WHERE rolname = :r"), {"r": role}).first() is None:
             conn.exec_driver_sql(f"CREATE ROLE {role} NOLOGIN NOSUPERUSER NOBYPASSRLS")
     conn.exec_driver_sql("GRANT CREATE ON SCHEMA public TO artify_definer")
+
+
+def _seed_reference_data(eng) -> None:  # type: ignore[no-untyped-def]
+    """Reference data is written by the schema owner. With FORCE ROW LEVEL SECURITY the owner is subject to the policies
+    unless it is a superuser, which a managed Postgres owner is not. Lift FORCE for the duration of one transaction (restored
+    before it commits, so no other session ever sees the tables unforced), seed, and restore."""
+    from artify_api.seed import sync_reference_data
+
+    with eng.begin() as conn:
+        forced = [
+            r[0]
+            for r in conn.execute(
+                text(
+                    "SELECT format('%I.%I', n.nspname, c.relname) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace"
+                    " WHERE c.relkind = 'r' AND c.relforcerowsecurity AND n.nspname = 'public'"
+                    " AND pg_get_userbyid(c.relowner) = current_user"
+                )
+            )
+        ]
+        for t in forced:
+            conn.exec_driver_sql(f"ALTER TABLE {t} NO FORCE ROW LEVEL SECURITY")
+        sync_reference_data(conn)
+        for t in forced:
+            conn.exec_driver_sql(f"ALTER TABLE {t} FORCE ROW LEVEL SECURITY")
+        conn.exec_driver_sql(f"COMMENT ON SCHEMA app IS 'seeded:{_head()}'")  # marker: migrations AND seed are complete
 
 
 def _create_roles(conn) -> None:  # type: ignore[no-untyped-def]
@@ -127,7 +153,7 @@ def ensure_bootstrapped() -> None:
                 cli.cmd_migrate(argparse.Namespace())
                 with eng.begin() as c:
                     _create_roles(c)
-                cli.cmd_seed(argparse.Namespace())
+                _seed_reference_data(eng)
                 _log("database ready")
             _demo_owner()
         finally:

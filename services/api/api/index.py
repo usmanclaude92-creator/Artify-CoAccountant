@@ -28,7 +28,7 @@ async def app(scope, receive, send):  # type: ignore[no-untyped-def]
                     await asyncio.to_thread(ensure_bootstrapped)
                     _state["done"] = True
                 except Exception as exc:  # report once, retry on the next request
-                    _state["error"] = f"{type(exc).__name__}: {exc}"[:500]
+                    _state["error"] = f"{type(exc).__name__}: {getattr(exc, 'orig', exc)}"[:600]
                     body = b'{"code":"bootstrap_failed","detail":"The hosted database is not ready yet."}'
                     await send(
                         {

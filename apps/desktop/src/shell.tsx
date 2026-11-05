@@ -6,6 +6,7 @@ import { Settings } from "./screens/settings";
 import { Workspace } from "./screens/workspace";
 import { Documents, ImportDocuments, UploadQueue } from "./screens/documents";
 import { ProcessingQueue, Review } from "./screens/intelligence";
+import { AccountingHome, AccountingReview } from "./screens/accounting";
 import { Brand } from "./screens/auth";
 import { useApp, type Page } from "./state/app";
 
@@ -13,12 +14,12 @@ const NAV: { page: Page; label: string; future?: boolean }[] = [
   { page: "dashboard", label: "Dashboard" }, { page: "companies", label: "My Companies" }, { page: "workspace", label: "Workspace" },
   { page: "documents", label: "All Documents" }, { page: "import", label: "Import Documents" }, { page: "queue", label: "Upload Queue" }, { page: "archive", label: "Archived Documents" },
   { page: "processing", label: "Processing Queue" },
-  { page: "accounting", label: "Accounting", future: true }, { page: "reports", label: "Reports", future: true },
+  { page: "accounting", label: "Accounting" }, { page: "reports", label: "Reports", future: true },
   { page: "sync", label: "Synchronization" }, { page: "notifications", label: "Notifications" }, { page: "settings", label: "Settings" },
 ];
 
 export function Shell() {
-  const { page, reviewDoc, go, org, orgs, chooseOrg, company, identity, notice, dismissNotice, bridge } = useApp();
+  const { page, reviewDoc, acctTxn, go, org, orgs, chooseOrg, company, identity, notice, dismissNotice, bridge } = useApp();
   const [unread, setUnread] = useState(0);
   const [conn, setConn] = useState<string>("unknown");
   useEffect(() => {
@@ -34,7 +35,7 @@ export function Shell() {
       <aside className="d-side" aria-label="Main">
         <Brand />
         <nav><ul>{NAV.map((n) => (
-          <li key={n.page}><button type="button" className="d-nav" aria-current={page === n.page || (n.page === "processing" && page === "review") ? "page" : undefined} onClick={() => go(n.page)}>
+          <li key={n.page}><button type="button" className="d-nav" aria-current={page === n.page || (n.page === "processing" && page === "review") || (n.page === "accounting" && page === "acct-review") ? "page" : undefined} onClick={() => go(n.page)}>
             <span>{n.label}</span>{n.future ? <span className="d-soon">Soon</span> : n.page === "notifications" && unread > 0 ? <span className="d-badge" aria-label={`${unread} unread`}>{unread}</span> : null}
           </button></li>))}</ul></nav>
       </aside>
@@ -55,7 +56,7 @@ export function Shell() {
         </header>
         <main id="main" className="d-content" tabIndex={-1}>
           {notice ? <Alert tone="warning">{notice} <Button variant="secondary" className="a-btn--sm" onClick={dismissNotice}>Dismiss</Button></Alert> : null}
-          {page === "dashboard" ? <Dashboard /> : page === "companies" ? <Companies /> : page === "workspace" ? <Workspace key={company?.id ?? "none"} /> : page === "documents" ? <Documents mode="active" key="docs" /> : page === "archive" ? <Documents mode="archived" key="arch" /> : page === "import" ? <ImportDocuments /> : page === "queue" ? <UploadQueue /> : page === "processing" ? <ProcessingQueue /> : page === "review" ? <Review key={reviewDoc ?? "none"} /> : page === "sync" ? <Sync /> : page === "notifications" ? <Notifications /> : page === "settings" ? <Settings /> : <Placeholder page={page} />}
+          {page === "dashboard" ? <Dashboard /> : page === "companies" ? <Companies /> : page === "workspace" ? <Workspace key={company?.id ?? "none"} /> : page === "documents" ? <Documents mode="active" key="docs" /> : page === "archive" ? <Documents mode="archived" key="arch" /> : page === "import" ? <ImportDocuments /> : page === "queue" ? <UploadQueue /> : page === "accounting" ? <AccountingHome /> : page === "acct-review" ? <AccountingReview key={acctTxn ?? "none"} /> : page === "processing" ? <ProcessingQueue /> : page === "review" ? <Review key={reviewDoc ?? "none"} /> : page === "sync" ? <Sync /> : page === "notifications" ? <Notifications /> : page === "settings" ? <Settings /> : <Placeholder page={page} />}
         </main>
       </div>
     </div>

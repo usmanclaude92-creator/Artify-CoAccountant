@@ -15,6 +15,7 @@ from artify_api import metrics
 from artify_api.errors import install_error_handlers
 from artify_api.logging_config import configure_logging, correlation_id_var
 from artify_api.routers import (
+    accounting,
     auth,
     companies,
     control_center,
@@ -47,6 +48,7 @@ ROUTERS = (
     control_center.router,
     workspace.router,
     documents.router,
+    accounting.router,
     processing.router,
     me.router,
     platform.router,

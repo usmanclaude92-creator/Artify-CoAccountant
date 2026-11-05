@@ -123,6 +123,46 @@ export interface OcrResult { id: string; provider_key: string; engine_version: s
 export interface PageImage { page: number; data_base64: string }
 export type ReviewKind = "field" | "line-items" | "transactions";
 
+// ---------------------------------------------------------------- accounting (Phase 8). All amounts are strings; the server calculates.
+export type AcctOp =
+  | "config" | "accounts" | "roles" | "tax_codes" | "contacts" | "contact_match" | "contact_create" | "periods" | "transactions" | "transaction"
+  | "txn_create" | "from_extraction" | "txn_update" | "txn_lines" | "txn_contact" | "txn_journal_lines" | "txn_regenerate" | "txn_validate"
+  | "txn_submit" | "txn_review" | "txn_approve" | "txn_reject" | "txn_request_correction" | "txn_revise" | "txn_reverse" | "txn_amend"
+  | "txn_duplicate" | "trial_balance" | "account_balances";
+export interface AcctIssue { code: string; severity: "error" | "warning" | "info"; message: string; blocking: boolean; data: Record<string, unknown> }
+export interface AcctLine {
+  id: string; line_no: number; description: string | null; account_id: string | null; account_code: string | null; account_name: string | null; account_source: string;
+  entry_side: "debit" | "credit" | null; quantity: string | null; unit_price: string | null; discount: string; net_amount: string; tax_amount: string; gross_amount: string;
+  tax_code_id: string | null; tax_code: string | null; dimensions: Record<string, string>; calc: Record<string, unknown>;
+}
+export interface AcctJournalLine {
+  id: string; line_no: number; account_id: string; account_code: string; account_name: string; debit: string; credit: string; base_debit: string; base_credit: string;
+  currency: string; description: string | null; reference: string | null; tax_code_id: string | null; contact_id: string | null; source: "generated" | "manual" | "rounding";
+}
+export interface AcctJournal {
+  id: string; number: string | null; journal_type: string; journal_date: string; status: string; currency: string; base_currency: string; exchange_rate: string | null;
+  total_debit: string; total_credit: string; narration: string | null; lines: AcctJournalLine[];
+}
+export interface AcctTrailEntry { action: string; from_status: string | null; to_status: string | null; actor_type: string; actor: string | null; note: string | null; created_at: string }
+export interface AcctDuplicate { id: string; level: "exact" | "possible"; signals: Record<string, unknown>; decision: string | null; note: string | null; matched_id: string; matched_number: string; matched_doc_number: string | null; matched_status: string; matched_gross: string; matched_date: string }
+export interface AcctContactSuggestion { contact_id: string; strength: "tax_number" | "name_exact" | "name_similar"; score: number; display_name: string; kind: string }
+export interface AcctTxn {
+  id: string; number: string; txn_type: string; type_label: string; status: string; source_document_id: string | null; extraction_id: string | null; transaction_date: string; due_date: string | null;
+  doc_number: string | null; contact_id: string | null; contact_suggestions: AcctContactSuggestion[]; settlement_account_id: string | null; counter_account_id: string | null; currency: string;
+  exchange_rate: string | null; rate_source: string | null; rate_date: string | null; prices_include_tax: boolean; net_amount: string; tax_amount: string; gross_amount: string;
+  base_gross_amount: string | null; narration: string | null; journal_mode: "generated" | "manual"; duplicate_status: string; correction_note: string | null; rejection_reason: string | null;
+  row_version: number; lines: AcctLine[]; journal: AcctJournal | null; debit_total: string; credit_total: string; base_debit_total: string; base_credit_total: string; balanced: boolean;
+  issues: AcctIssue[]; blocking_count: number; trail: AcctTrailEntry[]; duplicates: AcctDuplicate[]; document: { id: string; display_name: string } | null;
+  contact: { id: string; display_name: string; kind: string; tax_number: string | null } | null; people: Record<string, string | null>;
+  can: { edit: boolean; submit: boolean; review: boolean; approve: boolean; reject: boolean; request_correction: boolean; revise: boolean; reverse: boolean };
+  policy: { separate_preparer_approver: boolean; levels: number; distinct_levels: boolean; approval_limit: string | null };
+}
+export interface AcctTxnRow { id: string; number: string; txn_type: string; type_label: string; status: string; transaction_date: string; doc_number: string | null; currency: string; gross_amount: string; duplicate_status: string; contact_name: string | null; document_name: string | null; blocking_count: number }
+export interface AcctAccount { id: string; code: string; name: string; account_type: string; normal_balance: string; is_active: boolean; is_postable: boolean }
+export interface AcctTaxCode { id: string; code: string; name: string; treatment: string; direction: string; is_active: boolean; verification_status: string; rates: { rate: string; effective_from: string; effective_to: string | null }[] }
+export interface AcctContact { id: string; kind: "customer" | "supplier"; legal_name: string; display_name: string; tax_number: string | null; is_active: boolean }
+export interface TrialBalance { as_of: string | null; rows: { account_id: string; code: string; name: string; debit: string; credit: string }[]; debit: string; credit: string; balanced: boolean }
+
 export interface Bridge {
   appInfo(): Promise<AppInfo>;
   authLogin(email: string, password: string): Promise<LoginResult>;
@@ -192,6 +232,8 @@ export interface Bridge {
   intelAccept(org: string, company: string, extraction: string, kind: "workspace" | "metadata", suggestion: string, value: unknown): Promise<unknown>;
   intelSplit(org: string, company: string, extraction: string, approve: boolean): Promise<unknown>;
   intelPageImage(org: string, company: string, doc: string, page: number): Promise<PageImage>;
+  /** Accounting: one allow-listed server call. The server calculates, validates and decides; the interface only displays. */
+  acct<T = unknown>(org: string, company: string, op: AcctOp, args?: { ids?: string[]; query?: Record<string, string>; body?: unknown }): Promise<T>;
   /** Backend events: workspace-updated (RefreshOutcome), session-expired, sync-error (AppError), queue-changed, queue-progress, documents-changed, files-dropped (StagedFile[]). */
-  on(event: "workspace-updated" | "session-expired" | "sync-error" | "queue-changed" | "queue-progress" | "documents-changed" | "processing-changed" | "files-dropped", handler: (payload: unknown) => void): Promise<Unlisten>;
+  on(event: "workspace-updated" | "session-expired" | "sync-error" | "queue-changed" | "queue-progress" | "documents-changed" | "processing-changed" | "accounting-changed" | "files-dropped", handler: (payload: unknown) => void): Promise<Unlisten>;
 }

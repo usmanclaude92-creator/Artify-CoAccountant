@@ -79,5 +79,7 @@ export const tauriBridge: Bridge = {
   intelAccept: (org, company, extraction, kind, suggestion, value) => call("intel_accept", { org, company, extraction, kind, suggestion, value }),
   intelSplit: (org, company, extraction, approve) => call("intel_split", { org, company, extraction, approve }),
   intelPageImage: (org, company, doc, page) => call("intel_page_image", { org, company, doc, page }),
+  acct: <T,>(org: string, company: string, op: string, args?: { ids?: string[]; query?: Record<string, string>; body?: unknown }) =>
+    call<T>("acct_call", { org, company, op, ids: args?.ids ?? [], query: Object.entries(args?.query ?? {}), body: args?.body ?? null }),
   on: async (event, handler) => listen(event, (e) => handler(e.payload)),
 };

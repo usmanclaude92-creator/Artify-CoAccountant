@@ -232,6 +232,9 @@ impl ApiClient {
     pub async fn patch(&self, path: &str, org: Option<&str>, body: Value) -> Result<Response> {
         self.send(Method::PATCH, path, org, Some(body), None, true).await
     }
+    pub async fn put(&self, path: &str, org: Option<&str>, body: Value) -> Result<Response> {
+        self.send(Method::PUT, path, org, Some(body), None, true).await
+    }
     pub async fn delete(&self, path: &str, org: Option<&str>) -> Result<Response> {
         self.send(Method::DELETE, path, org, None, None, true).await
     }

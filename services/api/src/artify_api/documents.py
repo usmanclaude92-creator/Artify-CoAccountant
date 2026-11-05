@@ -1345,6 +1345,13 @@ def purge_document(ctx: RequestCtx, acc: ws.Access, doc_id: uuid.UUID) -> dict[s
         raise Conflict("Move the document to the deleted items before deleting it permanently.")
     if doc["retention_hold"]:
         raise RetentionHold("The document is on retention hold and cannot be permanently deleted.")
+    if conn.execute(
+        text(
+            "SELECT 1 FROM acct_transactions WHERE source_document_id = :d AND status IN ('approved', 'posted', 'reversed') LIMIT 1"
+        ),
+        {"d": doc["id"]},
+    ).first():
+        raise Conflict("Approved accounting records refer to this document, so it cannot be permanently deleted.")
     objs = conn.execute(
         text(
             "SELECT DISTINCT so.id, so.storage_key, so.size_bytes FROM document_versions v JOIN storage_objects so ON so.id = v.storage_object_id"

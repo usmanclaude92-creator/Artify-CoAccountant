@@ -143,6 +143,9 @@ class Actor:
     def post(self, path: str, json: dict | None = None, org: str | None = None, **extra):  # type: ignore[no-untyped-def]
         return self.client.post(f"/api/v1{path}", json=json, headers=self.headers(org, **extra))
 
+    def put(self, path: str, json: dict, org: str | None = None):  # type: ignore[no-untyped-def]
+        return self.client.put(f"/api/v1{path}", json=json, headers=self.headers(org))
+
     def patch(self, path: str, json: dict, org: str | None = None):  # type: ignore[no-untyped-def]
         return self.client.patch(f"/api/v1{path}", json=json, headers=self.headers(org))
 

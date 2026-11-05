@@ -100,3 +100,9 @@ h1 { font-size: var(--text-xl); margin: 0; } h2 { font-size: var(--text-lg); mar
 .d-review__foot { margin-block: var(--space-3); }
 .d-table--tx input { inline-size: 100%; min-inline-size: 5rem; }
 @media (max-width: 62rem) { .d-review { grid-template-columns: minmax(0, 1fr); } }
+
+/* accounting (Phase 8) */
+.d-tabs { display: flex; gap: var(--space-2); flex-wrap: wrap; border-block-end: 1px solid var(--color-border); margin-block-end: var(--space-3); }
+.d-tab { padding: var(--space-2) var(--space-3); border: 1px solid transparent; border-block-end: 3px solid transparent; background: none; color: inherit; cursor: pointer; font: inherit; }
+.d-tab[aria-selected="true"] { border-block-end-color: var(--color-focus, currentColor); font-weight: 600; }
+.d-form { display: grid; gap: var(--space-2); }

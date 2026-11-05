@@ -21,8 +21,8 @@ const DOC_TYPES: [string, string][] = [
 const pct = (c: number | null) => (c === null ? "—" : `${Math.round(c * 100)}%`);
 
 function useCtx() {
-  const { bridge, org, company, fail, go, reviewDoc, openReview } = useApp();
-  return { bridge, orgId: org?.id ?? "", companyId: company?.id ?? "", fail, go, reviewDoc, openReview };
+  const { bridge, org, company, fail, go, reviewDoc, openReview, openAcct } = useApp();
+  return { bridge, orgId: org?.id ?? "", companyId: company?.id ?? "", fail, go, reviewDoc, openReview, openAcct };
 }
 
 // ------------------------------------------------------------------ queue
@@ -88,7 +88,7 @@ function Overlay({ boxes, active }: { boxes: { box: Box; id: string }[]; active:
 }
 
 export function Review() {
-  const { bridge, orgId, companyId, fail, go, reviewDoc } = useCtx();
+  const { bridge, orgId, companyId, fail, go, reviewDoc, openAcct } = useCtx();
   const [latest, setLatest] = useState<IntelLatest | null>(null);
   const [ex, setEx] = useState<ExtractionView | null>(null);
   const [msg, setMsg] = useState<{ tone: "success" | "danger" | "warning"; text: string } | null>(null);
@@ -168,6 +168,14 @@ export function Review() {
         </Panel>) : (
         <>
           <Alert tone="info">{decided ? `This extraction is ${ex.status}.` : "These values were suggested by automatic reading. Review each one; only you can approve."}</Alert>
+          {ex.status === "approved" ? (
+            <div className="d-actions">
+              <Button disabled={busy} onClick={() => void run("", async () => {
+                const made = await bridge.acct<{ id?: string; created?: string[] }>(orgId, companyId, "from_extraction", { ids: [ex.id] });
+                if (made.id) openAcct(made.id); else go("accounting");
+              })}>Prepare accounting transaction</Button>
+              <span className="a-hint">Creates a draft for you to review. Nothing is approved or posted automatically.</span>
+            </div>) : null}
           {ex.classification ? (
             <p>
               <strong>Type:</strong> {DOC_TYPES.find(([k]) => k === ex.type_key)?.[1] ?? ex.type_key} <StatusChip tone={ex.classification.needs_manual ? "warning" : "info"}>{pct(ex.classification.confidence)} · {ex.classification.review_status}</StatusChip>

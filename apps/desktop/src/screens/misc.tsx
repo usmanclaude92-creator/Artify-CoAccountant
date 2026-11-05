@@ -22,13 +22,12 @@ export function Dashboard() {
         <Button onClick={() => go("companies")}>My Companies</Button>
         <Button variant="secondary" disabled={!company} onClick={() => go("workspace")}>Open workspace</Button>
       </Panel>
-      <Alert tone="info">Document import, storage and automatic reading with review are available; accounting arrives in a later release. Nothing on this screen is sample data.</Alert>
+      <Alert tone="info">Document import, storage and automatic reading with review are available; posting and exports arrive in later releases. Nothing on this screen is sample data.</Alert>
     </section>
   );
 }
 
-const FUTURE: Record<Exclude<Page, "dashboard" | "companies" | "workspace" | "documents" | "import" | "queue" | "archive" | "processing" | "review" | "sync" | "notifications" | "settings">, { title: string; text: string; phase: string }> = {
-  accounting: { title: "Accounting", text: "Reviewed documents become accounting entries here, always approved by a person.", phase: "Accounting (a later release)" },
+const FUTURE: Record<Exclude<Page, "dashboard" | "companies" | "workspace" | "documents" | "import" | "queue" | "archive" | "processing" | "review" | "accounting" | "acct-review" | "sync" | "notifications" | "settings">, { title: string; text: string; phase: string }> = {
   reports: { title: "Reports", text: "Management reports and Excel exports built from approved entries.", phase: "Reports and Excel (a later release)" },
 };
 export function Placeholder({ page }: { page: keyof typeof FUTURE }) {

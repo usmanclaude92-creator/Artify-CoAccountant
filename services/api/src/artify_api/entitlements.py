@@ -92,6 +92,50 @@ DEFINITIONS: tuple[Definition, ...] = (
         None,
         "External AI providers for document understanding (subject to tenant consent)",
     ),
+    _D(
+        "quota.accounting_transactions_per_month",
+        "organization",
+        "bigint",
+        "metered",
+        "transactions",
+        "Accounting transactions created per period",
+    ),
+    _D(
+        "quota.journals_per_month",
+        "organization",
+        "bigint",
+        "metered",
+        "journals",
+        "Journal entries created per period",
+    ),
+    _D(
+        "limit.accounting_rules_per_company",
+        "company",
+        "int",
+        "hard",
+        "rules",
+        "Active accounting rules per company",
+    ),
+    _D(
+        "feature.multi_currency", "organization", "bool", "flag", None, "Transactions in currencies other than the base"
+    ),
+    _D("feature.advanced_approval", "organization", "bool", "flag", None, "Two-level approval and approval limits"),
+    _D(
+        "feature.advanced_accounting",
+        "organization",
+        "bool",
+        "flag",
+        None,
+        "Configurable accounting rules and reverse-charge/import tax treatments",
+    ),
+    _D(
+        "feature.ai_accounting_suggestions",
+        "organization",
+        "bool",
+        "flag",
+        None,
+        "Reserved for AI-assisted accounting suggestions (Phase 8 suggestions are deterministic rules only)",
+    ),
     _D("limit.file_size_bytes", "organization", "bigint", "hard", "bytes", "Largest single file accepted for upload"),
     _D("quota.ai_units_per_month", "organization", "bigint", "metered", "units", "Metered AI/OCR units per period"),
     _D("feature.custom_roles", "organization", "bool", "flag", None, "Organization-defined custom roles"),
@@ -113,6 +157,8 @@ QUOTAS = frozenset(
         "quota.ocr_pages_per_month",
         "quota.ai_extractions_per_month",
         "quota.bank_statements_per_month",
+        "quota.accounting_transactions_per_month",
+        "quota.journals_per_month",
     }
 )
 MEASURABLE = COUNT_LIMITS | QUOTAS | {"limit.processing_concurrency"}
@@ -122,6 +168,7 @@ COMPANY_MEASURES: dict[str, str] = {
     "limit.folders_per_company": "SELECT count(*) FROM workspace_nodes WHERE company_id = :c AND node_type = 'folder' AND archived_at IS NULL",
     "limit.custom_fields_per_company": "SELECT count(*) FROM custom_field_definitions WHERE company_id = :c AND archived_at IS NULL",
     "limit.filing_rules_per_company": "SELECT count(*) FROM filing_rules WHERE company_id = :c AND archived_at IS NULL",
+    "limit.accounting_rules_per_company": "SELECT count(*) FROM acct_rules WHERE company_id = :c AND is_current AND is_active",
     "limit.folder_depth": "SELECT COALESCE(max(depth), 0) FROM workspace_nodes WHERE company_id = :c AND archived_at IS NULL",
 }
 _CURRENT_STATUSES = ("trialing", "active", "past_due", "suspended")

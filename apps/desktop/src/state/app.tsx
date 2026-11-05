@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { Bridge, CompanyDetail, Identity, Organization, Settings } from "../bridge/types";
 import { describe, isSessionExpired } from "../lib/errors";
 
-export type Page = "dashboard" | "companies" | "workspace" | "documents" | "import" | "queue" | "archive" | "processing" | "review" | "accounting" | "reports" | "sync" | "notifications" | "settings";
+export type Page = "dashboard" | "companies" | "workspace" | "documents" | "import" | "queue" | "archive" | "processing" | "review" | "accounting" | "acct-review" | "reports" | "sync" | "notifications" | "settings";
 
 export interface AppCtx {
   bridge: Bridge;
@@ -19,6 +19,9 @@ export interface AppCtx {
   /** the document open in the review workspace (set by openReview) */
   reviewDoc: string | null;
   openReview: (documentId: string) => void;
+  /** the accounting transaction open in the accounting review screen */
+  acctTxn: string | null;
+  openAcct: (transactionId: string) => void;
   chooseOrg: (o: Organization) => void;
   openCompany: (companyId: string) => Promise<boolean>;
   closeCompany: () => void;
@@ -42,6 +45,7 @@ export function Session({ bridge, identity, onSignedOut, children }: { bridge: B
   const [company, setCompany] = useState<CompanyDetail | null>(null);
   const [page, setPage] = useState<Page>("companies");
   const [reviewDoc, setReviewDoc] = useState<string | null>(null);
+  const [acctTxn, setAcctTxn] = useState<string | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const ended = useRef(false);
@@ -95,6 +99,7 @@ export function Session({ bridge, identity, onSignedOut, children }: { bridge: B
   const ctx = useMemo<AppCtx>(() => ({
     bridge, identity, org, orgs: orgs ?? [], company, page, settings, notice, ready: orgs !== null && settings !== null,
     go: (p) => { setNotice(null); setPage(p); },
+    acctTxn, openAcct: (id) => { setNotice(null); setAcctTxn(id); setPage("acct-review"); },
     reviewDoc, openReview: (id) => { setNotice(null); setReviewDoc(id); setPage("review"); },
     chooseOrg: (o) => { setOrg(o); setCompany(null); setPage("companies"); },
     openCompany: async (id) => {
@@ -114,7 +119,7 @@ export function Session({ bridge, identity, onSignedOut, children }: { bridge: B
       setSettings((s) => (s ? { ...s, [k]: v } : s));
     },
     signOut, fail, dismissNotice: () => setNotice(null), showNotice: setNotice,
-  }), [bridge, identity, org, orgs, company, page, reviewDoc, settings, notice, signOut, fail]);
+  }), [bridge, identity, org, orgs, company, page, reviewDoc, acctTxn, settings, notice, signOut, fail]);
 
   return <Ctx.Provider value={ctx}>{children}</Ctx.Provider>;
 }

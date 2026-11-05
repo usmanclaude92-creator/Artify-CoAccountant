@@ -190,6 +190,24 @@ OCR runs on a preprocessed copy (orientation, deskew, denoise, contrast, sharpen
 ### ADR-062 — Suggestions are scoped to the company's own workspace and the caller's permissions
 Location and metadata suggestions are generated from the company's active nodes, filing rules, categories and custom fields only; archived nodes are never offered; a suggestion the caller may not act on is reported as unavailable; accepting a suggestion goes through the normal move/update paths. Nothing is assumed from default category names and no folder is created automatically. A split is stored as a proposal and never executed in Phase 7.
 
+### ADR-063 — A pure, deterministic accounting core; AI only suggests
+Every financial number (decimal arithmetic and rounding, tax, journal generation and validation, rule resolution, duplicate levels) is computed by `acct_core`, which has no I/O, clock or framework and refuses `float`. The frontend never calculates an authoritative result. Phase 8 suggestions are deterministic rules over company configuration; no AI provider is involved, and `feature.ai_accounting_suggestions` is reserved. Printed totals that disagree with the calculation are reported with the difference and are never altered.
+
+### ADR-064 — Accounting configuration belongs to one company; templates are copied
+Chart of accounts, role mappings, tax codes and rates, periods, exchange rates, contacts, rules and approval policy are company rows with composite FKs and forced RLS. Applying a chart or tax-pack template copies it; there is no link back, and nothing a company learns or corrects is shared with another company or tenant. Corrections become rules only when a person creates the rule.
+
+### ADR-065 — One double-entry journal per transaction, balanced in two currencies, immutable once approved
+A journal holds transaction-currency and base-currency amounts and must balance in both; the service validates and a database trigger refuses approval otherwise. Approved transactions, journals and lines cannot be updated or deleted; corrections are reversals (mirror journal in an open period) or amendments. `UNIQUE (transaction_id)` makes duplicate posting impossible.
+
+### ADR-066 — Approval is a person's act under a company policy, enforced twice
+Draft → (review) → approval with preparer/approver separation, optional two levels and an approval limit. The service checks permissions and policy; CHECK constraints and a trigger enforce `approved_by`, user-only approval rows and separation. Blocking validation issues cannot be overridden; soft differences need an acknowledgement and a written reason, stored in the trail.
+
+### ADR-067 — Tax is configuration with verification status, never embedded legal advice
+Tax codes carry treatment, effective-dated rates, accounts, a source reference and a `verification_status` that only a recorded human review can change (and that any edit resets). The Oman pack is a starter copy marked unverified; it contains no exemption lists. No VAT return is produced.
+
+### ADR-068 — Ledger scope (answers D-6 for Phase 8)
+Artify keeps approved journals and offers read-only ledger, trial-balance, balance, summary and tax-summary queries over them. It is still not the ledger of record: there is no posting, closing, retained-earnings transfer or external write. Those need a separate decision before they are built.
+
 ## Outcomes of decisions taken at the start of Phase 1
 
 The product owner replied "Accept the recommendations and start Phase 1" on 2026-11-04, which settles:

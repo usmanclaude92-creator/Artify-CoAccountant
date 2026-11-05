@@ -1,6 +1,7 @@
 //! Artify Co-Accountant Desktop — Tauri shell. The webview gets ONLY the commands registered below; there is no file-system,
 //! shell, HTTP or credential capability exposed to it. Tokens stay in Rust (memory + Windows Credential Manager).
 
+mod acct_commands;
 mod commands;
 mod doc_commands;
 mod intel_commands;
@@ -124,6 +125,7 @@ pub fn run() {
             doc_commands::docs_open,
             doc_commands::mirror_sync,
             doc_commands::mirror_open,
+            acct_commands::acct_call,
             intel_commands::intel_start,
             intel_commands::intel_latest,
             intel_commands::intel_queue,

@@ -2,7 +2,7 @@
  * In-memory bridge for unit tests and for `VITE_BRIDGE=mock pnpm dev` (browser preview without Rust). It is NEVER selected
  * in a production build, and the dev preview shows a permanent "demo data" banner.
  */
-import type { AppError, Assignment, Bridge, DocDetail, ExtractionView, ExtractedField, ProcessingJob, StatementTx, DocQuery, QueueItem, StagedFile, CompanyDetail, CompanyView, EventRow, Identity, LocalDevice, Organization, RefreshOutcome, RootReport, ServerDevice, Settings, SyncStatus, WorkspaceData, WorkspaceView, WsNode } from "./types";
+import type { AcctAccount, AcctContact, AcctIssue, AcctOp, AcctTaxCode, AcctTxn, AcctTxnRow, AppError, Assignment, Bridge, DocDetail, ExtractionView, ExtractedField, ProcessingJob, StatementTx, DocQuery, QueueItem, StagedFile, CompanyDetail, CompanyView, EventRow, Identity, LocalDevice, Organization, RefreshOutcome, RootReport, ServerDevice, Settings, SyncStatus, WorkspaceData, WorkspaceView, WsNode } from "./types";
 
 export function node(id: string, parent: string | null, name: string, extra: Partial<WsNode> = {}): WsNode {
   return { id, parent_id: parent, node_type: parent ? "folder" : "section", key: id, name, display_name: null, description: "", position: 0, depth: 1, is_active: true, archived_at: null, ...extra };
@@ -40,10 +40,15 @@ export interface MockOptions {
   documents?: DocDetail[];
   /** draft extractions the review queue shows (synthetic) */
   extractions?: ExtractionView[];
+  /** synthetic accounting data the mock serves */
+  acctTransactions?: AcctTxn[];
+  acctAccounts?: AcctAccount[];
+  acctTaxCodes?: AcctTaxCode[];
+  acctContacts?: AcctContact[];
 }
 export type MockBridge = Bridge & {
   calls: string[];
-  state: { extractions: ExtractionView[]; jobs: ProcessingJob[]; docs: DocDetail[]; queue: QueueItem[]; opts: MockOptions; settings: Settings; workspaces: Record<string, WorkspaceData>; companies: Record<string, CompanyView[]>; signedIn: boolean; devices: ServerDevice[]; root: string | null };
+  state: { acct: { txns: AcctTxn[]; accounts: AcctAccount[]; taxCodes: AcctTaxCode[]; contacts: AcctContact[] }; extractions: ExtractionView[]; jobs: ProcessingJob[]; docs: DocDetail[]; queue: QueueItem[]; opts: MockOptions; settings: Settings; workspaces: Record<string, WorkspaceData>; companies: Record<string, CompanyView[]>; signedIn: boolean; devices: ServerDevice[]; root: string | null };
   emit(event: string, payload?: unknown): void;
 };
 
@@ -55,7 +60,7 @@ export function createMockBridge(opts: MockOptions = {}): MockBridge {
   const handlers = new Map<string, ((p: unknown) => void)[]>();
   const calls: string[] = [];
   const state = {
-    opts, extractions: structuredClone(opts.extractions ?? []), jobs: [] as ProcessingJob[], docs: structuredClone(opts.documents ?? []), queue: [] as QueueItem[], signedIn: false, root: opts.storageRoot ?? null,
+    opts, acct: structuredClone({ txns: opts.acctTransactions ?? [], accounts: opts.acctAccounts ?? [], taxCodes: opts.acctTaxCodes ?? [], contacts: opts.acctContacts ?? [] }), extractions: structuredClone(opts.extractions ?? []), jobs: [] as ProcessingJob[], docs: structuredClone(opts.documents ?? []), queue: [] as QueueItem[], signedIn: false, root: opts.storageRoot ?? null,
     settings: { theme: "system", language: "en", start_on_login: "false", default_company_id: "", notifications: "true", update_channel: "stable" } as Settings,
     workspaces: structuredClone(opts.workspaces ?? DEMO_WORKSPACES) as Record<string, WorkspaceData>,
     companies: structuredClone(opts.companies ?? { [orgs[0]?.id ?? "org-1"]: DEMO_COMPANIES }) as Record<string, CompanyView[]>,
@@ -238,6 +243,79 @@ export function createMockBridge(opts: MockOptions = {}): MockBridge {
     intelAccept: async (_o, _c, id, kind, sid) => { const e = state.extractions.find((x) => x.id === id); if (!e) throw err("not_found", "Extraction not found.", 404); (kind === "workspace" ? e.workspace_suggestions : e.metadata_suggestions).forEach((x) => { if (x.id === sid) x.status = "accepted"; }); return {}; },
     intelSplit: async () => ({}),
     intelPageImage: async (_o, _c, _d, page) => ({ page, data_base64: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==" }),
+    // ---- accounting (synthetic: the mock mirrors the server's rules for who may do what, but calculates nothing of its own)
+    acct: async <T,>(_o: string, _c: string, op: AcctOp, args?: { ids?: string[]; query?: Record<string, string>; body?: unknown }): Promise<T> => {
+      rec(`acct:${op}`); needAuth();
+      const A = state.acct;
+      const body = (args?.body ?? {}) as Record<string, unknown>;
+      const find = (): AcctTxn => { const t = A.txns.find((x) => x.id === args?.ids?.[0]); if (!t) throw err("not_found", "Transaction not found.", 404); return t; };
+      const note = (t: AcctTxn, action: string, from: string | null, to: string | null, n: string | null = null) => t.trail.push({ action, from_status: from, to_status: to, actor_type: "user", actor: "Test Accountant", note: n, created_at: "2026-03-02T09:00:00Z" });
+      const setStatus = (t: AcctTxn, to: string, action: string, n: string | null = null) => { const from = t.status; t.status = to; note(t, action, from, to, n); return t; };
+      const blockingOf = (t: AcctTxn) => t.issues.filter((i) => i.blocking);
+      const refresh = (t: AcctTxn) => { t.blocking_count = blockingOf(t).length; t.can.submit = t.status === "draft" && t.blocking_count === 0; };
+      const micro = (v: string) => BigInt(Math.round(Number(v) * 1_000_000));
+      const out = (v: unknown) => structuredClone(v) as T;
+      switch (op) {
+        case "config": return out({ initialized: true, config: { base_currency: "OMR", amount_scale: 3 }, company_base_currency: "OMR" });
+        case "accounts": return out({ items: A.accounts });
+        case "tax_codes": return out({ items: A.taxCodes });
+        case "contacts": return out({ items: A.contacts, total: A.contacts.length, limit: 50, offset: 0 });
+        case "transactions": {
+          const q = args?.query ?? {};
+          const items: AcctTxnRow[] = A.txns.filter((t) => (!q.status || t.status === q.status) && (!q.q || t.number.includes(q.q) || (t.doc_number ?? "").includes(q.q))).map((t) => ({ id: t.id, number: t.number, txn_type: t.txn_type, type_label: t.type_label, status: t.status, transaction_date: t.transaction_date, doc_number: t.doc_number, currency: t.currency, gross_amount: t.gross_amount, duplicate_status: t.duplicate_status, contact_name: t.contact?.display_name ?? null, document_name: t.document?.display_name ?? null, blocking_count: t.blocking_count }));
+          return out({ items, total: items.length, limit: 50, offset: 0 });
+        }
+        case "transaction": return out(find());
+        case "from_extraction": {
+          const x = state.extractions.find((e) => e.id === args?.ids?.[0]);
+          if (!x || x.status !== "approved") throw err("conflict", "Only extractions that an accountant has approved can become accounting transactions.", 409);
+          const t = mockAcctTxn(`tx-${A.txns.length + 1}`, { source_document_id: x.document_id, extraction_id: x.id, document: { id: x.document_id, display_name: state.docs.find((d) => d.id === x.document_id)?.display_name ?? "Document" } });
+          A.txns.push(t); return out(t);
+        }
+        case "txn_create": { const t = mockAcctTxn(`tx-${A.txns.length + 1}`, { txn_type: String(body.txn_type ?? "purchase_invoice") }); A.txns.push(t); return out(t); }
+        case "txn_update": { const t = find(); if (t.status !== "draft") throw err("conflict", "A transaction that is " + t.status.replace("_", " ") + " cannot be edited.", 409); Object.assign(t, body); t.row_version++; return out(t); }
+        case "txn_lines": { const t = find(); if (t.status !== "draft") throw err("conflict", "A transaction that is " + t.status.replace("_", " ") + " cannot be edited.", 409); return out(t); }
+        case "txn_contact": {
+          const t = find(); const id = (body.contact_id as string | null) ?? null;
+          t.contact_id = id; t.contact = id ? (A.contacts.find((c) => c.id === id) ? { id, display_name: A.contacts.find((c) => c.id === id)?.display_name ?? "", kind: "supplier", tax_number: null } : null) : null;
+          t.issues = t.issues.filter((i) => i.code !== "contact_required"); refresh(t); return out(t);
+        }
+        case "txn_journal_lines": {
+          const t = find(); if (t.status !== "draft") throw err("conflict", "A transaction that is " + t.status.replace("_", " ") + " cannot be edited.", 409);
+          const lines = (body.lines as { account_id: string; debit?: string; credit?: string }[]).map((l, i) => { const a = A.accounts.find((x) => x.id === l.account_id); return { id: `jl-${i}`, line_no: i + 1, account_id: l.account_id, account_code: a?.code ?? "?", account_name: a?.name ?? "?", debit: l.debit ?? "0", credit: l.credit ?? "0", base_debit: l.debit ?? "0", base_credit: l.credit ?? "0", currency: t.currency, description: null, reference: null, tax_code_id: null, contact_id: null, source: "manual" as const }; });
+          if (t.journal) t.journal.lines = lines; else t.journal = { id: "j-1", number: null, journal_type: "general", journal_date: t.transaction_date, status: "draft", currency: t.currency, base_currency: "OMR", exchange_rate: null, total_debit: "0", total_credit: "0", narration: null, lines };
+          const dr = lines.reduce((a, l) => a + micro(l.debit), 0n), cr = lines.reduce((a, l) => a + micro(l.credit), 0n);
+          t.balanced = dr === cr; t.journal_mode = "manual"; t.debit_total = String(Number(dr) / 1e6); t.credit_total = String(Number(cr) / 1e6);
+          t.issues = t.issues.filter((i) => i.code !== "journal_unbalanced");
+          if (!t.balanced) t.issues.push({ code: "journal_unbalanced", severity: "error", message: `Debits and credits differ by ${Number(dr - cr) / 1e6}.`, blocking: true, data: {} } as AcctIssue);
+          refresh(t); return out(t);
+        }
+        case "txn_regenerate": case "txn_validate": { const t = find(); refresh(t); return out(t); }
+        case "txn_submit": {
+          const t = find(); if (t.status !== "draft") throw err("conflict", "Only a draft can be submitted.", 409);
+          if (blockingOf(t).length) throw err("conflict", `Resolve the blocking items before you submit: ${blockingOf(t)[0]?.message}`, 409);
+          return out(setStatus(t, t.policy.levels === 2 ? "awaiting_review" : "awaiting_approval", "submit"));
+        }
+        case "txn_review": { const t = find(); if (t.status !== "awaiting_review") throw err("conflict", "This transaction is not waiting for review.", 409); t.people.reviewed_by = "Test Accountant"; return out(setStatus(t, "awaiting_approval", "review_approve")); }
+        case "txn_approve": {
+          const t = find();
+          if (t.status !== "awaiting_approval") throw err("conflict", "This transaction is not waiting for approval.", 409);
+          if (!t.can.approve) throw err("forbidden", "You prepared this transaction; the company's policy requires a different person to approve it.", 403);
+          if (blockingOf(t).length) throw err("conflict", `This transaction cannot be approved: ${blockingOf(t)[0]?.message}`, 409);
+          const soft = t.issues.filter((i) => i.severity === "error" && !i.blocking);
+          if (soft.length && !(body.acknowledge && String(body.note ?? "").trim())) throw err("conflict", "The document differs from the calculation. Review the differences, then approve with an acknowledgement and a written reason.", 409);
+          t.can = { ...t.can, approve: false, reject: false, request_correction: false, reverse: true };
+          if (t.journal) { t.journal.status = "approved"; t.journal.number = "JV-000001"; }
+          return out(setStatus(t, "approved", "approve", (body.note as string | null) ?? null));
+        }
+        case "txn_reject": { const t = find(); if (String(body.reason ?? "").length < 3) throw err("validation_error", "A reason is required.", 422); t.rejection_reason = String(body.reason); t.can = { ...t.can, approve: false, reject: false, revise: true }; return out(setStatus(t, "rejected", "reject", String(body.reason))); }
+        case "txn_request_correction": { const t = find(); t.correction_note = String(body.reason); t.can = { ...t.can, edit: true, approve: false, reject: false }; return out(setStatus(t, "draft", "request_correction", String(body.reason))); }
+        case "txn_revise": { const t = find(); t.can = { ...t.can, edit: true, revise: false }; return out(setStatus(t, "draft", "revise")); }
+        case "txn_reverse": { const t = find(); if (t.status !== "approved") throw err("conflict", "Only an approved transaction can be reversed.", 409); t.can.reverse = false; return out(setStatus(t, "reversed", "reverse", String(body.reason))); }
+        case "trial_balance": return out({ as_of: null, rows: [], debit: "0", credit: "0", balanced: true });
+        default: throw err("unsupported", "The mock does not implement this accounting action.", 501);
+      }
+    },
     on: async (event, handler) => { handlers.set(event, [...(handlers.get(event) ?? []), handler]); return () => handlers.set(event, (handlers.get(event) ?? []).filter((h) => h !== handler)); },
   };
   return b;
@@ -262,5 +340,23 @@ export function mockExtraction(id: string, doc: string, over: Partial<Extraction
     line_items: [], line_fields: [{ key: "description", label: "Description", kind: "text" }, { key: "amount", label: "Amount", kind: "money" }],
     classification: { id: "c-1", type_key: "tax_invoice", kind_key: "purchase_invoice", confidence: 0.92, method: "rules", evidence: null, alternatives: null, needs_manual: false, provider_key: "rules", review_status: "suggested", created_at: "2026-03-01T10:00:00Z" },
     workspace_suggestions: [], metadata_suggestions: [], split_proposal: null, unresolved: { fields: 1, line_items: 0, transactions: 0 }, ...over,
+  };
+}
+
+/** Synthetic awaiting-approval transaction for UI tests. Every number is made up and nothing here is calculated. */
+export function mockAcctTxn(id: string, over: Partial<AcctTxn> = {}): AcctTxn {
+  const line = (n: number, code: string, name: string, debit: string, credit: string) => ({ id: `jl${n}`, line_no: n, account_id: `acc-${code}`, account_code: code, account_name: name, debit, credit, base_debit: debit, base_credit: credit, currency: "OMR", description: null, reference: null, tax_code_id: null, contact_id: null, source: "generated" as const });
+  return {
+    id, number: `TX-${id.replace(/\D/g, "").padStart(6, "0") || "000001"}`, txn_type: "purchase_invoice", type_label: "Purchase invoice", status: "awaiting_approval", source_document_id: null, extraction_id: null,
+    transaction_date: "2025-03-14", due_date: null, doc_number: "INV-77", contact_id: "ct-1", contact_suggestions: [], settlement_account_id: null, counter_account_id: null, currency: "OMR",
+    exchange_rate: null, rate_source: null, rate_date: null, prices_include_tax: false, net_amount: "100.000000", tax_amount: "5.000000", gross_amount: "105.000000", base_gross_amount: "105.000000",
+    narration: null, journal_mode: "generated", duplicate_status: "none", correction_note: null, rejection_reason: null, row_version: 1,
+    lines: [{ id: "l1", line_no: 1, description: "Office paper", account_id: "acc-6100", account_code: "6100", account_name: "General expenses", account_source: "role_default", entry_side: null, quantity: null, unit_price: null, discount: "0", net_amount: "100.000000", tax_amount: "5.000000", gross_amount: "105.000000", tax_code_id: "tx-std", tax_code: "OM_STD", dimensions: {}, calc: {} }],
+    journal: { id: "j1", number: null, journal_type: "purchases", journal_date: "2025-03-14", status: "draft", currency: "OMR", base_currency: "OMR", exchange_rate: null, total_debit: "105.000000", total_credit: "105.000000", narration: null, lines: [line(1, "6100", "General expenses", "100.000000", "0"), line(2, "1300", "Input tax", "5.000000", "0"), line(3, "2100", "Accounts payable", "0", "105.000000")] },
+    debit_total: "105.000000", credit_total: "105.000000", base_debit_total: "105.000000", base_credit_total: "105.000000", balanced: true, issues: [], blocking_count: 0,
+    trail: [{ action: "create", from_status: null, to_status: "draft", actor_type: "user", actor: "Preparer", note: null, created_at: "2026-03-01T10:00:00Z" }, { action: "submit", from_status: "draft", to_status: "awaiting_approval", actor_type: "user", actor: "Preparer", note: null, created_at: "2026-03-01T10:05:00Z" }],
+    duplicates: [], document: null, contact: { id: "ct-1", display_name: "Gulf Office Supplies", kind: "supplier", tax_number: "OM123" }, people: { prepared_by: "Preparer" },
+    can: { edit: false, submit: false, review: false, approve: true, reject: true, request_correction: true, revise: false, reverse: false },
+    policy: { separate_preparer_approver: true, levels: 1, distinct_levels: true, approval_limit: null }, ...over,
   };
 }

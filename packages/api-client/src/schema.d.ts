@@ -3593,6 +3593,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/companies/{company_id}/sync/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Changes
+         * @description What changed in this company after `cursor` (oldest first), limited to what the caller may see. Time comes from the
+         *     database, never from a device. Re-reading with `overlap_seconds` is safe: items are idempotent by (kind, id, revision).
+         */
+        get: operations["sync_changes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{company_id}/sync/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check
+         * @description For items a client holds with the revision it last saw: current, stale, locked or missing, and why.
+         */
+        post: operations["sync_check"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/companies/{company_id}/workspace": {
         parameters: {
             query?: never;
@@ -6955,27 +6996,12 @@ export interface components {
              */
             role_key: "platform_owner" | "platform_admin" | "platform_support" | "platform_billing" | "platform_auditor" | "platform_readonly";
         };
-        /** CheckIn */
-        CheckIn: {
-            /**
-             * Action
-             * @enum {string}
-             */
-            action: "view" | "upload" | "edit" | "rename" | "move" | "archive" | "delete" | "configure" | "manage_permissions";
-            /** Node Id */
-            node_id?: string | null;
-            /**
-             * User Id
-             * Format: uuid
-             */
-            user_id: string;
-        };
         /** ChecklistIn */
         ChecklistIn: {
             /** Description */
             description?: string | null;
             /** Items */
-            items?: components["schemas"]["ItemIn"][];
+            items?: components["schemas"]["artify_api__routers__bookkeeping__ItemIn"][];
             /** Name */
             name: string;
         };
@@ -8534,24 +8560,6 @@ export interface components {
             status: "draft" | "open" | "paid" | "void";
             /** Subscription Id */
             subscription_id: string | null;
-        };
-        /** ItemIn */
-        ItemIn: {
-            /** Assigned Role */
-            assigned_role?: string | null;
-            /** Auto Rule */
-            auto_rule?: string | null;
-            /** Description */
-            description?: string | null;
-            /**
-             * Mandatory
-             * @default false
-             */
-            mandatory: boolean;
-            /** Position */
-            position?: number | null;
-            /** Title */
-            title: string;
         };
         /** ItemPatch */
         ItemPatch: {
@@ -11365,6 +11373,24 @@ export interface components {
             /** Reason */
             reason?: string | null;
         };
+        /** ItemIn */
+        artify_api__routers__bookkeeping__ItemIn: {
+            /** Assigned Role */
+            assigned_role?: string | null;
+            /** Auto Rule */
+            auto_rule?: string | null;
+            /** Description */
+            description?: string | null;
+            /**
+             * Mandatory
+             * @default false
+             */
+            mandatory: boolean;
+            /** Position */
+            position?: number | null;
+            /** Title */
+            title: string;
+        };
         /** NoteIn */
         artify_api__routers__bookkeeping__NoteIn: {
             /** Note */
@@ -11443,6 +11469,38 @@ export interface components {
             acknowledge_validation_errors: boolean;
             /** Note */
             note?: string | null;
+        };
+        /** CheckIn */
+        artify_api__routers__sync__CheckIn: {
+            /** Items */
+            items: components["schemas"]["artify_api__routers__sync__ItemIn"][];
+        };
+        /** ItemIn */
+        artify_api__routers__sync__ItemIn: {
+            /** Base Revision */
+            base_revision?: number | null;
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "workspace" | "document" | "transaction" | "closing" | "export";
+        };
+        /** CheckIn */
+        artify_api__routers__workspace__CheckIn: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "view" | "upload" | "edit" | "rename" | "move" | "archive" | "delete" | "configure" | "manage_permissions";
+            /** Node Id */
+            node_id?: string | null;
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
         };
         /** DuplicateIn */
         artify_api__routers__workspace__DuplicateIn: {
@@ -14751,7 +14809,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ItemIn"];
+                "application/json": components["schemas"]["artify_api__routers__bookkeeping__ItemIn"];
             };
         };
         responses: {
@@ -19301,6 +19359,77 @@ export interface operations {
             };
         };
     };
+    sync_changes: {
+        parameters: {
+            query?: {
+                cursor?: string | null;
+                limit?: number;
+                kind?: string[] | null;
+                overlap_seconds?: number;
+            };
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sync_check: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["artify_api__routers__sync__CheckIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     workspace_get: {
         parameters: {
             query?: {
@@ -20678,7 +20807,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CheckIn"];
+                "application/json": components["schemas"]["artify_api__routers__workspace__CheckIn"];
             };
         };
         responses: {

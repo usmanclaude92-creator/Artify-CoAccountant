@@ -1,6 +1,6 @@
 # Phase 12 — Cloud Synchronization, Windows Integration, Security Testing and Commercial Release
 
-**Status: NOT STARTED.** Requires decisions D-3 (production hosting/residency), D-4 (tenant keys), D-8 (retention values), and D-11 (legal) before any external pilot.
+**Status: PARTIALLY DELIVERED — not commercially ready** ([completion report](PHASE_12_COMPLETION_REPORT.md)). Requires decisions D-3 (production hosting/residency), D-4 (tenant keys), D-8 (retention values), and D-11 (legal) before any external pilot.
 
 ## Objectives
 

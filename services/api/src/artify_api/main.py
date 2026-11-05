@@ -35,6 +35,7 @@ from artify_api.routers import (
     platform_support,
     processing,
     support_grants,
+    sync,
     workspace,
 )
 from artify_api.settings import get_settings
@@ -53,6 +54,7 @@ ROUTERS = (
     accounting.router,
     excel.router,
     bookkeeping.router,
+    sync.router,
     processing.router,
     me.router,
     platform.router,

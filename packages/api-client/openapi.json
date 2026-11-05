@@ -1960,48 +1960,6 @@
         "title": "ChangeRole",
         "type": "object"
       },
-      "CheckIn": {
-        "properties": {
-          "action": {
-            "enum": [
-              "view",
-              "upload",
-              "edit",
-              "rename",
-              "move",
-              "archive",
-              "delete",
-              "configure",
-              "manage_permissions"
-            ],
-            "title": "Action",
-            "type": "string"
-          },
-          "node_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Node Id"
-          },
-          "user_id": {
-            "format": "uuid",
-            "title": "User Id",
-            "type": "string"
-          }
-        },
-        "required": [
-          "user_id",
-          "action"
-        ],
-        "title": "CheckIn",
-        "type": "object"
-      },
       "ChecklistIn": {
         "properties": {
           "description": {
@@ -2018,7 +1976,7 @@
           },
           "items": {
             "items": {
-              "$ref": "#/components/schemas/ItemIn"
+              "$ref": "#/components/schemas/artify_api__routers__bookkeeping__ItemIn"
             },
             "maxItems": 100,
             "title": "Items",
@@ -7137,74 +7095,6 @@
           "overdue"
         ],
         "title": "InvoiceRow",
-        "type": "object"
-      },
-      "ItemIn": {
-        "properties": {
-          "assigned_role": {
-            "anyOf": [
-              {
-                "maxLength": 40,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Assigned Role"
-          },
-          "auto_rule": {
-            "anyOf": [
-              {
-                "maxLength": 40,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Auto Rule"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "maxLength": 500,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
-          },
-          "mandatory": {
-            "default": false,
-            "title": "Mandatory",
-            "type": "boolean"
-          },
-          "position": {
-            "anyOf": [
-              {
-                "minimum": 0.0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Position"
-          },
-          "title": {
-            "maxLength": 200,
-            "minLength": 1,
-            "title": "Title",
-            "type": "string"
-          }
-        },
-        "required": [
-          "title"
-        ],
-        "title": "ItemIn",
         "type": "object"
       },
       "ItemPatch": {
@@ -15568,6 +15458,74 @@
         "title": "ReasonIn",
         "type": "object"
       },
+      "artify_api__routers__bookkeeping__ItemIn": {
+        "properties": {
+          "assigned_role": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned Role"
+          },
+          "auto_rule": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auto Rule"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "mandatory": {
+            "default": false,
+            "title": "Mandatory",
+            "type": "boolean"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position"
+          },
+          "title": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "ItemIn",
+        "type": "object"
+      },
       "artify_api__routers__bookkeeping__NoteIn": {
         "properties": {
           "note": {
@@ -15840,6 +15798,105 @@
           }
         },
         "title": "ApproveIn",
+        "type": "object"
+      },
+      "artify_api__routers__sync__CheckIn": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/artify_api__routers__sync__ItemIn"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "CheckIn",
+        "type": "object"
+      },
+      "artify_api__routers__sync__ItemIn": {
+        "properties": {
+          "base_revision": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Revision"
+          },
+          "id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "workspace",
+              "document",
+              "transaction",
+              "closing",
+              "export"
+            ],
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "id"
+        ],
+        "title": "ItemIn",
+        "type": "object"
+      },
+      "artify_api__routers__workspace__CheckIn": {
+        "properties": {
+          "action": {
+            "enum": [
+              "view",
+              "upload",
+              "edit",
+              "rename",
+              "move",
+              "archive",
+              "delete",
+              "configure",
+              "manage_permissions"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "node_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Node Id"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "action"
+        ],
+        "title": "CheckIn",
         "type": "object"
       },
       "artify_api__routers__workspace__DuplicateIn": {
@@ -21548,7 +21605,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ItemIn"
+                "$ref": "#/components/schemas/artify_api__routers__bookkeeping__ItemIn"
               }
             }
           },
@@ -30166,6 +30223,163 @@
         ]
       }
     },
+    "/api/v1/companies/{company_id}/sync/changes": {
+      "get": {
+        "description": "What changed in this company after `cursor` (oldest first), limited to what the caller may see. Time comes from the\ndatabase, never from a device. Re-reading with `overlap_seconds` is safe: items are idempotent by (kind, id, revision).",
+        "operationId": "sync_changes",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          },
+          {
+            "in": "query",
+            "name": "overlap_seconds",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 600,
+              "minimum": 0,
+              "title": "Overlap Seconds",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Sync Changes"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Changes",
+        "tags": [
+          "sync"
+        ]
+      }
+    },
+    "/api/v1/companies/{company_id}/sync/check": {
+      "post": {
+        "description": "For items a client holds with the revision it last saw: current, stale, locked or missing, and why.",
+        "operationId": "sync_check",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/artify_api__routers__sync__CheckIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Sync Check"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Check",
+        "tags": [
+          "sync"
+        ]
+      }
+    },
     "/api/v1/companies/{company_id}/workspace": {
       "get": {
         "description": "The caller's view of one company's workspace: only nodes they may view, with what they may do on each.",
@@ -32452,7 +32666,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CheckIn"
+                "$ref": "#/components/schemas/artify_api__routers__workspace__CheckIn"
               }
             }
           },

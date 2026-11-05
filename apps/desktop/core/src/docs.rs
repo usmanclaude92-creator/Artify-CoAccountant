@@ -228,12 +228,12 @@ impl Desktop {
         self.mirror_sync_inner(&user, &company_id, &base)?;
         let rel_dir = self.db()?.mirror_nodes(&user, &company_id)?.get(&node).cloned();
         let dir = match rel_dir {
-            Some(r) => base.join(r),
+            Some(r) => mirror::join_rel(&base, &r),
             None => base.clone(), // the node is archived or not part of the mirror: keep the file at the company level
         };
         std::fs::create_dir_all(&dir)?;
         if let Some((rel, sha)) = self.db()?.mirror_get_file(&user, &company_id, &doc, ver)? {
-            let existing = base.join(&rel);
+            let existing = mirror::join_rel(&base, &rel);
             if existing.is_file() && file_sha(&existing).map(|h| h == sha).unwrap_or(false) {
                 return Ok(SavedCopy {
                     path: existing.display().to_string(),
@@ -314,7 +314,7 @@ impl Desktop {
             Some(n) => {
                 let rel = self.db()?.mirror_nodes(&user, &company)?.get(&id(n)?).cloned();
                 match rel {
-                    Some(r) if base.join(&r).is_dir() => Ok(base.join(r)),
+                    Some(r) if mirror::join_rel(&base, &r).is_dir() => Ok(mirror::join_rel(&base, &r)),
                     _ => Ok(base),
                 }
             }

@@ -96,7 +96,7 @@ pub fn apply(base: &Path, desired: &HashMap<String, String>, previous: &HashMap<
     let mut order: Vec<(&String, &String)> = desired.iter().collect();
     order.sort_by_key(|(id, rel)| (rel.matches('/').count(), (*rel).clone(), (*id).clone()));
     for (id, rel) in order {
-        let target = base.join(rel);
+        let target = join_rel(base, rel);
         if base.display().to_string().chars().count() + rel.chars().count() + 1 > MAX_COMPANY_DIR_PATH + 80 {
             report.too_long.push(rel.clone());
             continue;
@@ -112,7 +112,7 @@ pub fn apply(base: &Path, desired: &HashMap<String, String>, previous: &HashMap<
                 }
                 mapping.insert(id.clone(), rel.clone());
             }
-            Some(old) if base.join(&old).is_dir() => {
+            Some(old) if join_rel(base, &old).is_dir() => {
                 if target.exists() {
                     report.conflicts.push(rel.clone());
                     mapping.insert(id.clone(), old);
@@ -121,7 +121,7 @@ pub fn apply(base: &Path, desired: &HashMap<String, String>, previous: &HashMap<
                 if let Some(parent) = target.parent() {
                     fs::create_dir_all(parent)?;
                 }
-                fs::rename(base.join(&old), &target)?;
+                fs::rename(join_rel(base, &old), &target)?;
                 renames.push((old, rel.clone()));
                 mapping.insert(id.clone(), rel.clone());
                 report.renamed += 1;
@@ -144,6 +144,11 @@ pub fn apply(base: &Path, desired: &HashMap<String, String>, previous: &HashMap<
     }
     report.orphaned = mapping.keys().filter(|id| !desired.contains_key(*id)).count();
     Ok(Applied { report, mapping, renames })
+}
+
+/// Join a `/`-separated relative path onto `base` component by component (pure `\\` paths on Windows).
+pub fn join_rel(base: &Path, rel: &str) -> std::path::PathBuf {
+    rel.split('/').filter(|c| !c.is_empty()).fold(base.to_path_buf(), |p, c| p.join(c))
 }
 
 /// A Windows-safe file name that keeps its extension (the folder-name sanitizer truncates, which would cut it off).

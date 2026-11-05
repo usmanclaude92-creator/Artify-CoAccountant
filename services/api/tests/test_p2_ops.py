@@ -111,7 +111,9 @@ def test_usage_is_accurate_isolated_and_flags_limits(client, mailer, owner_engin
     )  # no leakage between tenants
     assert ua["limit.users"]["current"] == 1 and ua["limit.devices"]["current"] == 0
     assert rows[f"Usage{tag} A"]["worst"] == "approaching" and rows[f"Usage{tag} B"]["worst"] == "ok"
-    assert ua["quota.storage_bytes"]["current"] == 0 and ua["quota.storage_bytes"]["status"] == "ok"  # metered since Phase 6
+    assert (
+        ua["quota.storage_bytes"]["current"] == 0 and ua["quota.storage_bytes"]["status"] == "ok"
+    )  # metered since Phase 6
     assert ua["quota.storage_bytes"]["enforced_now"] is True and ua["limit.companies"]["enforced_now"] is True
     assert ua["quota.ai_units_per_month"]["current"] is None and ua["quota.ai_units_per_month"]["enforced_now"] is False
     assert ua["feature.api_access"]["status"] == "flag" and ua["feature.api_access"]["enabled"] is False

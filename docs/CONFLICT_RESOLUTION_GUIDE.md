@@ -1,6 +1,6 @@
 # Conflict Resolution Guide
 
-What a "conflict" is in this system, what the server does today, and the rules every client must follow. **Status: the server records, verifies and keeps an immutable, audited history of conflicts and their resolution; the desktop and phone apps list and resolve them; the Control Center page and automatic reporting at every write call site are not built.** Tests: `test_p12_conflicts.py` (6), `core/tests/sync.rs`, `sync.test.tsx`, `sync_test.dart`.
+What a "conflict" is in this system, what the server does today, and the rules every client must follow. **Status: the server records, verifies and keeps an immutable, audited history of conflicts and their resolution; the desktop and phone apps and the Control Center list and resolve them; open conflicts feed Daily Closing validation. Automatic reporting exists only for the desktop's new-version uploads.** Tests: `test_p12_conflicts.py` (6), `core/tests/sync.rs`, `sync.test.tsx`, `sync_test.dart`.
 
 ## 1. Where conflicts come from
 
@@ -49,6 +49,7 @@ The person who found the conflict, or anyone holding `sync.resolve` (firm owner,
 
 ## 6. What is still missing
 
-* The apps do not call the preflight automatically before every queued change; reporting happens where it is wired (the Synchronization page, and call sites that add it).
+* Only the desktop's new-version upload preflights and reports automatically (see [SYNCHRONIZATION_ARCHITECTURE §7](SYNCHRONIZATION_ARCHITECTURE.md)); other write paths rely on `base_row_version` refusals and the Synchronization page.
 * No merge editor and no side-by-side field comparison; the summaries stored with a conflict are small and client-supplied (limited to 4 KB, never trusted for decisions).
-* A Control Center page for firm-wide conflict review, and the open-conflict count as a Daily Closing validation input (the closing still uses device-declared numbers).
+* The Control Center page lists and decides conflicts per company; there is no firm-wide cross-company view.
+* Open conflicts now feed Daily Closing validation (`SYNC_SERVER_CONFLICTS`, company-wide, severity error, policy-adjustable).

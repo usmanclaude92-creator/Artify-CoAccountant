@@ -217,6 +217,38 @@ impl Desktop {
     }
 }
 
+impl Desktop {
+    /// Before a queued NEW VERSION of an existing document is registered, ask the server whether that document can take one.
+    /// Returns the reason to stop, or `None` to go on. A document that is locked (archived, deleted, quarantined) is reported to
+    /// the server as a conflict so the firm can see it; one that is not visible any more (`missing`) cannot be reported. A
+    /// document that merely changed since this computer last read it (`stale`) does NOT stop the upload: versions are
+    /// append-only, so a newer one can never overwrite anything. Network trouble does not stop it either - the server enforces
+    /// the same rules when the upload is registered.
+    pub(crate) async fn preflight_new_version(&self, org: &str, company: &str, doc: &str, file_name: &str) -> Option<AppError> {
+        let user = self.user_id().ok()?;
+        let base = self.db().ok()?.feed_item_revision(&user, company, "document", doc).ok().flatten();
+        let body = json!({ "items": [{ "kind": "document", "id": doc, "base_revision": base }] });
+        let res = self.api.post(&format!("/companies/{company}/sync/check"), Some(org), Some(body)).await.ok()?;
+        let state = res.body.pointer("/items/0/state").and_then(Value::as_str).unwrap_or("current");
+        match state {
+            "locked" => {
+                let device = self.local_device(org).ok().flatten().map(|d| d.device_id).unwrap_or_else(|| "desktop".into());
+                let report = json!({ "kind": "document", "id": doc, "client_id": device, "base_revision": base, "local_summary": { "file_name": file_name, "intent": "new_version" } });
+                let _ = self.api.post(&format!("/companies/{company}/sync/conflicts"), Some(org), Some(report)).await;
+                Some(AppError::new(
+                    "document_locked",
+                    "That document can no longer take a new version (it was archived, deleted or held by the server). Ask your accountant.",
+                ))
+            }
+            "missing" => Some(AppError::new(
+                "document_unavailable",
+                "That document is no longer available to you, so a new version cannot be added.",
+            )),
+            _ => None,
+        }
+    }
+}
+
 fn parse_items(page: &Value) -> Result<Vec<FeedItem>> {
     let arr = page.get("items").and_then(Value::as_array).ok_or_else(|| AppError::malformed("sync feed"))?;
     arr.iter()

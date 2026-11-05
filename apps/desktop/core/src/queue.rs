@@ -503,6 +503,14 @@ impl Desktop {
                 self.db()?.queue_set_sha(user, &row.id, row.sha256.as_deref().unwrap_or_default(), md.len() as i64, mtime_of(&md))?;
             }
             // 2. register (idempotent: the same key always yields the same server session)
+            if row.server_op_id.is_none() {
+                if let Some(target) = row.target_document_id.clone() {
+                    let name = row.private.get("file_name").and_then(Value::as_str).unwrap_or_default().to_string();
+                    if let Some(stop) = self.preflight_new_version(&org, &company, &target, &name).await {
+                        return self.fail(user, &row, &stop.code, &stop.message, None);
+                    }
+                }
+            }
             let op = match &row.server_op_id {
                 Some(op_id) => self.api.get(&format!("{base}/{op_id}"), Some(&org)).await,
                 None => {

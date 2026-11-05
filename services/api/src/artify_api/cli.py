@@ -1,4 +1,4 @@
-"""Operations CLI:  artify-api migrate | seed | bootstrap-dev | create-platform-admin | dispatch-outbox | seal-audit | reconcile"""
+"""Operations CLI:  artify-api migrate | seed | bootstrap-dev | create-platform-admin | dispatch-outbox | seal-audit | audit-heads | audit-check-anchors | reconcile"""
 
 from __future__ import annotations
 
@@ -110,6 +110,7 @@ def cmd_seal_audit(args: argparse.Namespace) -> int:
         while True:
             with transaction(dispatcher_engine(), DbContext()) as conn:
                 n = conn.execute(text("SELECT app.audit_seal(:n)"), {"n": args.batch}).scalar_one()
+                n += conn.execute(text("SELECT app.platform_audit_seal(:n)"), {"n": args.batch}).scalar_one()
             total += n
             if n < args.batch:
                 break
@@ -117,6 +118,59 @@ def cmd_seal_audit(args: argparse.Namespace) -> int:
         if not args.loop:
             return 0
         time.sleep(args.loop)
+
+
+def cmd_audit_heads(args: argparse.Namespace) -> int:
+    """Print the newest seal of every audit chain as JSON lines (organization_id null = the platform chain). Copy the output to a
+    store the database operator cannot rewrite (an append-only bucket in another account, a signed e-mail, a ticket)."""
+    import json
+    from datetime import UTC, datetime
+
+    from artify_api.db import DbContext, dispatcher_engine, transaction
+
+    now = datetime.now(UTC).isoformat()
+    with transaction(dispatcher_engine(), DbContext()) as conn:
+        rows = conn.execute(
+            text("SELECT organization_id, head_seq, head_hash FROM app.audit_heads() ORDER BY 1 NULLS FIRST")
+        ).all()
+    out = open(args.out, "a", encoding="utf-8") if args.out else sys.stdout  # noqa: SIM115
+    try:
+        for r in rows:
+            out.write(
+                json.dumps({"at": now, "organization_id": str(r[0]) if r[0] else None, "seq": int(r[1]), "hash": r[2]})
+                + "\n"
+            )
+    finally:
+        if args.out:
+            out.close()
+    return 0
+
+
+def cmd_audit_check_anchors(args: argparse.Namespace) -> int:
+    """Compare previously exported heads with the database: every exported seal must still exist with the same hash. A missing seal
+    means the newest history was cut off; a different hash means it was rewritten. Exit code 1 on any mismatch."""
+    import json
+
+    from artify_api.db import DbContext, dispatcher_engine, transaction
+
+    bad = 0
+    checked = 0
+    with open(args.file, encoding="utf-8") as f, transaction(dispatcher_engine(), DbContext()) as conn:
+        for line in f:
+            if not line.strip():
+                continue
+            a = json.loads(line)
+            got = conn.execute(
+                text("SELECT app.audit_seal_at(CAST(:o AS uuid), :s)"), {"o": a["organization_id"], "s": a["seq"]}
+            ).scalar_one()
+            checked += 1
+            if got != a["hash"]:
+                bad += 1
+                print(
+                    f"MISMATCH org={a['organization_id']} seq={a['seq']} exported_at={a['at']}: {'seal missing' if got is None else 'hash differs'}"
+                )
+    print(f"checked {checked} anchor(s): {'ALL MATCH' if not bad else f'{bad} MISMATCH'}")
+    return 1 if bad else 0
 
 
 def cmd_dispatch_outbox(args: argparse.Namespace) -> int:
@@ -157,6 +211,12 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--batch", type=int, default=1000, help="events per database call (1-10000)")
     p.add_argument("--loop", type=int, default=0, metavar="SECONDS", help="keep running, polling every SECONDS")
     p.set_defaults(fn=cmd_seal_audit)
+    p = sub.add_parser("audit-heads")
+    p.add_argument("--out", help="append JSON lines to this file instead of printing them")
+    p.set_defaults(fn=cmd_audit_heads)
+    p = sub.add_parser("audit-check-anchors")
+    p.add_argument("file", help="a file written by audit-heads (possibly copied back from the external store)")
+    p.set_defaults(fn=cmd_audit_check_anchors)
     p = sub.add_parser("dispatch-outbox")
     p.add_argument(
         "--inline", action="store_true", help="handle events in this process instead of queueing them to Celery"

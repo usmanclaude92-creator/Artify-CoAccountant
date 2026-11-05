@@ -25,6 +25,7 @@
 | `DOC_QUARANTINED` | error | quarantined documents | yes |
 | `DOC_UNPROCESSED` / `DOC_PROCESSING_FAILED` / `DOC_NEEDS_MANUAL` / `DOC_AWAITING_REVIEW` | warning / error / error / warning | processing state of the day's documents | yes |
 | `SYNC_CONFLICTS` / `SYNC_FAILED` / `SYNC_PENDING` | error / error / warning | **declared by a device**; shown as such | yes |
+| `SYNC_SERVER_CONFLICTS` | error | **counted by the server** (`sync_conflicts`, company-wide, Phase 12): unresolved synchronisation conflicts; acknowledge or resolve them | yes |
 | `SYNC_NOT_REPORTED` | info | no device reported for this day | yes |
 | `CHECKLIST_MANDATORY_OPEN` | error | a mandatory checklist item is not done | yes |
 | `TASK_BLOCKING_OPEN` / `TASK_OVERDUE` | error / warning | tasks | yes |

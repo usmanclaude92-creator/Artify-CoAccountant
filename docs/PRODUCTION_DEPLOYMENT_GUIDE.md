@@ -45,7 +45,9 @@ Tag the commit; build one image per tag; deploy staging; run the full suite and 
 
 What exists in the product: JSON logs with request ids (`log_format=json`); `GET /api/v1/health` (liveness) and `/health/ready` (readiness); request counters by status class (`metrics.py`) surfaced in the Super Admin "System health" page together with database latency and outbox backlog ([development/PLATFORM_MONITORING](development/PLATFORM_MONITORING.md)); platform alerts for failed jobs, past-due subscriptions and organizations near limits.
 
-What does **not** exist: metrics export (Prometheus/OpenTelemetry), tracing, dashboards, alert delivery (paging/email), uptime probes, log shipping, a status page. Minimum to add before a pilot: ship JSON logs to a central store; scrape or poll health and the counters; alert on 5xx rate, readiness failures, outbox backlog age, worker queue depth, database connections/replication lag/disk, storage errors, certificate expiry and failed backups. Choose the tools after D-3.
+**Metrics (added):** set `ARTIFY_METRICS_TOKEN` and scrape `GET /api/v1/metrics` with `Authorization: Bearer <token>` — Prometheus text, counts and ages only: HTTP responses by class, uptime, database up and ping, outbox events by state and oldest pending age, audit events not yet sealed (tenant and platform) and the age of the oldest. `infrastructure/ops/alerts.example.yml` is an untested starting set of alert rules. Tested: the endpoint is off until a token is set, needs the token, and exposes no ids or addresses. **No scraper, alert manager, dashboard or pager was ever run against it.**
+
+What does **not** exist: tracing, dashboards, alert *delivery* (paging/e-mail), uptime probes, log shipping, a status page, notification-failure counts in the metrics (e-mail failures are visible per notification only). Minimum to add before a pilot: ship JSON logs to a central store; run a scraper and alert manager with rules adapted from the example; alert on 5xx rate, readiness failures, outbox backlog age, worker queue depth, database connections/replication lag/disk, storage errors, certificate expiry and failed backups.
 
 ## 8. Operational checklists
 

@@ -154,3 +154,26 @@ def test_conflicts_never_cross_companies_or_organizations(books, client, mailer)
     stranger = new_owner(client, mailer)
     assert stranger.get(SY(a, f"/conflicts/{cid}")).status_code == 404
     assert stranger.get(SY(a, "/conflicts")).status_code in (403, 404)
+
+
+def test_open_conflicts_counted_by_the_server_show_up_in_the_daily_closing_validation(books) -> None:  # type: ignore[no-untyped-def]
+    from test_p10_bookkeeping import BK, DAY
+
+    o, a = books["owner"], books["a"]
+
+    def codes() -> dict[str, int]:
+        v = o.get(BK(a, f"/days/{DAY}/validation")).json()
+        issues = v["issues"] if "issues" in v else v["validation"]["issues"]
+        return {i["code"]: (i.get("data") or {}).get("count", 0) for i in issues}
+
+    assert "SYNC_SERVER_CONFLICTS" not in codes()
+    doc, held = stale_doc(books)
+    cid = report(o, a, "document", doc["id"], held).json()["id"]
+    got = codes()
+    assert got.get("SYNC_SERVER_CONFLICTS") == 1  # counted by the server, not declared by a device
+    # another company is not affected
+    assert "SYNC_SERVER_CONFLICTS" not in {
+        i["code"] for i in o.get(BK(books["b"], f"/days/{DAY}/validation")).json().get("issues", [])
+    }
+    assert o.post(SY(a, f"/conflicts/{cid}/resolve"), {"resolution": "keep_server"}).status_code == 200
+    assert "SYNC_SERVER_CONFLICTS" not in codes()

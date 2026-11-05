@@ -21,7 +21,7 @@ Status of every prerequisite for putting the product in front of paying customer
 | Independent penetration test | ✘ |
 | Dependency scans clean | ◐ (Python/JS clean at last run; Rust not scanned) |
 | Per-tenant encryption decision (D-4) | ✘ |
-| Audit log tamper-evidence (hash chain) | ◐ built and tested; head hash not exported externally; platform log not chained |
+| Audit log tamper-evidence (hash chain) | ◐ built and tested for tenant and platform logs, with anchor export/check; the scheduled export to an external store is an operator task, not done |
 | Secrets rotation and incident-response drills | ✘ |
 | Privacy policy, terms, DPA, sub-processor list (D-11) | ✘ |
 | Retention and erasure values (D-8) and purge workflow | ✘ |
@@ -34,7 +34,7 @@ Status of every prerequisite for putting the product in front of paying customer
 | Production and staging environments | ✘ |
 | Backup restore tested | ◐ small-database scripted restore only |
 | PITR, DR drill with measured RPO/RTO | ✘ |
-| Monitoring, alerting, status page | ✘ (health endpoints and counters only) |
+| Monitoring, alerting, status page | ◐ `/metrics` + example alert rules built; no scraper, alert delivery or status page exist |
 | Migration rehearsal on production-size data | ✘ |
 | Support runbooks exercised | ✘ |
 
@@ -45,7 +45,7 @@ Status of every prerequisite for putting the product in front of paying customer
 | Billing provider (D-2), invoices, renewals | ✘ (manual records only; nothing simulated) |
 | Subscription enforcement | ✔ server-side entitlements; ◐ no renewal scheduler |
 | Notifications delivered (e-mail/push) | ◐ in-app + e-mail built (stub mailer only); push ✘ |
-| Sync clients on the change feed, conflict resolution | ◐ built on server, desktop and phone, tested with simulated servers; Control Center page, automatic preflight, closing-validation input ✘ |
+| Sync clients on the change feed, conflict resolution | ◐ server, desktop, phone and Control Center page built and tested (simulated servers; browser for empty states); open conflicts feed Daily Closing validation; automatic preflight only for desktop new-version uploads |
 | Resumable uploads | ◐ built and tested; needs a shared staging volume across replicas; never run over a real network |
 | Tax pack verified by a professional | ✘ |
 | OCR/AI quality on real documents | ✘ (synthetic only; AI provider only against a stub) |

@@ -51,6 +51,9 @@ class Settings(BaseSettings):
     mailer_backend: Literal["console", "memory", "smtp"] = "console"
     log_format: Literal["auto", "text", "json"] = "auto"  # auto: text in local, json elsewhere
     log_level: str = "INFO"
+    metrics_token: SecretStr | None = (
+        None  # enables GET /metrics (Prometheus text) for a scraper that sends this bearer token
+    )
 
     # E-mail (used when mailer_backend = "smtp"). Provider choice is decision D-3 (hosting).
     web_base_url: str = "http://localhost:3000"  # origin used in e-mailed links

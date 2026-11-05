@@ -76,7 +76,7 @@ services:
       redis: { condition: service_healthy }
   audit-sealer:                             # extends the tamper-evident audit chain (Phase 12)
     image: artify-api:dev
-    command: ["sh", "-c", "while true; do artify-api seal-audit; sleep 30; done"]
+    command: ["sh", "-c", "while true; do artify-api seal-audit; artify-api audit-heads --out /tmp/audit-heads.jsonl; sleep 30; done"]   # dev only: in production copy the heads to a store outside the database
     environment: *api-env
     depends_on:
       migrate: { condition: service_completed_successfully }

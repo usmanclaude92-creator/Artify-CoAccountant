@@ -104,6 +104,9 @@ CODES: dict[str, CodeSpec] = {
     "DOC_NEEDS_MANUAL": CodeSpec("error", "Documents need manual data entry"),
     "DOC_AWAITING_REVIEW": CodeSpec("warning", "Extracted document data is waiting for review"),
     "SYNC_CONFLICTS": CodeSpec("error", "A device reports unresolved synchronisation conflicts"),
+    "SYNC_SERVER_CONFLICTS": CodeSpec(
+        "error", "The server holds unresolved synchronisation conflicts for this company"
+    ),
     "SYNC_FAILED": CodeSpec("error", "A device reports failed uploads"),
     "SYNC_PENDING": CodeSpec("warning", "A device reports work that has not synchronised yet"),
     "SYNC_NOT_REPORTED": CodeSpec("info", "No device has reported its synchronisation state for this day"),
@@ -199,6 +202,7 @@ class DayFacts:
         default_factory=dict
     )  # total/infected/quarantined/unprocessed/failed/needs_manual/awaiting_review
     sync_reports: list[dict[str, Any]] = field(default_factory=list)
+    server_open_conflicts: int = 0  # counted by the server (sync_conflicts), not declared by a device; company-wide
     checklist_open: list[dict[str, Any]] = field(default_factory=list)  # mandatory items not done [{id, title, list}]
     blocking_tasks: list[dict[str, Any]] = field(default_factory=list)
     overdue_tasks: list[dict[str, Any]] = field(default_factory=list)
@@ -348,6 +352,12 @@ def validate_day(facts: DayFacts, overrides: Mapping[str, str] | None = None) ->
             f"Devices report {conflicts} unresolved conflict(s). (Declared by the device.)",
             count=conflicts,
         )
+    if facts.server_open_conflicts:
+        add(
+            "SYNC_SERVER_CONFLICTS",
+            f"The server holds {facts.server_open_conflicts} unresolved synchronisation conflict(s) for this company. (Counted by the server, not declared by a device.)",
+            count=facts.server_open_conflicts,
+        )
     if failed:
         add("SYNC_FAILED", f"Devices report {failed} failed upload(s). (Declared by the device.)", count=failed)
     if pending:
@@ -466,8 +476,10 @@ def auto_rule_met(rule: str, facts: DayFacts, issues: Sequence[Issue]) -> bool:
     if rule == "no_open_critical":
         return not any(i.severity == "critical" for i in issues)
     if rule == "sync_clean":
-        return bool(facts.sync_reports) and not any(
-            r.get("failed_uploads") or r.get("conflicts") for r in facts.sync_reports
+        return (
+            bool(facts.sync_reports)
+            and not facts.server_open_conflicts
+            and not any(r.get("failed_uploads") or r.get("conflicts") for r in facts.sync_reports)
         )
     raise RuleError("unknown_rule", f"Unknown automatic rule {rule}.")
 

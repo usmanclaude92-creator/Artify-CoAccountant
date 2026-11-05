@@ -43,6 +43,7 @@ const CC_PAGES: [string, string][] = [
   ["/dashboard", "Dashboard"], ["/companies", "My Companies"], ["/companies/new", "Create company"], ["/team", "Team Members"], ["/accountants", "Accountants"],
   ["/assignments", "Client Assignments"], ["/invitations", "Invitations"], ["/subscription", "Subscription & Usage"], ["/activity", "Activity & Audit History"],
   ["/settings", "Organization Settings"], ["/profile", "My Profile"], ["/support-access", "Artify support access"], ["/workspace-templates", "Workspace Templates"],
+  ["/sync-conflicts", "Sync Conflicts"], ["/notifications", "Notifications"],
 ];
 
 test("axe on every Control Center page (light and dark) and MFA setup", async ({ page }) => {

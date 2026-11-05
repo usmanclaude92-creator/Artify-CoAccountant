@@ -770,6 +770,9 @@ def build_facts(ctx: RequestCtx, d: date) -> core.DayFacts:
         c=co,
         d=d,
     )
+    f.server_open_conflicts = int(
+        one(ctx, "SELECT count(*) AS n FROM sync_conflicts WHERE company_id = :c AND state = 'open'", c=co)["n"]  # type: ignore[index]
+    )
     f.blocking_tasks = rows(
         ctx,
         "SELECT id, title, status FROM bk_tasks WHERE company_id = :c AND business_date = :d AND blocks_closing AND status NOT IN ('completed', 'cancelled') ORDER BY created_at",

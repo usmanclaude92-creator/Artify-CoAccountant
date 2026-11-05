@@ -418,3 +418,100 @@ fn force_due(r: &Rig, id: &str) {
     let u = r.desktop.user_id().unwrap();
     r.desktop.with_db(|d| d.queue_requeue(&u, id, false)).unwrap();
 }
+
+// ------------------------------------------------------------------ preflight for queued new versions
+async fn queue_version(r: &Rig, bytes: &[u8]) -> String {
+    let p = r.dir.path().join("v2.pdf");
+    std::fs::write(&p, bytes).unwrap();
+    let staged = r.desktop.stage_paths(vec![p]).await.unwrap();
+    let add = QueueAdd {
+        staged_id: staged[0].id.clone(),
+        node_id: Some(NODE.into()),
+        category_id: None,
+        display_name: None,
+        metadata: json!({}),
+        filing_rule_id: None,
+        duplicate_policy: "block".into(),
+        target_document_id: Some(DOC.into()),
+        change_reason: Some("Corrected scan".into()),
+        batch_local: None,
+    };
+    r.desktop.queue_add(ORG, CO, vec![add]).unwrap().remove(0).id
+}
+
+#[tokio::test]
+async fn a_new_version_for_a_locked_document_is_stopped_and_reported_before_anything_is_sent() {
+    let s = MockServer::start().await;
+    let r = signed_in(&s).await;
+    Mock::given(method("POST"))
+        .and(path(sy("/check")))
+        .respond_with(ResponseTemplate::new(200).set_body_json(
+            json!({"items": [{"kind": "document", "id": DOC, "state": "locked", "current_revision": 7, "reason": "archived"}]}),
+        ))
+        .mount(&s)
+        .await;
+    Mock::given(method("POST"))
+        .and(path(sy("/conflicts")))
+        .respond_with(ResponseTemplate::new(201).set_body_json(json!({"id": CF, "conflict_type": "locked"})))
+        .expect(1)
+        .mount(&s)
+        .await;
+    let id = queue_version(&r, b"%PDF-1.4\n% v2\n%%EOF\n").await;
+    r.desktop.queue_run().await.unwrap();
+    let v = r.desktop.queue_list(None).unwrap().into_iter().find(|q| q.id == id).unwrap();
+    assert_eq!((v.status.as_str(), v.error_code.as_deref()), ("failed", Some("document_locked")));
+    let reqs = s.received_requests().await.unwrap();
+    assert!(!reqs.iter().any(|q| q.url.path().ends_with("/documents/uploads")), "nothing was registered or sent");
+}
+
+#[tokio::test]
+async fn a_document_that_only_changed_still_takes_a_new_version_because_versions_never_overwrite() {
+    let s = MockServer::start().await;
+    let r = signed_in(&s).await;
+    Mock::given(method("POST"))
+        .and(path(sy("/check")))
+        .respond_with(ResponseTemplate::new(200).set_body_json(
+            json!({"items": [{"kind": "document", "id": DOC, "state": "stale", "current_revision": 7, "reason": "changed"}]}),
+        ))
+        .mount(&s)
+        .await;
+    Mock::given(method("POST"))
+        .and(path(format!("/api/v1/companies/{CO}/documents/uploads")))
+        .respond_with(ResponseTemplate::new(201).set_body_json(op_json("awaiting_upload", 0)))
+        .mount(&s)
+        .await;
+    Mock::given(method("PUT"))
+        .and(path(format!("/api/v1/companies/{CO}/documents/uploads/{OP}/content")))
+        .respond_with(ResponseTemplate::new(200).set_body_json(op_json("uploaded", 0)))
+        .mount(&s)
+        .await;
+    mount_complete(&s).await;
+    let id = queue_version(&r, b"%PDF-1.4\n% v2\n%%EOF\n").await;
+    r.desktop.queue_run().await.unwrap();
+    assert_eq!(r.desktop.queue_list(None).unwrap().into_iter().find(|q| q.id == id).unwrap().status, "completed");
+    assert!(
+        !s.received_requests().await.unwrap().iter().any(|q| q.url.path().ends_with("/sync/conflicts")),
+        "no conflict is recorded for a harmless change"
+    );
+}
+
+#[tokio::test]
+async fn trouble_reaching_the_preflight_never_blocks_an_upload() {
+    let s = MockServer::start().await;
+    let r = signed_in(&s).await;
+    Mock::given(method("POST")).and(path(sy("/check"))).respond_with(ResponseTemplate::new(503)).mount(&s).await;
+    Mock::given(method("POST"))
+        .and(path(format!("/api/v1/companies/{CO}/documents/uploads")))
+        .respond_with(ResponseTemplate::new(201).set_body_json(op_json("awaiting_upload", 0)))
+        .mount(&s)
+        .await;
+    Mock::given(method("PUT"))
+        .and(path(format!("/api/v1/companies/{CO}/documents/uploads/{OP}/content")))
+        .respond_with(ResponseTemplate::new(200).set_body_json(op_json("uploaded", 0)))
+        .mount(&s)
+        .await;
+    mount_complete(&s).await;
+    let id = queue_version(&r, b"%PDF-1.4\n% v2\n%%EOF\n").await;
+    r.desktop.queue_run().await.unwrap();
+    assert_eq!(r.desktop.queue_list(None).unwrap().into_iter().find(|q| q.id == id).unwrap().status, "completed");
+}

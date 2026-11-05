@@ -39,4 +39,13 @@ test("the Documents & Storage and Document Processing pages show real usage, the
   await expect(page.getByRole("heading", { name: "Summary", level: 2 })).toBeVisible();
   await expect(page.getByRole("table", { name: "Daily closing by company" })).toBeVisible();
   await expect(page.getByRole("button", { name: /close day|reopen|override|approve/i })).toHaveCount(0);
+  // Phase 12: synchronization conflicts and the person's own notifications
+  await page.getByRole("link", { name: "Sync Conflicts" }).click();
+  await expect(page.getByRole("heading", { name: "Sync Conflicts", level: 1 })).toBeVisible();
+  // this firm has no company yet: the page says so instead of showing an empty table
+  await expect(page.getByText("There are no companies to show.")).toBeVisible();
+  await page.getByRole("link", { name: "Notifications" }).click();
+  await expect(page.getByRole("heading", { name: "Notifications", level: 1 })).toBeVisible();
+  await expect(page.getByText("Nothing new.")).toBeVisible();
+  await expect(page.getByLabel(/Also e-mail me/)).toBeChecked();
 });

@@ -603,6 +603,22 @@ _AUDIT_SELECT = (
 )
 
 
+@router.get("/audit-integrity", operation_id="platform_audit_integrity")
+def audit_integrity(ctx: Annotated[PlatformCtx, padmin("platform.audit.read")]) -> dict[str, Any]:
+    """Recompute the platform audit chain (Phase 12). `unsealed_recent` counts events of the last 7 days not yet sealed."""
+    v = ctx.conn.execute(text("SELECT * FROM app.platform_audit_verify()")).mappings().one()
+    unsealed = ctx.conn.execute(
+        text(
+            "SELECT count(*) FROM platform_audit_events e WHERE e.created_at > now() - interval '7 days'"
+            " AND NOT EXISTS (SELECT 1 FROM platform_audit_seals s WHERE s.audit_event_id = e.id)"
+        )
+    ).scalar_one()
+    return {
+        "ok": v["ok"], "checked": v["checked"], "first_bad_seq": v["first_bad_seq"], "reason": v["reason"],
+        "head_seq": v["head_seq"], "head_hash": v["head_hash"] or None, "unsealed_recent": unsealed,
+    }  # fmt: skip
+
+
 @router.get("/audit-events", response_model=Page[AuditOut], operation_id="platform_audit_events")
 def audit_events(
     ctx: Annotated[PlatformCtx, padmin("platform.audit.read")],

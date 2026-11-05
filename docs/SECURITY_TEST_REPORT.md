@@ -45,7 +45,7 @@ The API suite result at the Phase 12 head is in the [completion report](developm
 | Id | Finding | Severity | Status |
 |---|---|---|---|
 | S-1 | No external penetration test. | High | Open |
-| S-2 | Audit log was trigger-protected but not tamper-evident. | Medium | **Partly closed:** hash chain + verify implemented and tested (6 tests incl. edit, delete and seal-removal detection); head hash not yet exported externally; platform audit log not chained ([AUDIT_LOG_INTEGRITY](AUDIT_LOG_INTEGRITY.md)). |
+| S-2 | Audit log was trigger-protected but not tamper-evident. | Medium | **Closed as far as code goes:** hash chains for tenant and platform logs, verify endpoints, and an anchor export/check (`audit-heads`, `audit-check-anchors`) that catches cut-off and rewritten history in tests. **Operator action still required:** schedule the export to a store the database operator cannot rewrite ([AUDIT_LOG_INTEGRITY](AUDIT_LOG_INTEGRITY.md)). |
 | S-3 | No certificate pinning or root detection on mobile. | Medium | Open (documented in [mobile/SECURITY_AND_PRIVACY](mobile/SECURITY_AND_PRIVACY.md)) |
 | S-4 | Rate-limit values never tuned under load. | Medium | Open |
 | S-5 | Notifications were not delivered. | Medium | **Partly closed:** in-app and e-mail delivery built; push to phones not built; no new-device/failed-sign-in alert type exists yet (only task and closing events). |

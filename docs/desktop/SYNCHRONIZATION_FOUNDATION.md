@@ -17,7 +17,7 @@ Control Center renames/moves/archives ⇒ `config_version` increments ⇒ the ET
 
 ## Not built (designed in the Phase 0 sync architecture)
 
-Phase 12 added change-feed consumption with a transactional checkpoint, conflict listing/resolution and resumable uploads (see [../SYNCHRONIZATION_ARCHITECTURE.md](../SYNCHRONIZATION_ARCHITECTURE.md)). Still not built: snapshot resync, download queues, background file sync, local mirror renames-as-moves, `_Inbox` watching, D-7 refile requests, offline approvals policy UI, remote-lock. These attach to the existing tables and events without a rewrite.
+Phase 12 added change-feed consumption with a transactional checkpoint, conflict listing/resolution and resumable uploads and the new-version upload preflight (a locked document stops the upload and is reported; a changed one does not) (see [../SYNCHRONIZATION_ARCHITECTURE.md](../SYNCHRONIZATION_ARCHITECTURE.md)). Still not built: snapshot resync, download queues, background file sync, local mirror renames-as-moves, `_Inbox` watching, D-7 refile requests, offline approvals policy UI, remote-lock. These attach to the existing tables and events without a rewrite.
 
 ## Failure behaviour
 

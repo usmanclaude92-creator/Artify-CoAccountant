@@ -123,4 +123,12 @@ test("firm owner runs the Control Center: company wizard, lifecycle, invitation,
   // ---- activity trail shows the privileged changes -------------------------------------------
   await page.getByRole("link", { name: "Activity & Audit History" }).click();
   await expect(page.getByRole("cell", { name: "Company status changed" }).first()).toBeVisible();
+
+  // ---- Phase 12: with a company, the conflicts page lists that company and says everything is in step -----
+  await page.getByRole("link", { name: "Sync Conflicts" }).click();
+  await expect(page.getByRole("heading", { name: "Sync Conflicts", level: 1 })).toBeVisible();
+  await expect(page.getByLabel("Company")).toContainText("Gulf Traders LLC");
+  await expect(page.getByText("No open conflicts. The server reports everything in step.")).toBeVisible();
+  await page.getByLabel("Show").selectOption("resolved");
+  await expect(page.getByText("Nothing has been decided yet.")).toBeVisible();
 });

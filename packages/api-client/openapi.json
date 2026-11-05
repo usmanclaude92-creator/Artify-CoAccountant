@@ -37207,6 +37207,30 @@
         ]
       }
     },
+    "/api/v1/platform/audit-integrity": {
+      "get": {
+        "description": "Recompute the platform audit chain (Phase 12). `unsealed_recent` counts events of the last 7 days not yet sealed.",
+        "operationId": "platform_audit_integrity",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Platform Audit Integrity",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Audit Integrity",
+        "tags": [
+          "platform-operations"
+        ]
+      }
+    },
     "/api/v1/platform/auth/invitations/accept": {
       "post": {
         "operationId": "platform_invitation_accept",

@@ -101,6 +101,7 @@ def test_each_data_problem_has_its_own_exact_code() -> None:
         sync_reports=[
             {"client_id": "d", "pending_uploads": 1, "failed_uploads": 2, "pending_changes": 0, "conflicts": 3}
         ],
+        server_open_conflicts=2,
         checklist_open=[{"id": "i", "title": "Count cash", "list": "Day-end"}],
         blocking_tasks=[{"id": "t", "title": "Chase invoice", "status": "in_progress"}],
         overdue_tasks=[{"id": "o", "title": "Old", "status": "new", "due_date": "2025-03-01"}],
@@ -111,7 +112,7 @@ def test_each_data_problem_has_its_own_exact_code() -> None:
         "TXN_DUPLICATE_EXACT", "TXN_DUPLICATE_POSSIBLE", "TAX_CODE_INACTIVE", "TAX_CODE_UNVERIFIED", "TAX_CONFIG_MISSING",
         "ACCOUNT_INACTIVE", "TXN_NO_SOURCE_DOCUMENT", "PERIOD_CLOSED", "PERIOD_MISSING",
         "DOC_INFECTED", "DOC_QUARANTINED", "DOC_UNPROCESSED", "DOC_PROCESSING_FAILED", "DOC_NEEDS_MANUAL", "DOC_AWAITING_REVIEW",
-        "SYNC_CONFLICTS", "SYNC_FAILED", "SYNC_PENDING", "CHECKLIST_MANDATORY_OPEN", "TASK_BLOCKING_OPEN", "TASK_OVERDUE",
+        "SYNC_CONFLICTS", "SYNC_SERVER_CONFLICTS", "SYNC_FAILED", "SYNC_PENDING", "CHECKLIST_MANDATORY_OPEN", "TASK_BLOCKING_OPEN", "TASK_OVERDUE",
     }  # fmt: skip
     assert all(code in c.CODES for code in got)
     assert {k for k, v in c.CODES.items() if v.hard} == {

@@ -57,7 +57,7 @@ test("workspace builder: build, customize, template, permissions, history; two c
   await page.getByRole("button", { name: "Add subfolder" }).click();
   await dialog.getByLabel("Name").fill("bad/name");
   await dialog.getByRole("button", { name: "Create" }).click();
-  await expect(dialog.getByText(/cannot contain/i)).toBeVisible();
+  await expect(dialog.getByRole("alert").filter({ hasText: /cannot contain/i })).toBeVisible(); // the hint under the field also says "Cannot contain": match the error alert only
   await dialog.getByRole("button", { name: "Cancel" }).click();
   // rename keeps the item
   await tree.getByRole("button", { name: "Finance", exact: true }).click();

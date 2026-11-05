@@ -12,7 +12,7 @@ No Critical defect was found in the backend, the database isolation layer or the
 
 | Suite | Result | Notes |
 |---|---|---|
-| API (pytest, PostgreSQL 16 rebuilt from migrations) | 722 passed, 2 skipped, 0 failed at the Phase 12 head (after the second pass) ([completion report §18](development/PHASE_12_COMPLETION_REPORT.md)) | At the start of Phase 12 (Phase 11 head) the last full run was 689 passed / 1 skipped (Phase 10); Phase 11 and 12 added tests. |
+| API (pytest, PostgreSQL 16 rebuilt from migrations) | 727 passed, 2 skipped, 0 failed at the Phase 12 head (after the third pass) ([completion report §18](development/PHASE_12_COMPLETION_REPORT.md)) | At the start of Phase 12 (Phase 11 head) the last full run was 689 passed / 1 skipped (Phase 10); Phase 11 and 12 added tests. |
 | Browser end-to-end (Playwright/Chromium, web + API) | 33 passed (Phase 10 run) | Not re-run for Phase 12: no web UI changed. |
 | Desktop UI (Vitest) / Rust core (cargo) | 100 / 112 passed (Phase 10 run) | Tauri shell crate cannot be compiled here (GTK libraries missing). |
 | Web unit tests | 6 passed | |
@@ -44,14 +44,14 @@ None found. Evidence: forced RLS with a non-`BYPASSRLS` application role, the tw
 
 | # | Finding | Status |
 |---|---|---|
-| M-1 | Audit log rows were trigger-protected but not hash-chained. | **Partly fixed.** Per-organization hash chain, sealer job and verify endpoint ([AUDIT_LOG_INTEGRITY](AUDIT_LOG_INTEGRITY.md)). Remaining: head hash is not exported outside the database; platform audit log not chained. |
+| M-1 | Audit log rows were trigger-protected but not hash-chained. | **Fixed in code.** Tenant and platform chains, verify endpoints, anchor export/check ([AUDIT_LOG_INTEGRITY](AUDIT_LOG_INTEGRITY.md)). Remaining: the operator must schedule the export to an external store. |
 | M-2 | Rate limiting exists (Redis or in-memory) but its limits were never tuned under load. | Open |
 | M-3 | No measured performance baseline existed. | **Fixed (baseline only):** `tests/test_p12_perf.py`, results in the completion report. Single process, one machine, 150 documents / 60 transactions — not a capacity statement. |
 | M-4 | No restore-test script or documented RPO/RTO. | Script added; RPO/RTO are targets only. |
 | M-5 | Billing has manual records only; no gateway (D-2), no renewal scheduler. | Open — nothing is simulated. |
 | M-6 | The Control Center is English-only (ADR-040); Arabic strings need native review. | Open |
 | M-7 | Platform-admin alert scan covers at most 500 organizations. | Open |
-| M-8 | Monitoring is the existing `/platform/health`, request counters and JSON logs; no dashboards, no alert delivery, no tracing. | Documented in [PRODUCTION_DEPLOYMENT_GUIDE §7](PRODUCTION_DEPLOYMENT_GUIDE.md) |
+| M-8 | Monitoring was the existing `/platform/health`, request counters and JSON logs. | **Partly fixed.** Token-guarded Prometheus-format `/metrics` and example alert rules; no scraper, dashboards, tracing or alert delivery exist ([PRODUCTION_DEPLOYMENT_GUIDE §7](PRODUCTION_DEPLOYMENT_GUIDE.md)). |
 | M-9 | Mobile has no certificate pinning, no jailbreak/root detection. | Open |
 | M-10 | OCR verified only on synthetic documents; AI provider only against a stub; Oman tax pack unverified by a tax professional. | Open |
 

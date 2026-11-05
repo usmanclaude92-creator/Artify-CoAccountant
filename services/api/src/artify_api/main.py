@@ -35,6 +35,7 @@ from artify_api.routers import (
     platform_subs,
     platform_support,
     processing,
+    prometheus,
     support_grants,
     sync,
     workspace,
@@ -46,6 +47,7 @@ API_PREFIX = "/api/v1"
 # Every router mounted under API_PREFIX. Tests iterate this tuple (a FastAPI app's `.routes` only exposes wrappers).
 ROUTERS = (
     health.router,
+    prometheus.router,
     auth.router,
     orgs.router,
     companies.router,

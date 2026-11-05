@@ -51,13 +51,13 @@ A client that could not write an item reports it (`POST /sync/conflicts` with ki
 |---|---|
 | Desktop (`core/src/sync.rs`, Synchronization page) | feed pull with a transactional checkpoint (SQLite `sync_feed`, `sync_items`), restart on a refused cursor, status fold, conflict list and resolve through a fixed allow-listed command, chunked upload with resume. Unit/integration tests; UI tests with the mock bridge. |
 | Phone (`features/sync`, Settings → Synchronization) | the same, with a file checkpoint per company, plus server notifications and the e-mail preference. |
-| Control Center | none of the new screens (the endpoints exist). |
+| Control Center (web) | **Sync Conflicts** (per company: open and decided conflicts; keep server copy, record merged by hand, discard device change) and **Notifications** (own list, mark read, e-mail switch). Covered by the browser suite for the empty states; a populated list is covered by the API tests, not the browser. |
 
 ## 7. What is NOT built (honest list)
 
-* Conflicts are *reported by the client when its own write is refused or its preflight says stale/locked*; the apps do not yet call `/sync/check` automatically before every queued change, so detection depends on those call sites being added feature by feature.
-* No merge editor: "apply my change on the new version" only records the decision and gives the new base revision; the user re-applies the edit.
-* The Control Center has no conflicts page; the Daily Closing validation still uses device-declared sync counts (the server count is available at `/sync/status` but not yet part of validation).
+* **Preflight in the apps** exists for one case: the desktop checks a queued *new version of an existing document* before registering it. A document that is locked (archived, deleted, held) stops the upload with `document_locked` and is reported to the server as a conflict; one that is merely `stale` still uploads, because versions are append-only and a newer one can never overwrite anything; a network failure of the check never blocks (the server enforces the same rules at registration). The phone never uploads new versions, so it has no such call site. Other write paths (accounting, bookkeeping edits) are done in the apps through endpoints that already carry `base_row_version`; they do not yet report conflicts to the server automatically.
+* No merge editor: "apply my change on the new version" only records the decision and gives the new base revision; the user re-applies the edit. The Control Center page can record "merged by hand" with an explanation.
+* Daily Closing validation now includes the **server's** open-conflict count (`SYNC_SERVER_CONFLICTS`, company-wide, an error that must be resolved or acknowledged); the device-declared counts remain as additional, clearly labelled information.
 * No tombstone retention or purge job (D-8 values undecided); no server push (clients poll); no per-device selective sync setting.
 * Resumable staging is not shared across replicas unless the operator provides a shared volume (§5); no background upload while an app is closed.
 * The Tauri shell, installers and mobile apps were not built or run on a device.

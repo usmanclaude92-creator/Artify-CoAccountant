@@ -68,7 +68,7 @@ def _seed_reference_data(eng) -> None:  # type: ignore[no-untyped-def]
 
     with eng.begin() as conn:
         conn.exec_driver_sql(
-            "CREATE TEMP TABLE _forced ON COMMIT DROP AS SELECT format('%I.%I', n.nspname, c.relname) AS t"
+            "CREATE TEMP TABLE _forced ON COMMIT DROP AS SELECT quote_ident(n.nspname) || '.' || quote_ident(c.relname) AS t"
             " FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace"
             " WHERE c.relkind = 'r' AND c.relforcerowsecurity AND n.nspname = 'public' AND pg_get_userbyid(c.relowner) = current_user"
         )

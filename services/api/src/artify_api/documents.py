@@ -504,10 +504,15 @@ def list_events(
         get_document(ctx, acc, document_id, allow_deleted=True)
         where, params = "e.document_id = :d", {"d": str(document_id)}
     else:
-        # company-wide feed: only events of documents the caller can see (or company-level events without a document)
+        # company-wide feed: only events of documents the caller can see, plus company-level events without a document.
+        # Upload events carry the file name and the target folder is not recorded on them, so they are shown only to
+        # the person who started the upload (a hidden folder must not reveal file names).
         vis = [str(n) for n in visible_node_ids(acc)]
-        where = "(e.document_id IS NULL OR e.document_id IN (SELECT id FROM documents WHERE company_id = :c AND node_id = ANY(CAST(:vis AS uuid[]))))"
-        params = {"vis": "{" + ",".join(vis) + "}"}
+        where = (
+            "((e.document_id IS NULL AND (e.event_type NOT LIKE 'upload.%' OR e.actor_id = CAST(:me AS uuid)))"
+            " OR e.document_id IN (SELECT id FROM documents WHERE company_id = :c AND node_id = ANY(CAST(:vis AS uuid[]))))"
+        )
+        params = {"vis": "{" + ",".join(vis) + "}", "me": str(ctx.user_id)}
     params["c"] = str(ctx.company_id)
     total = ctx.conn.execute(
         text(f"SELECT count(*) FROM document_events e WHERE e.company_id = :c AND {where}"), params

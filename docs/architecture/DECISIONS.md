@@ -253,3 +253,7 @@ Macros are never run; `.xlsm` requires `feature.macro_templates`; VBA inside `.x
 
 ### ADR-074 — Reports are governed datasets, not SQL
 Standard and custom reports use fixed, parameterised statements per dataset; custom reports only choose fields, sort and one grouping over a dataset. Reports are management information, flagged `statutory = false`, and never described as filings. Template/export files are billable storage (`purpose` `template` / `export`).
+
+### ADR-075 — Stored document binaries are immutable in the database, and the company activity feed hides upload file names from people who cannot see the folder
+Review of the Phase 6 document engine against invariant 8 found that `document_versions` and `storage_objects` had `UPDATE` granted to the application role with no guard, although the documents said versions are immutable: a bug or an injected statement could change a stored hash, size or key. Migration `0011_document_immutability` adds triggers (a version's identity can never change and rows are never deleted; only `scan_status` may change; a storage object's key, size, hash and owner never change, records are never deleted, and a purged object stays purged). The same review found that the company-wide feed `GET …/documents/events` listed `upload.registered` events (document-less, carrying the file name) to people who cannot view the target folder; those events are now shown only to the person who started the upload. Tests: `test_p6_review.py`.
+

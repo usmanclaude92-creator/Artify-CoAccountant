@@ -93,3 +93,7 @@ Limitations: views run as `artify_definer`, so any new column added to them must
 ## 10. Phase 4 additions (migration 0006)
 
 Forward-only `0006_workspace`: new reference table `document_kinds` (synced by seed); new company-owned tables `workspace_nodes`, `document_categories`, `custom_field_definitions`, `custom_field_options`, `custom_field_applicability`, `naming_rules`, `filing_rules`, `workspace_permissions`, `workspace_revisions` (SELECT/INSERT only); organization-or-system tables `workspace_templates`, `workspace_template_versions`; `company_configurations` gains `workspace_access_mode`, `applied_template_id`, `applied_template_version`; function `app.is_unique_uuid_array`; `app.measure_entitlement` replaced to measure `limit.workspace_templates` (definer read policy on `workspace_templates`). Details: [`../workspace/WORKSPACE_DATA_MODEL.md`](../workspace/WORKSPACE_DATA_MODEL.md).
+
+## 11. Phase 6 review addition (migration 0011)
+
+Forward-only `0011_document_immutability`: trigger `document_versions_guard` (only `scan_status` may change on a stored version; no deletes) and `storage_objects_guard` (identity, key, size, hash never change; no deletes; a purged object stays purged). Reason and tests: ADR-075, `services/api/tests/test_p6_review.py`.

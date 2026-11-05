@@ -1,6 +1,6 @@
 # Document Versioning
 
-* The **document id is stable**. `documents.current_version_no` points at the newest version; `document_versions` rows are immutable.
+* The **document id is stable**. `documents.current_version_no` points at the newest version; `document_versions` rows are immutable (enforced by a database trigger since migration 0011, ADR-075; before that only by the application code).
 * **New version**: register an upload with `target_document_id`. The file type must stay the same (422 otherwise), the document must be active, and identical content to the current version is refused (`identical_version`). The display name does not change.
 * **Restore a version**: `POST …/versions/{n}/restore` adds a *new* version whose storage object is the same object as version *n*. History is complete, nothing is copied or lost, and restoring the current content is refused (409).
 * **Download any version**: `GET …/content?version=n`.

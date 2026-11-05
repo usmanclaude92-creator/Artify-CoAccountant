@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Alert, Button, Panel, StatusChip } from "@artify/ui";
 import type { EventRow, SyncStatus } from "../bridge/types";
 import { fmtDateTime, ROLE_LABEL } from "../lib/format";
-import { useApp, type Page } from "../state/app";
+import { useApp } from "../state/app";
 
 export function Dashboard() {
   const { identity, org, company, go, bridge, fail } = useApp();
@@ -22,24 +22,7 @@ export function Dashboard() {
         <Button onClick={() => go("companies")}>My Companies</Button>
         <Button variant="secondary" disabled={!company} onClick={() => go("workspace")}>Open workspace</Button>
       </Panel>
-      <Alert tone="info">Document import, storage and automatic reading with review are available; posting and exports arrive in later releases. Nothing on this screen is sample data.</Alert>
-    </section>
-  );
-}
-
-const FUTURE: Record<Exclude<Page, "dashboard" | "companies" | "workspace" | "documents" | "import" | "queue" | "archive" | "processing" | "review" | "accounting" | "acct-review" | "sync" | "notifications" | "settings">, { title: string; text: string; phase: string }> = {
-  reports: { title: "Reports", text: "Management reports and Excel exports built from approved entries.", phase: "Reports and Excel (a later release)" },
-};
-export function Placeholder({ page }: { page: keyof typeof FUTURE }) {
-  const f = FUTURE[page];
-  return (
-    <section className="d-page" aria-labelledby="h-future">
-      <h1 id="h-future">{f.title}</h1>
-      <Panel className="d-future">
-        <StatusChip tone="neutral">Not available yet</StatusChip>
-        <p>{f.text}</p>
-        <p className="a-hint">Planned for: {f.phase}. This area intentionally shows no sample data.</p>
-      </Panel>
+      <Alert tone="info">Document import, storage and automatic reading with review are available; accounting review and Excel exports from approved data are available; posting arrives in a later release. Nothing on this screen is sample data.</Alert>
     </section>
   );
 }

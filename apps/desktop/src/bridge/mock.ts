@@ -2,7 +2,7 @@
  * In-memory bridge for unit tests and for `VITE_BRIDGE=mock pnpm dev` (browser preview without Rust). It is NEVER selected
  * in a production build, and the dev preview shows a permanent "demo data" banner.
  */
-import type { AcctAccount, AcctContact, AcctIssue, AcctOp, AcctTaxCode, AcctTxn, AcctTxnRow, AppError, Assignment, Bridge, DocDetail, ExtractionView, ExtractedField, ProcessingJob, StatementTx, DocQuery, QueueItem, StagedFile, CompanyDetail, CompanyView, EventRow, Identity, LocalDevice, Organization, RefreshOutcome, RootReport, ServerDevice, Settings, SyncStatus, WorkspaceData, WorkspaceView, WsNode } from "./types";
+import type { XlCustomReport, XlAnalysis, XlCatalogue, XlExport, XlMapping, XlOp, XlTemplate, XlValidation, AcctAccount, AcctContact, AcctIssue, AcctOp, AcctTaxCode, AcctTxn, AcctTxnRow, AppError, Assignment, Bridge, DocDetail, ExtractionView, ExtractedField, ProcessingJob, StatementTx, DocQuery, QueueItem, StagedFile, CompanyDetail, CompanyView, EventRow, Identity, LocalDevice, Organization, RefreshOutcome, RootReport, ServerDevice, Settings, SyncStatus, WorkspaceData, WorkspaceView, WsNode } from "./types";
 
 export function node(id: string, parent: string | null, name: string, extra: Partial<WsNode> = {}): WsNode {
   return { id, parent_id: parent, node_type: parent ? "folder" : "section", key: id, name, display_name: null, description: "", position: 0, depth: 1, is_active: true, archived_at: null, ...extra };
@@ -45,10 +45,15 @@ export interface MockOptions {
   acctAccounts?: AcctAccount[];
   acctTaxCodes?: AcctTaxCode[];
   acctContacts?: AcctContact[];
+  /** synthetic Excel data the mock serves (Phase 9) */
+  xlTemplates?: XlTemplate[];
+  xlExports?: XlExport[];
+  /** the native "choose a workbook" dialog is cancelled */
+  xlPickCancel?: boolean;
 }
 export type MockBridge = Bridge & {
   calls: string[];
-  state: { acct: { txns: AcctTxn[]; accounts: AcctAccount[]; taxCodes: AcctTaxCode[]; contacts: AcctContact[] }; extractions: ExtractionView[]; jobs: ProcessingJob[]; docs: DocDetail[]; queue: QueueItem[]; opts: MockOptions; settings: Settings; workspaces: Record<string, WorkspaceData>; companies: Record<string, CompanyView[]>; signedIn: boolean; devices: ServerDevice[]; root: string | null };
+  state: { xl: { reports: XlCustomReport[]; templates: XlTemplate[]; mappings: XlMapping[]; exports: XlExport[]; saved: string[] }; acct: { txns: AcctTxn[]; accounts: AcctAccount[]; taxCodes: AcctTaxCode[]; contacts: AcctContact[] }; extractions: ExtractionView[]; jobs: ProcessingJob[]; docs: DocDetail[]; queue: QueueItem[]; opts: MockOptions; settings: Settings; workspaces: Record<string, WorkspaceData>; companies: Record<string, CompanyView[]>; signedIn: boolean; devices: ServerDevice[]; root: string | null };
   emit(event: string, payload?: unknown): void;
 };
 
@@ -60,7 +65,7 @@ export function createMockBridge(opts: MockOptions = {}): MockBridge {
   const handlers = new Map<string, ((p: unknown) => void)[]>();
   const calls: string[] = [];
   const state = {
-    opts, acct: structuredClone({ txns: opts.acctTransactions ?? [], accounts: opts.acctAccounts ?? [], taxCodes: opts.acctTaxCodes ?? [], contacts: opts.acctContacts ?? [] }), extractions: structuredClone(opts.extractions ?? []), jobs: [] as ProcessingJob[], docs: structuredClone(opts.documents ?? []), queue: [] as QueueItem[], signedIn: false, root: opts.storageRoot ?? null,
+    opts, xl: { reports: [] as XlCustomReport[], templates: structuredClone(opts.xlTemplates ?? []), mappings: [] as XlMapping[], exports: structuredClone(opts.xlExports ?? []), saved: [] as string[] }, acct: structuredClone({ txns: opts.acctTransactions ?? [], accounts: opts.acctAccounts ?? [], taxCodes: opts.acctTaxCodes ?? [], contacts: opts.acctContacts ?? [] }), extractions: structuredClone(opts.extractions ?? []), jobs: [] as ProcessingJob[], docs: structuredClone(opts.documents ?? []), queue: [] as QueueItem[], signedIn: false, root: opts.storageRoot ?? null,
     settings: { theme: "system", language: "en", start_on_login: "false", default_company_id: "", notifications: "true", update_channel: "stable" } as Settings,
     workspaces: structuredClone(opts.workspaces ?? DEMO_WORKSPACES) as Record<string, WorkspaceData>,
     companies: structuredClone(opts.companies ?? { [orgs[0]?.id ?? "org-1"]: DEMO_COMPANIES }) as Record<string, CompanyView[]>,
@@ -316,6 +321,78 @@ export function createMockBridge(opts: MockOptions = {}): MockBridge {
         default: throw err("unsupported", "The mock does not implement this accounting action.", 501);
       }
     },
+    // ---- Excel (synthetic: the mock records requests and serves canned results; it neither reads workbooks nor generates files)
+    xl: async <T,>(_o: string, _c: string, op: XlOp, args?: { ids?: string[]; query?: Record<string, string>; body?: unknown }): Promise<T> => {
+      rec(`xl:${op}`); needAuth();
+      const X = state.xl;
+      const body = (args?.body ?? {}) as Record<string, unknown>;
+      const out = (v: unknown) => structuredClone(v) as T;
+      const tpl = (): XlTemplate => { const t = X.templates.find((x) => x.id === args?.ids?.[0]); if (!t) throw err("not_found", "Template not found.", 404); return t; };
+      const exp = (): XlExport => { const e = X.exports.find((x) => x.id === args?.ids?.[0]); if (!e) throw err("not_found", "Export not found.", 404); return e; };
+      switch (op) {
+        case "catalogue": return out(MOCK_XL_CATALOGUE);
+        case "templates": return out(X.templates.filter((t) => t.status !== "archived"));
+        case "template": { const t = tpl(); return out({ ...t, versions: t.versions ?? [], mappings: X.mappings.filter((m) => m.template_id === t.id).map((m) => ({ id: m.id, mapping_no: m.mapping_no, status: m.status, template_version: m.template_version, created_at: "2026-03-01T10:00:00Z", activated_at: null })) }); }
+        case "template_analysis": return out(MOCK_XL_ANALYSIS);
+        case "template_status": { const t = tpl(); const a = body.action as string; if (a === "activate" && !t.active_mapping_id) throw err("conflict", "Activate a validated mapping before activating the template.", 409); t.status = a === "activate" ? "active" : a === "archive" ? "archived" : "inactive"; return out(t); }
+        case "template_delete": { const t = tpl(); if (X.exports.some((e) => e.template_id === t.id)) throw err("conflict", "This template has been used. Archive it instead; its history is kept.", 409); X.templates = X.templates.filter((x) => x.id !== t.id); return out({ deleted: true }); }
+        case "mappings": return out(X.mappings.filter((m) => m.template_id === args?.ids?.[0]));
+        case "mapping_save": {
+          const def = body.definition as XlMapping["definition"];
+          const issues = def.sheets.every((s) => s.columns.length > 0) ? [] : [{ code: "no_columns", severity: "error" as const, message: "Map at least one column.", path: "sheets" }];
+          const m: XlMapping = { id: `m-${X.mappings.length + 1}`, template_id: args?.ids?.[0] ?? "", mapping_no: X.mappings.length + 1, status: "draft", definition: def, validation: issues, ready: issues.length === 0, template_version: 1 };
+          X.mappings.push(m); return out(m);
+        }
+        case "mapping_activate": {
+          const m = X.mappings.find((x) => x.id === args?.ids?.[0]); if (!m) throw err("not_found", "Mapping not found.", 404);
+          if (!m.ready) throw err("conflict", "The mapping has errors and cannot be activated.", 409);
+          X.mappings.filter((x) => x.template_id === m.template_id && x.status === "active").forEach((x) => { x.status = "superseded"; });
+          m.status = "active"; const t = X.templates.find((x) => x.id === m.template_id); if (t) { t.active_mapping_id = m.id; t.active_mapping_no = m.mapping_no; t.status = "active"; }
+          return out(m);
+        }
+        case "export_validate": case "export_preview": {
+          const prior = X.exports.filter((e) => e.template_id === body.template_id && e.status === "completed");
+          const t = X.templates.find((x) => x.id === body.template_id);
+          const v: XlValidation = {
+            template: { id: String(body.template_id), name: t?.name ?? "", version_no: t?.current_version_no ?? 1, mapping_no: t?.active_mapping_no ?? 1, mapping_id: t?.active_mapping_id ?? "" }, total_rows: 3, transactions: 3,
+            issues: [], include_unapproved: Boolean((body.params as Record<string, unknown> | undefined)?.include_unapproved), can_generate: Boolean(t?.active_mapping_id),
+            repeat: { transactions: prior.length ? 3 : 0, needs_acknowledgement: prior.length > 0, exports: prior.map((e) => ({ id: e.id, created_at: e.created_at, filename: e.filename, template_version: e.template_version, mapping_no: e.mapping_no, transactions: 3 })) },
+            sheets: [{ sheet: "Purchases", dataset: "purchase_register", rows: 3, applied_filters: {}, ignored_filters: [], note: "" }],
+          };
+          if (!t?.active_mapping_id) v.issues.push({ code: "no_active_mapping", severity: "error", message: "The template has no active mapping.", path: "" });
+          if (op === "export_validate") return out(v);
+          return out({ validation: v, preview: { sheets: [{ sheet: "Purchases", start_row: 5, columns: ["A", "B", "H"], rows: 3, sample: [{ row: 5, cells: { A: "14/03/2025", B: "TX-000001", H: "105.000" } }] }], fixed_cells: [{ sheet: "Purchases", cell: "B3", value: "Alpha Trading LLC" }] } });
+        }
+        case "export_create": case "export_regenerate": {
+          const key = String(body.idempotency_key ?? "");
+          const same = X.exports.find((e) => (e as XlExport & { _key?: string })._key === key); if (same) return out(same);
+          const src = op === "export_regenerate" ? exp() : null;
+          const t = X.templates.find((x) => x.id === (src?.template_id ?? body.template_id));
+          const prior = X.exports.some((e) => e.template_id === t?.id && e.status === "completed");
+          if (op === "export_create" && prior && !body.acknowledge_repeat) throw err("conflict", "Some of these transactions were already exported with this template. Confirm that a repeat export is intended.", 409);
+          const e: XlExport & { _key?: string } = { _key: key, id: `e-${X.exports.length + 1}`, template_id: t?.id ?? "", template_name: t?.name ?? "", template_version: 1, mapping_no: 1, status: "completed", progress: 100, params: (src?.params ?? body.params ?? {}) as Record<string, unknown>, include_unapproved: false, source_export_id: src?.id ?? null, reason: (body.reason as string | undefined) ?? null, filename: `${t?.name ?? "export"}_20260301_e.xlsx`, sha256: "a".repeat(64), size_bytes: 12000, row_counts: { Purchases: 3 }, fidelity: [], error_message: null, created_at: "2026-03-01T10:00:00Z", finished_at: "2026-03-01T10:00:02Z", created_by_name: "Test Accountant", download_available: true, transactions_included: 3 };
+          X.exports.unshift(e); return out(e);
+        }
+        case "exports": return out({ items: X.exports, total: X.exports.length, limit: 50, offset: 0 });
+        case "export": return out(exp());
+        case "export_verify": return out({ ok: true, recorded_sha256: exp().sha256, actual_sha256: exp().sha256, size_bytes: exp().size_bytes });
+        case "reports_standard": return out(MOCK_XL_CATALOGUE.datasets.map((d) => ({ key: d.key, label: d.label, category: d.category, description: d.description, filters: d.filters, note: d.note, statutory: false, fields: d.fields })));
+        case "report_run": return out({ key: args?.ids?.[0], label: "Trial balance", note: "", statutory: false, columns: [{ key: "account_code", label: "Account code", kind: "text" }, { key: "debit", label: "Debit balance", kind: "money" }], rows: [], total: 0, truncated: false });
+        case "reports_custom": return out(X.reports);
+        case "custom_validate": return out({ issues: [], ready: true });
+        case "custom_create": { const d = body.definition as XlCustomReport["definition"]; const r: XlCustomReport = { id: `r-${X.reports.length + 1}`, name: String(body.name), description: null, dataset: d.dataset, definition: d, template_id: (body.template_id as string | null) ?? null, status: "active" }; X.reports.push(r); return out(r); }
+        case "custom_archive": X.reports = X.reports.filter((r) => r.id !== args?.ids?.[0]); return out({});
+        case "custom_run": return out({ label: "Custom", note: "", statutory: false, columns: [{ key: "number", label: "Voucher / transaction number", kind: "text" }], rows: [{ number: "TX-000001" }], total: 1, truncated: false });
+        default: throw err("unsupported", "The mock does not implement this Excel action.", 501);
+      }
+    },
+    xlUploadPick: async (_o, _c, meta) => {
+      rec("xlUploadPick"); needAuth();
+      if (opts.xlPickCancel) return null;
+      const t: XlTemplate = { id: `t-${state.xl.templates.length + 1}`, name: meta.name ?? "Uploaded template", description: meta.description ?? null, category: meta.category ?? "custom_report", file_kind: "xlsx", status: "draft", current_version_no: 1, active_mapping_id: null, active_mapping_no: null, risk_level: "none", filename: "uploaded.xlsx", row_version: 1, source_template_id: null, created_at: "2026-03-01T10:00:00Z", updated_at: "2026-03-01T10:00:00Z" };
+      state.xl.templates.push(t); return structuredClone(t);
+    },
+    xlExportSave: async (_o, _c, exportId, name) => { rec(`xlExportSave:${exportId}`); needAuth(); state.xl.saved.push(name); return `C:\\Users\\Test\\${name}`; },
     on: async (event, handler) => { handlers.set(event, [...(handlers.get(event) ?? []), handler]); return () => handlers.set(event, (handlers.get(event) ?? []).filter((h) => h !== handler)); },
   };
   return b;
@@ -359,4 +436,29 @@ export function mockAcctTxn(id: string, over: Partial<AcctTxn> = {}): AcctTxn {
     can: { edit: false, submit: false, review: false, approve: true, reject: true, request_correction: true, revise: false, reverse: false },
     policy: { separate_preparer_approver: true, levels: 1, distinct_levels: true, approval_limit: null }, ...over,
   };
+}
+
+const MOCK_XL_ANALYSIS: XlAnalysis = {
+  version_no: 1, kind: "xlsx", risk_level: "none", advice: [],
+  sheets: [{ name: "Purchases", visibility: "visible", protected: false, suggested_header_row: 4, suggested_start_row: 5, column_names: { A: "Date", B: "Voucher", C: "Supplier", F: "Net", G: "VAT", H: "Gross" }, formula_count: 4, merged_ranges: ["A1:C1"], tables: [] }],
+  fidelity: [{ feature: "formulas", status: "preserved", detail: "Formulas are kept as written. Artify does not recalculate them; Excel recalculates when the file is opened." }],
+};
+const MOCK_XL_CATALOGUE: XlCatalogue = {
+  categories: ["purchase_register", "sales_register", "trial_balance"],
+  header_fields: [{ key: "company_name", label: "Company name", kind: "text" }, { key: "period_start", label: "Period start", kind: "date" }],
+  row_calcs: ["add", "subtract", "concat"], aggregates: ["sum", "count"], condition_ops: ["present", "absent", "eq"],
+  datasets: [
+    { key: "purchase_register", label: "Purchase register", category: "sales_purchase", description: "Approved purchase invoices and credit notes.", required: ["transaction_date", "number", "gross_amount"], filters: ["date_from", "date_to", "include_unapproved"], custom: true, groupable: ["contact_name"], note: "", statutory: false,
+      fields: [{ key: "transaction_date", label: "Transaction date", kind: "date" }, { key: "number", label: "Voucher / transaction number", kind: "text" }, { key: "contact_name", label: "Customer / supplier name", kind: "text" }, { key: "net_amount", label: "Net amount", kind: "money" }, { key: "gross_amount", label: "Gross amount", kind: "money" }] },
+    { key: "trial_balance", label: "Trial balance", category: "financial", description: "Account totals of approved journals (base currency).", required: [], filters: ["as_of"], custom: false, groupable: [], note: "Management information; not a statutory filing.", statutory: false,
+      fields: [{ key: "account_code", label: "Account code", kind: "text" }, { key: "debit", label: "Debit balance", kind: "money" }, { key: "credit", label: "Credit balance", kind: "money" }] },
+  ],
+};
+
+/** Synthetic active template for UI tests. */
+export function mockXlTemplate(id: string, over: Partial<XlTemplate> = {}): XlTemplate {
+  return { id, name: "Purchase register", description: null, category: "purchase_register", file_kind: "xlsx", status: "active", current_version_no: 1, active_mapping_id: "m-0", active_mapping_no: 1, risk_level: "none", filename: "purchases.xlsx", row_version: 1, source_template_id: null, created_at: "2026-03-01T10:00:00Z", updated_at: "2026-03-01T10:00:00Z", ...over };
+}
+export function mockXlExport(id: string, templateId: string, over: Partial<XlExport> = {}): XlExport {
+  return { id, template_id: templateId, template_name: "Purchase register", template_version: 1, mapping_no: 1, status: "completed", progress: 100, params: { date_from: "2025-01-01", date_to: "2025-12-31" }, include_unapproved: false, source_export_id: null, reason: null, filename: "Purchase_register_20260301.xlsx", sha256: "b".repeat(64), size_bytes: 11000, row_counts: { Purchases: 3 }, fidelity: [], error_message: null, created_at: "2026-03-01T09:00:00Z", finished_at: "2026-03-01T09:00:03Z", created_by_name: "Test Accountant", download_available: true, transactions_included: 3, ...over };
 }

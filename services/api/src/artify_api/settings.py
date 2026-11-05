@@ -87,6 +87,9 @@ class Settings(BaseSettings):
     processing_mode: Literal["celery", "background"] = "background"  # celery in production; in-process otherwise
     processing_retry_backoff_seconds: float = 2.0
     processing_max_attempts: int = 3
+    excel_max_template_bytes: int = 10 * 1024 * 1024
+    excel_max_export_rows: int = 200_000
+    excel_export_max_attempts: int = 3
     # Antivirus: "none" means files are validated but NOT scanned, and the product says so.
     scanner_backend: Literal["none", "clamav"] = "none"
     clamd_host: str = "localhost"

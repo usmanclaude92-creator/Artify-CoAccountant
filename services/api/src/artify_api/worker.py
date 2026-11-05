@@ -18,6 +18,7 @@ celery_app.conf.task_acks_late = True
 celery_app.conf.task_reject_on_worker_lost = True
 celery_app.conf.imports = (
     "artify_api.processing_tasks",
+    "artify_api.excel_tasks",
 )  # registers artify.process_document without importing it here
 
 

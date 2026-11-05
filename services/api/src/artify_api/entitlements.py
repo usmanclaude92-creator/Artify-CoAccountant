@@ -136,6 +136,23 @@ DEFINITIONS: tuple[Definition, ...] = (
         None,
         "Reserved for AI-assisted accounting suggestions (Phase 8 suggestions are deterministic rules only)",
     ),
+    _D(
+        "quota.excel_exports_per_month",
+        "organization",
+        "bigint",
+        "metered",
+        "exports",
+        "Excel exports generated per period (re-exports of an earlier export are not counted)",
+    ),
+    _D("limit.custom_reports_per_company", "company", "int", "hard", "reports", "Active custom report configurations"),
+    _D(
+        "limit.excel_template_versions_per_template",
+        "company",
+        "int",
+        "hard",
+        "versions",
+        "Versions kept per Excel template",
+    ),
     _D("limit.file_size_bytes", "organization", "bigint", "hard", "bytes", "Largest single file accepted for upload"),
     _D("quota.ai_units_per_month", "organization", "bigint", "metered", "units", "Metered AI/OCR units per period"),
     _D("feature.custom_roles", "organization", "bool", "flag", None, "Organization-defined custom roles"),
@@ -159,6 +176,7 @@ QUOTAS = frozenset(
         "quota.bank_statements_per_month",
         "quota.accounting_transactions_per_month",
         "quota.journals_per_month",
+        "quota.excel_exports_per_month",
     }
 )
 MEASURABLE = COUNT_LIMITS | QUOTAS | {"limit.processing_concurrency"}
@@ -168,6 +186,8 @@ COMPANY_MEASURES: dict[str, str] = {
     "limit.folders_per_company": "SELECT count(*) FROM workspace_nodes WHERE company_id = :c AND node_type = 'folder' AND archived_at IS NULL",
     "limit.custom_fields_per_company": "SELECT count(*) FROM custom_field_definitions WHERE company_id = :c AND archived_at IS NULL",
     "limit.filing_rules_per_company": "SELECT count(*) FROM filing_rules WHERE company_id = :c AND archived_at IS NULL",
+    "limit.excel_templates_per_company": "SELECT count(*) FROM xl_templates WHERE company_id = :c AND status <> 'archived'",
+    "limit.custom_reports_per_company": "SELECT count(*) FROM xl_reports WHERE company_id = :c AND status = 'active'",
     "limit.accounting_rules_per_company": "SELECT count(*) FROM acct_rules WHERE company_id = :c AND is_current AND is_active",
     "limit.folder_depth": "SELECT COALESCE(max(depth), 0) FROM workspace_nodes WHERE company_id = :c AND archived_at IS NULL",
 }
@@ -189,7 +209,9 @@ class Limit:
 
 # Everything the backend enforces today: organization counts measured by the database function, plus the per-company
 # workspace limits above. (`MEASURABLE` is only the organization-level subset.)
-ENFORCED = MEASURABLE | frozenset(COMPANY_MEASURES) | {"limit.file_size_bytes"}
+ENFORCED = (
+    MEASURABLE | frozenset(COMPANY_MEASURES) | {"limit.file_size_bytes", "limit.excel_template_versions_per_template"}
+)
 
 
 def effective_limit(conn: Connection, org_id: uuid.UUID, key: str) -> Limit:

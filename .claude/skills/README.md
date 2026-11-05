@@ -14,6 +14,8 @@ Skills are written against real code, so each is created in the phase where that
 
 **Created in Phase 8 (12 of 17):** `accounting-engine`.
 
-**Not yet created** (later phases): frontend-design, vat-compliance, financial-data-validation, excel-template-engine, flutter-mobile-development.
+**Created in Phase 9 (13 of 17):** `excel-template-engine`.
+
+**Not yet created** (later phases): frontend-design, vat-compliance, financial-data-validation, flutter-mobile-development.
 
 No third-party or community skills are installed.

@@ -163,6 +163,46 @@ export interface AcctTaxCode { id: string; code: string; name: string; treatment
 export interface AcctContact { id: string; kind: "customer" | "supplier"; legal_name: string; display_name: string; tax_number: string | null; is_active: boolean }
 export interface TrialBalance { as_of: string | null; rows: { account_id: string; code: string; name: string; debit: string; credit: string }[]; debit: string; credit: string; balanced: boolean }
 
+// ---------------------------------------------------------------- Excel templates and reports (Phase 9). Amounts are strings; the server generates every file.
+export type XlOp =
+  | "catalogue" | "templates" | "template" | "template_update" | "template_status" | "template_duplicate" | "template_delete" | "template_analysis"
+  | "mappings" | "mapping_save" | "mapping" | "mapping_validate" | "mapping_activate" | "mapping_preview"
+  | "export_validate" | "export_preview" | "export_create" | "exports" | "export" | "export_transactions" | "export_verify" | "export_regenerate" | "exports_compare"
+  | "reports_standard" | "report_run" | "reports_custom" | "custom_validate" | "custom_create" | "custom_update" | "custom_archive" | "custom_run" | "custom_export";
+export interface XlIssue { code: string; severity: "error" | "warning" | "info"; message: string; path: string }
+export interface XlTemplate {
+  id: string; name: string; description: string | null; category: string; file_kind: "xlsx" | "xlsm"; status: "draft" | "active" | "inactive" | "archived";
+  current_version_no: number; active_mapping_id: string | null; active_mapping_no: number | null; risk_level: "none" | "warned" | "unsupported"; filename: string; row_version: number;
+  source_template_id: string | null; created_at: string; updated_at: string;
+  versions?: { version_no: number; original_filename: string; size_bytes: number; sha256: string; risk_level: string; change_note: string | null; created_at: string }[];
+  mappings?: { id: string; mapping_no: number; status: "draft" | "active" | "superseded"; template_version: number; created_at: string; activated_at: string | null }[];
+}
+export interface XlSheetInfo { name: string; visibility: string; protected: boolean; suggested_header_row: number | null; suggested_start_row: number | null; column_names: Record<string, string>; formula_count: number; merged_ranges: string[]; tables: unknown[] }
+export interface XlFidelity { feature: string; status: "preserved" | "warned" | "unsupported" | "not_recalculated"; detail: string }
+export interface XlAnalysis { version_no: number; kind: string; risk_level: string; sheets: XlSheetInfo[]; fidelity: XlFidelity[]; advice: string[] }
+export interface XlColumn { column: string; kind?: "field" | "static" | "calc"; field?: string; value?: string; format?: string; required?: boolean; when?: { field: string; op: string; value?: string } }
+export interface XlSheetMap { sheet: string; dataset: string; header_row: number; start_row: number; template_rows?: number; formula_columns?: string[]; columns: XlColumn[] }
+export interface XlFixedCell { sheet: string; cell: string; kind: "static" | "field" | "calc"; value?: string; field?: string; format?: string }
+export interface XlMappingDef { sheets: XlSheetMap[]; fixed_cells: XlFixedCell[] }
+export interface XlMapping { id: string; template_id: string; mapping_no: number; status: "draft" | "active" | "superseded"; definition: XlMappingDef; validation: XlIssue[]; ready: boolean; template_version: number; analysis?: XlAnalysis }
+export interface XlField { key: string; label: string; kind: string; group?: string }
+export interface XlDataset { key: string; label: string; category: string; description: string; required: string[]; filters: string[]; custom: boolean; groupable: string[]; note: string; statutory: boolean; fields: XlField[] }
+export interface XlCatalogue { datasets: XlDataset[]; header_fields: XlField[]; row_calcs: string[]; aggregates: string[]; condition_ops: string[]; categories: string[] }
+export interface XlRepeat { transactions: number; exports: { id: string; created_at: string; filename: string | null; template_version: number; mapping_no: number; transactions: number }[]; needs_acknowledgement: boolean }
+export interface XlValidation {
+  template: { id: string; name: string; version_no: number; mapping_no: number; mapping_id: string }; total_rows: number; transactions: number; issues: XlIssue[]; repeat: XlRepeat;
+  include_unapproved: boolean; can_generate: boolean; sheets: { sheet: string; dataset: string; rows: number; applied_filters: Record<string, unknown>; ignored_filters: string[]; note: string }[];
+}
+export interface XlPreview { validation: XlValidation; preview: { sheets: { sheet: string; start_row: number; columns: string[]; sample: { row: number; cells: Record<string, string> }[]; rows: number }[]; fixed_cells: { sheet: string; cell: string; value: string }[] } }
+export interface XlExport {
+  id: string; template_id: string; template_name: string; template_version: number; mapping_no: number; status: "queued" | "running" | "completed" | "failed"; progress: number; params: Record<string, unknown>;
+  include_unapproved: boolean; source_export_id: string | null; reason: string | null; filename: string | null; sha256: string | null; size_bytes: number | null; row_counts: Record<string, number> | null;
+  fidelity: XlFidelity[] | null; error_message: string | null; created_at: string; finished_at: string | null; created_by_name: string | null; download_available: boolean; transactions_included: number;
+}
+export interface XlReportResult { key?: string; label: string; note: string; statutory: boolean; columns: { key: string; label: string; kind: string }[]; rows: Record<string, string | null>[]; total: number; truncated: boolean }
+export interface XlStandardReport { key: string; label: string; category: string; description: string; filters: string[]; note: string; statutory: boolean; fields: XlField[] }
+export interface XlCustomReport { id: string; name: string; description: string | null; dataset: string; definition: { dataset: string; fields: string[]; sort?: { field: string; direction: string }[]; group_by?: string | null; filters?: Record<string, unknown> }; template_id: string | null; status: string }
+
 export interface Bridge {
   appInfo(): Promise<AppInfo>;
   authLogin(email: string, password: string): Promise<LoginResult>;
@@ -234,6 +274,12 @@ export interface Bridge {
   intelPageImage(org: string, company: string, doc: string, page: number): Promise<PageImage>;
   /** Accounting: one allow-listed server call. The server calculates, validates and decides; the interface only displays. */
   acct<T = unknown>(org: string, company: string, op: AcctOp, args?: { ids?: string[]; query?: Record<string, string>; body?: unknown }): Promise<T>;
+  /** Excel templates, exports and reports: one allow-listed server call. The server validates workbooks and generates every file. */
+  xl<T = unknown>(org: string, company: string, op: XlOp, args?: { ids?: string[]; query?: Record<string, string>; body?: unknown }): Promise<T>;
+  /** Choose a workbook in the native dialog and upload it as a template (or a new version). Resolves null when cancelled. */
+  xlUploadPick(org: string, company: string, meta: { name?: string; category?: string; description?: string; template_id?: string; change_note?: string }): Promise<XlTemplate | null>;
+  /** Ask where to save a completed export, download it and verify its checksum. Resolves the saved path, or null when cancelled. */
+  xlExportSave(org: string, company: string, exportId: string, suggestedName: string): Promise<string | null>;
   /** Backend events: workspace-updated (RefreshOutcome), session-expired, sync-error (AppError), queue-changed, queue-progress, documents-changed, files-dropped (StagedFile[]). */
-  on(event: "workspace-updated" | "session-expired" | "sync-error" | "queue-changed" | "queue-progress" | "documents-changed" | "processing-changed" | "accounting-changed" | "files-dropped", handler: (payload: unknown) => void): Promise<Unlisten>;
+  on(event: "workspace-updated" | "session-expired" | "sync-error" | "queue-changed" | "queue-progress" | "documents-changed" | "processing-changed" | "accounting-changed" | "excel-changed" | "files-dropped", handler: (payload: unknown) => void): Promise<Unlisten>;
 }

@@ -1,6 +1,6 @@
 # Phase 9 — Excel Template and Reporting Engine
 
-**Status: NOT STARTED.**
+**Status: DELIVERED FOR REVIEW** — see [PHASE_9_COMPLETION_REPORT.md](PHASE_9_COMPLETION_REPORT.md) for what was built, what differs from this plan (no presets, voucher sequences or CSV output; Control Center is a read-only overview) and what is unverified.
 
 ## Objectives
 

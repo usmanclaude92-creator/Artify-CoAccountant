@@ -92,6 +92,20 @@ PERMISSIONS: tuple[Permission, ...] = (
     _P("accounting.reverse", "company", "Reverse or amend approved accounting transactions"),
     _P("accounting.periods.manage", "company", "Create, close and reopen accounting periods"),
     _P("accounting.reports.read", "company", "View ledger, trial balance, balances and tax summaries"),
+    _P("excel.read", "company", "View a company's Excel templates, mappings, report configurations and export history"),
+    _P("excel.templates.manage", "company", "Upload, map, activate, archive and duplicate a company's Excel templates"),
+    _P(
+        "excel.export",
+        "company",
+        "Preview, generate, download and re-generate Excel exports from approved accounting data",
+    ),
+    _P(
+        "excel.export_unapproved",
+        "company",
+        "Include draft (unapproved) transactions in an export; the output is marked as unapproved",
+    ),
+    _P("excel.reports.configure", "company", "Create and change custom report configurations"),
+    _P("excel.monitor", "organization", "See Excel templates, exports and usage across the organization"),
     _P("storage.manage", "organization", "Review storage usage and run storage reconciliation"),
     # ---- platform realm (Artify Super Admin) ----
     _P("platform.self.read", "platform", "Read own platform-admin profile"),
@@ -183,6 +197,12 @@ SYSTEM_ROLES: dict[str, tuple[str, str, frozenset[str]]] = {
                 "accounting.reverse",
                 "accounting.periods.manage",
                 "accounting.reports.read",
+                "excel.read",
+                "excel.templates.manage",
+                "excel.export",
+                "excel.export_unapproved",
+                "excel.reports.configure",
+                "excel.monitor",
             }
         ),
     ),
@@ -212,6 +232,10 @@ SYSTEM_ROLES: dict[str, tuple[str, str, frozenset[str]]] = {
                 "accounting.review",
                 "accounting.approve",
                 "accounting.reports.read",
+                "excel.read",
+                "excel.templates.manage",
+                "excel.export",
+                "excel.reports.configure",
             }
         ),
     ),
@@ -235,6 +259,7 @@ SYSTEM_ROLES: dict[str, tuple[str, str, frozenset[str]]] = {
                 "accounting.contacts.manage",
                 "accounting.prepare",
                 "accounting.reports.read",
+                "excel.read",
             }
         ),
     ),
@@ -282,6 +307,7 @@ SYSTEM_ROLES: dict[str, tuple[str, str, frozenset[str]]] = {
                 "documents.read",
                 "accounting.read",
                 "accounting.reports.read",
+                "excel.read",
             }
         ),
     ),

@@ -26,4 +26,11 @@ test("the Documents & Storage and Document Processing pages show real usage, the
   await expect(providers.getByRole("row", { name: /understanding rules .*Configured/i })).toBeVisible();
   await expect(providers.getByRole("row", { name: /http_json .*Not configured/i })).toBeVisible();
   await expect(providers.getByRole("button", { name: /allow/i })).toBeDisabled();
+  // Phase 9: the Excel & Reports overview (same firm again): read-only, no downloads, honest empty states
+  await page.getByRole("link", { name: "Excel & Reports" }).click();
+  await expect(page.getByRole("heading", { name: "Excel Templates & Reports", level: 1 })).toBeVisible();
+  await expect(page.getByText("No templates have been added yet.")).toBeVisible();
+  await expect(page.getByText("No exports yet.")).toBeVisible();
+  await expect(page.getByRole("table", { name: "Excel usage" }).getByText("Excel exports this month")).toBeVisible();
+  await expect(page.getByRole("link", { name: /download/i })).toHaveCount(0);
 });

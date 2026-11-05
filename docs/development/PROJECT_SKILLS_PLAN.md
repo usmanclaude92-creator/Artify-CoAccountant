@@ -38,7 +38,7 @@
 | `accounting-engine` | Phase 8 (**created**) | Decimal rules, entry lifecycle, balance, immutability, approval actor rules, traceability | TS-ACC-* |
 | `vat-compliance` | Phase 8 | Jurisdiction-pack data model, effective dating, rounding policies, verification process for packs | TS-ACC-09 |
 | `financial-data-validation` | Phase 8 | Validator catalog, severity semantics, override rules | TS-ACC-* |
-| `excel-template-engine` | Phase 9 | Mapping language, compatibility analysis, formula preservation, injection guards, export idempotency | TS-XLS-* |
+| `excel-template-engine` | Phase 9 (**created**) | Mapping language, compatibility analysis, formula preservation, injection guards, export idempotency | TS-XLS-* |
 | `flutter-mobile-development` | Phase 11 | Config-driven categories (no hard-coding), upload queue, scanning, secure storage | TS-SYNC-05 |
 
 ## 4. Maintenance

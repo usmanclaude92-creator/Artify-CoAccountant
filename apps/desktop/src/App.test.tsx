@@ -310,17 +310,6 @@ describe("dynamic workspace", () => {
   });
 });
 
-describe("honest placeholders", () => {
-  it.each([["Reports"]])("%s says it is not available and shows no sample data", async (label) => {
-    const { user } = await boot();
-    await user.click(await screen.findByRole("button", { name: new RegExp(label) }));
-    expect(screen.getByRole("heading", { name: label, level: 1 })).toBeInTheDocument();
-    expect(screen.getByText("Not available yet")).toBeInTheDocument();
-    expect(screen.queryByRole("table")).not.toBeInTheDocument();
-    expect(screen.getByText(/no sample data/i)).toBeInTheDocument();
-  });
-});
-
 describe("settings", () => {
   it("saves the theme and keeps the language control honest", async () => {
     const { bridge, user } = await boot();

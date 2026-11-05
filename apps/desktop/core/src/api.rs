@@ -388,7 +388,12 @@ impl ApiClient {
                 let bytes = res.bytes().await.unwrap_or_default();
                 return Err(problem(status, &bytes));
             }
-            let announced = res.headers().get("x-document-sha256").and_then(|v| v.to_str().ok()).map(str::to_string);
+            let announced = res
+                .headers()
+                .get("x-document-sha256")
+                .or_else(|| res.headers().get("x-export-sha256"))
+                .and_then(|v| v.to_str().ok())
+                .map(str::to_string);
             let mut file = tokio::fs::File::create(dest).await.map_err(AppError::from)?;
             let mut hasher = Sha256::new();
             let mut total = 0u64;

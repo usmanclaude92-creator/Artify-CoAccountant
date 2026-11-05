@@ -235,3 +235,21 @@ The product owner replied "Accept the recommendations and start Phase 1" on 2026
 | **D-9** | Languages: Arabic/RTL UI and Arabic/English bilingual OCR for the Oman market. | Treat i18n and RTL as a Phase 1 platform requirement (cheap now, expensive later); prioritize Arabic + English. Confirm launch languages. | **Decided 2026-11-04** (see outcomes above) |
 | **D-10** | Offline scope of Mobile (queue uploads offline only, or also browse cached history). | Offline capture and upload queue; history is online-only plus a small cache. | Phase 11 |
 | **D-11** | Legal/commercial: product licensing, terms, data-processing agreement, and trademark of the "Artify" name. | Outside engineering scope; needed before any external pilot. | Before pilot |
+
+### ADR-069 — The accountant's own workbook is the template; mappings are declarative JSON
+A company uploads its own `.xlsx`/`.xlsm`; Artify never imposes a layout. A mapping is validated JSON over a catalogue of governed fields (`xl_catalogue`): no scripts, no free-form formulas, calculations only from a whitelist. Drafts may be incomplete; activation and export require zero errors. Activated mappings and template versions are immutable; changes are new versions.
+
+### ADR-070 — Formulas are preserved, never evaluated; Excel recalculates
+The writer edits a copy, translates formula columns, shifts/extends references when it inserts rows, and sets recalculate-on-open. Artify does not compute workbook formulas. Features the library cannot carry (charts, pivots, slicers, form controls, embedded objects, external links, data connections) are detected before activation and reported honestly; activating a risky workbook needs an explicit acknowledgement.
+
+### ADR-071 — Untrusted workbooks: no execution, strict limits, injection guard
+Macros are never run; `.xlsm` requires `feature.macro_templates`; VBA inside `.xlsx`, `.xls`, encrypted and oversized/bomb-like files are refused; XML is parsed with `defusedxml`; text beginning with `= + - @ TAB CR` is written as a string. Antivirus scanning of workbooks is not applied (open item).
+
+### ADR-072 — Exports contain approved data only; unapproved is a separate permission and is marked
+`excel.export_unapproved` is required to include draft or in-review transactions; the export records the flag, history shows it, validation warns. Exports are `completed` only after the generated file was re-opened, checked and stored (DB `CHECK`); a failure leaves no file and no rows.
+
+### ADR-073 — Export history is immutable and traceable; repeats are explicit
+`xl_exports` rows cannot change after completion and cannot be deleted; `xl_export_rows` links every written row to its transaction/journal. Re-exporting transactions already exported with the same template needs an acknowledgement and a reason; "regenerate" creates a new record and does not use the monthly quota.
+
+### ADR-074 — Reports are governed datasets, not SQL
+Standard and custom reports use fixed, parameterised statements per dataset; custom reports only choose fields, sort and one grouping over a dataset. Reports are management information, flagged `statutory = false`, and never described as filings. Template/export files are billable storage (`purpose` `template` / `export`).

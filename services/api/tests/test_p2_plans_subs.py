@@ -90,7 +90,7 @@ def test_plan_create_validation_and_money_as_strings(client, owner_engine) -> No
         catalog["limit.companies"]["enforced_now"] is True
         and catalog["limit.workspace_sections_per_company"]["enforced_now"]
         is True  # enforced per company since Phase 4
-        and catalog["limit.excel_templates_per_company"]["enforced_now"] is False
+        and catalog["limit.excel_templates_per_company"]["enforced_now"] is True  # enforced since Phase 9
     )
 
 

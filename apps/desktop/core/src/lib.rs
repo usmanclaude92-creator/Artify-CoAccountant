@@ -14,3 +14,4 @@ pub mod settings;
 pub mod storage;
 pub mod vault;
 pub mod workspace;
+pub mod xl;

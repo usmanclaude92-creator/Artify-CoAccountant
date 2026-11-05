@@ -6,6 +6,7 @@ mod commands;
 mod doc_commands;
 mod intel_commands;
 mod state;
+mod xl_commands;
 
 use std::sync::Arc;
 
@@ -126,6 +127,9 @@ pub fn run() {
             doc_commands::mirror_sync,
             doc_commands::mirror_open,
             acct_commands::acct_call,
+            xl_commands::xl_call,
+            xl_commands::xl_upload_pick,
+            xl_commands::xl_export_save,
             intel_commands::intel_start,
             intel_commands::intel_latest,
             intel_commands::intel_queue,

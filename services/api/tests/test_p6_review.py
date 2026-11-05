@@ -9,10 +9,20 @@ import pytest
 from conftest import make_member, set_plan_limit
 from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError
-from test_p6_documents import D, assign, backend, firm, init, objects, pdf, put, upload  # noqa: F401
+from test_p6_documents import (  # noqa: F401
+    D,
+    assign,
+    backend,
+    firm,
+    init,
+    objects,
+    pdf,
+    put,
+    upload,
+)
 
 
-def test_stored_versions_and_storage_objects_are_immutable_in_the_database(firm, owner_engine) -> None:  # type: ignore[no-untyped-def]
+def test_stored_versions_and_storage_objects_are_immutable_in_the_database(firm, owner_engine) -> None:  # type: ignore[no-untyped-def]  # noqa: F811
     owner, a, _b, node, _ = firm
     doc = upload(owner, a, pdf("immutable"), "orig.pdf", node)
     new_hash = "a" * 64
@@ -28,7 +38,7 @@ def test_stored_versions_and_storage_objects_are_immutable_in_the_database(firm,
         "DELETE FROM storage_objects WHERE id IN (SELECT storage_object_id FROM document_versions WHERE document_id = :d)",
     ):
         # even the table owner is refused: the guard is a trigger, not just a missing grant
-        with owner_engine.connect() as conn, pytest.raises(DBAPIError, match="immutable|never deleted"), conn.begin():
+        with owner_engine.connect() as conn, pytest.raises(DBAPIError, match=r"immutable|never deleted"), conn.begin():
             conn.execute(text(stmt), {"h": new_hash, "d": doc["id"]})
     with owner_engine.begin() as conn:  # the lifecycle columns still work, and the scan result may be recorded
         conn.execute(
@@ -48,7 +58,7 @@ def test_stored_versions_and_storage_objects_are_immutable_in_the_database(firm,
             ),
             {"d": doc["id"]},
         )
-    with owner_engine.connect() as conn, pytest.raises(DBAPIError, match="stays purged"), conn.begin():
+    with owner_engine.connect() as conn, pytest.raises(DBAPIError, match=r"stays purged"), conn.begin():
         conn.execute(
             text(
                 "UPDATE storage_objects SET state = 'stored' WHERE id IN"
@@ -58,7 +68,7 @@ def test_stored_versions_and_storage_objects_are_immutable_in_the_database(firm,
         )
 
 
-def test_storage_totals_and_reconciliation_are_for_storage_managers_only(firm, client, mailer) -> None:  # type: ignore[no-untyped-def]
+def test_storage_totals_and_reconciliation_are_for_storage_managers_only(firm, client, mailer) -> None:  # type: ignore[no-untyped-def]  # noqa: F811
     owner, a, _b, node, _ = firm
     upload(owner, a, pdf("totals"), "t.pdf", node)
     acc = make_member(owner, mailer, "accountant")
@@ -73,7 +83,7 @@ def test_storage_totals_and_reconciliation_are_for_storage_managers_only(firm, c
         assert "totals" not in r.text and "bytes" not in r.text
 
 
-def test_concurrent_uploads_cannot_oversubscribe_the_storage_quota(firm, owner_engine) -> None:  # type: ignore[no-untyped-def]
+def test_concurrent_uploads_cannot_oversubscribe_the_storage_quota(firm, owner_engine) -> None:  # type: ignore[no-untyped-def]  # noqa: F811
     owner, a, _b, node, _ = firm
     contents = [pdf(f"race{i}") for i in range(4)]  # all the same size
     ops = []
@@ -89,7 +99,7 @@ def test_concurrent_uploads_cannot_oversubscribe_the_storage_quota(firm, owner_e
     assert codes.count(200) == 2 and all(c in (200, 402) for c in codes), codes
 
 
-def test_company_wide_totals_and_the_activity_feed_never_include_hidden_folders(firm, client, mailer) -> None:  # type: ignore[no-untyped-def]
+def test_company_wide_totals_and_the_activity_feed_never_include_hidden_folders(firm, client, mailer) -> None:  # type: ignore[no-untyped-def]  # noqa: F811
     from conftest import uid
     from test_p6_documents import W, mk, sha
 

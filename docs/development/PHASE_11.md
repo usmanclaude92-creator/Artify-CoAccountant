@@ -1,6 +1,6 @@
 # Phase 11 — Mobile Application
 
-**Status: NOT STARTED.** Requires decision D-10 (offline scope).
+**Status: DELIVERED FOR REVIEW** (see [PHASE_11_COMPLETION_REPORT.md](PHASE_11_COMPLETION_REPORT.md) and `docs/mobile/`). The owner's Phase 11 brief superseded the scope below where they differ; push notifications, certificate pinning decision records beyond ADR-079, Arabic/RTL localisation and the `GET /me/notifications` / push-token endpoints were **not** built.
 
 ## Objectives
 

@@ -18,6 +18,8 @@ Skills are written against real code, so each is created in the phase where that
 
 **Created in Phase 10 (14 of 17):** `daily-bookkeeping-closing`.
 
-**Not yet created** (later phases): frontend-design, vat-compliance, financial-data-validation, flutter-mobile-development.
+**Created in Phase 11 (15 of 17):** `flutter-mobile-development`.
+
+**Not yet created** (later phases): frontend-design, vat-compliance, financial-data-validation.
 
 No third-party or community skills are installed.

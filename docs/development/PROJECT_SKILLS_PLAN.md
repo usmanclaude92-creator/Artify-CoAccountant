@@ -40,7 +40,7 @@
 | `financial-data-validation` | Phase 8 | Validator catalog, severity semantics, override rules | TS-ACC-* |
 | `excel-template-engine` | Phase 9 (**created**) | Mapping language, compatibility analysis, formula preservation, injection guards, export idempotency | TS-XLS-* |
 | `daily-bookkeeping-closing` | Phase 10 (**created**) | Business-day rule, severity policy, independence, immutable snapshots, closed-day protection, daily reports | none yet (tests are listed in the skill) |
-| `flutter-mobile-development` | Phase 11 | Config-driven categories (no hard-coding), upload queue, scanning, secure storage | TS-SYNC-05 |
+| `flutter-mobile-development` | Phase 11 (**created**) | Config-driven categories (no hard-coding), upload queue, scanning, secure storage | TS-SYNC-05 |
 
 ## 4. Maintenance
 

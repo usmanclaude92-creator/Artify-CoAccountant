@@ -1,0 +1,5 @@
+# Copy to android/key.properties (never commit it) and fill in your own upload key. See docs/mobile/ANDROID_RELEASE.md.
+storeFile=/absolute/path/to/upload-keystore.jks
+storePassword=
+keyAlias=upload
+keyPassword=

@@ -245,6 +245,7 @@ def upload_config(company_id: uuid.UUID, request: Request, response: Response, c
                 "node_type": n["node_type"],
                 "key": n["key"],
                 "label": n["display_name"] or n["name"],
+                "description": n.get("description") or "",
                 "position": n["position"],
                 "depth": n["depth"],
             }
@@ -256,6 +257,7 @@ def upload_config(company_id: uuid.UUID, request: Request, response: Response, c
                 "key": c["key"],
                 "name": c["name"],
                 "document_kind": c["document_kind"],
+                "description": c.get("description") or "",
                 "node_id": c["node_id"],
                 "allowed_file_types": c["allowed_file_types"],
             }
@@ -267,6 +269,10 @@ def upload_config(company_id: uuid.UUID, request: Request, response: Response, c
                 "label": f["label"],
                 "data_type": f["data_type"],
                 "required": f["required"],
+                "description": f.get("description") or "",
+                "default_value": f.get("default_value"),
+                "validation": f.get("validation") or {},
+                "reference_target": f.get("reference_target"),
                 "category_ids": f["category_ids"],
                 "node_ids": f["node_ids"],
                 "options": [o for o in f["options"] if o["archived_at"] is None],

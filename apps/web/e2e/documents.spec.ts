@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { signedInOwner } from "./helpers";
 
-test("the Documents & Storage page shows real usage, the honest scanner state, and runs a read-only storage check", async ({ page }) => {
+test("the Documents & Storage and Document Processing pages show real usage, the honest scanner and provider state, and run a read-only storage check", async ({ page }) => {
   test.setTimeout(120_000);
   await signedInOwner(page, "Docs Page Firm");
   await page.getByRole("link", { name: "Documents & Storage" }).click();
@@ -16,4 +16,14 @@ test("the Documents & Storage page shows real usage, the honest scanner state, a
   await expect(result).toBeVisible();
   await expect(result.getByText("Missing from the store").locator("xpath=following-sibling::dd[1]")).toHaveText("0");
   await expect(result.getByText("Stray objects").locator("xpath=following-sibling::dd[1]")).toHaveText("0");
+  // Phase 7: the Document Processing page (same firm: the signup endpoint allows 10 per IP per hour and the suite already uses them)
+  await page.getByRole("link", { name: "Document Processing" }).click();
+  await expect(page.getByRole("heading", { name: "Document Processing", level: 1 })).toBeVisible();
+  await expect(page.getByText("No documents have been processed yet.")).toBeVisible();
+  await expect(page.getByText("Nothing is waiting for review.")).toBeVisible();
+  await expect(page.getByText("No failed jobs.")).toBeVisible();
+  const providers = page.getByRole("table", { name: "Providers" });
+  await expect(providers.getByRole("row", { name: /understanding rules .*Configured/i })).toBeVisible();
+  await expect(providers.getByRole("row", { name: /http_json .*Not configured/i })).toBeVisible();
+  await expect(providers.getByRole("button", { name: /allow/i })).toBeDisabled();
 });

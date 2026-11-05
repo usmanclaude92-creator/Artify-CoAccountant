@@ -36,7 +36,7 @@ Classification: the 18 types listed in [DOCUMENT_CLASSIFICATION.md](../ai/DOCUME
 ## 5. Tests (executed)
 * API: full suite run on a real PostgreSQL; after fixing the one failure (missing composite company FKs on the new tables, caught by `test_tenant_tables_carry_tenant_columns`) the Phase 7 and RLS files pass. New files: `test_p7_extract.py` (18 pure tests) and `test_p7_processing.py` (OCR formats, rotation, skew, quality, Arabic, corrupt input, bank statements, review, reprocessing, idempotency, retries, quotas, workspace A vs B, security, provider consent).
 * Desktop core: 5 new Rust tests (`core/tests/intel.rs`) pass; UI: 7 new component tests, lint and types pass (65/65 vitest).
-* Web: types and lint pass; e2e `processing.spec.ts` and `documents.spec.ts` pass against the built app.
+* Web: types and lint pass; e2e `documents.spec.ts` (which now also covers the processing page) passes against the built app.
 * OpenAPI: regenerated, 0 breaking changes. Early in development two new response models shared names with existing schemas; they were renamed (`Processing…`) before commit.
 * The final full-suite re-run after the last FK fix and the CI result for the pushed commits are reported in the PR, not here.
 

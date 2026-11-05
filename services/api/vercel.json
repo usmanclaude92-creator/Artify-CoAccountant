@@ -1,10 +1,15 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "rewrites": [{ "source": "/(.*)", "destination": "/api/index" }],
   "functions": {
     "api/index.py": {
       "maxDuration": 300,
       "excludeFiles": "{tests/**,migrations/versions/__pycache__/**,.venv/**,**/__pycache__/**,var/**,.data/**,openapi.json}"
     }
-  }
+  },
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/api/index.py"
+    }
+  ]
 }

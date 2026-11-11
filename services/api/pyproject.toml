@@ -36,7 +36,7 @@ dev = [
   "ruff==0.17.3",
   "mypy==2.4.1",
   "aiosmtpd==1.4.6",
-  "import-linter==2.15",
+  "import-linter==2.16",
   "moto[s3]>=5",
 ]
 

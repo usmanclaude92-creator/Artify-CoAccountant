@@ -141,7 +141,7 @@ jobs:
       - run: cd apps/desktop && pnpm tauri build --bundles nsis
         env:
           ARTIFY_BUILD_ID: ${{ github.sha }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: artify-desktop-unsigned-installer
           path: apps/desktop/target/release/bundle/nsis/*.exe

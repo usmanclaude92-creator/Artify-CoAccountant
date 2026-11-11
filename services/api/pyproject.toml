@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Artify Co-Accountant shared cloud backend (Phase 1 foundation)"
 requires-python = ">=3.12"
 dependencies = [
-  "fastapi==0.162.0",
+  "fastapi==0.162.2",
   "uvicorn==0.54.0",
   "pydantic[email]==2.14.2",
   "pydantic-settings==2.16.2",
